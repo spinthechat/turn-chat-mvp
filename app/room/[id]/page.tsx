@@ -2028,12 +2028,12 @@ export default function RoomPage() {
   }
 
   const handleReply = (msg: Msg) => {
+    // Focus FIRST - must be synchronous to satisfy iOS user gesture requirement
+    // The input is always mounted so focus persists through re-render
+    chatInputRef.current?.focus()
+    // Then set state - input stays focused during re-render
     setReplyingTo(msg)
-    // Focus the chat input after state update using requestAnimationFrame
-    // This ensures the DOM has updated and works reliably on mobile
-    requestAnimationFrame(() => {
-      chatInputRef.current?.focus()
-    })
+    // onFocus handler will trigger scroll after keyboard animation starts
   }
 
   const handleReact = async (messageId: string, emoji: string) => {
