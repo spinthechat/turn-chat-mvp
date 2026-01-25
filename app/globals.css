@@ -29,9 +29,15 @@
 
 /* Use dynamic viewport height with fallback */
 .h-screen-safe {
-  height: 100vh; /* Fallback */
+  height: 100vh; /* Fallback for older browsers */
   height: 100dvh; /* Dynamic viewport height - adjusts with keyboard */
-  height: calc(var(--vh, 1vh) * 100); /* JS fallback for older browsers */
+}
+
+/* For browsers that don't support dvh, use JS-set --vh */
+@supports not (height: 100dvh) {
+  .h-screen-safe {
+    height: calc(var(--vh, 1vh) * 100);
+  }
 }
 
 /* Safe area insets for notched devices */
@@ -43,33 +49,16 @@
   padding-top: env(safe-area-inset-top, 0px);
 }
 
-/* Prevent overscroll/bounce on iOS */
-.no-overscroll {
-  overscroll-behavior: none;
-  -webkit-overflow-scrolling: touch;
-}
-
-/* Fix for iOS momentum scrolling */
-.scroll-smooth-ios {
-  -webkit-overflow-scrolling: touch;
-}
-
-/* Prevent body scroll when modal/drawer is open */
-body.no-scroll {
-  overflow: hidden;
-  position: fixed;
-  width: 100%;
-  height: 100%;
-}
-
 /* ============================================
    Base Styles
    ============================================ */
 
 html {
   scroll-behavior: smooth;
-  /* Prevent pull-to-refresh on mobile */
-  overscroll-behavior-y: none;
+  /* Prevent pull-to-refresh and overscroll on mobile */
+  overscroll-behavior: none;
+  /* Ensure html fills viewport */
+  height: 100%;
 }
 
 body {
@@ -81,6 +70,13 @@ body {
   /* Prevent text size adjustment on orientation change */
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+  /* Fill viewport */
+  height: 100%;
+  /* Prevent body scroll - app handles its own scrolling */
+  overflow: hidden;
+  /* Fixed positioning context */
+  position: fixed;
+  width: 100%;
 }
 
 /* ============================================
@@ -132,19 +128,4 @@ body {
 
 ::selection {
   background: rgb(99 102 241 / 0.2);
-}
-
-/* ============================================
-   Scrollbar Styling (optional, subtle)
-   ============================================ */
-
-/* Hide scrollbar on mobile for cleaner look */
-@media screen and (max-width: 768px) {
-  .hide-scrollbar {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-  .hide-scrollbar::-webkit-scrollbar {
-    display: none;
-  }
 }

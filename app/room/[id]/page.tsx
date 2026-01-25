@@ -4,31 +4,54 @@ import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { useParams, useRouter } from 'next/navigation'
 
-// Hook to set --vh CSS variable for mobile viewport height
-function useViewportHeight() {
+// Hook to handle mobile viewport height and keyboard
+function useMobileViewport() {
+  const [keyboardHeight, setKeyboardHeight] = useState(0)
+
   useEffect(() => {
+    // Set --vh CSS variable for viewport height fallback
     const setVH = () => {
       const vh = window.innerHeight * 0.01
       document.documentElement.style.setProperty('--vh', `${vh}px`)
     }
 
+    // Handle keyboard open/close via VisualViewport API
+    const handleViewportResize = () => {
+      if (window.visualViewport) {
+        const viewport = window.visualViewport
+        // Calculate keyboard height as difference between window and viewport
+        const keyboardH = window.innerHeight - viewport.height
+        setKeyboardHeight(Math.max(0, keyboardH))
+
+        // Also update --vh based on visual viewport
+        const vh = viewport.height * 0.01
+        document.documentElement.style.setProperty('--vh', `${vh}px`)
+      }
+    }
+
     setVH()
+
+    // Listen to resize events
     window.addEventListener('resize', setVH)
     window.addEventListener('orientationchange', setVH)
 
-    // Also update on visualViewport resize (keyboard open/close)
+    // VisualViewport API for keyboard detection (iOS Safari)
     if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', setVH)
+      window.visualViewport.addEventListener('resize', handleViewportResize)
+      window.visualViewport.addEventListener('scroll', handleViewportResize)
     }
 
     return () => {
       window.removeEventListener('resize', setVH)
       window.removeEventListener('orientationchange', setVH)
       if (window.visualViewport) {
-        window.visualViewport.removeEventListener('resize', setVH)
+        window.visualViewport.removeEventListener('resize', handleViewportResize)
+        window.visualViewport.removeEventListener('scroll', handleViewportResize)
       }
     }
   }, [])
+
+  return { keyboardHeight }
 }
 
 type Msg = {
@@ -1261,8 +1284,8 @@ export default function RoomPage() {
   const params = useParams<{ id: string }>()
   const roomId = params.id
 
-  // Set up mobile viewport height
-  useViewportHeight()
+  // Set up mobile viewport height and keyboard handling
+  const { keyboardHeight } = useMobileViewport()
 
   const [userId, setUserId] = useState<string | null>(null)
   const [isHost, setIsHost] = useState(false)
@@ -1288,6 +1311,25 @@ export default function RoomPage() {
   const imageInputRef = useRef<HTMLInputElement | null>(null)
   const chatInputRef = useRef<HTMLInputElement | null>(null)
   const hasInitiallyScrolled = useRef(false)
+
+  // Scroll the messages container to bottom (not the window!)
+  const scrollToBottom = useCallback((smooth = true) => {
+    const container = scrollContainerRef.current
+    if (container) {
+      container.scrollTo({
+        top: container.scrollHeight,
+        behavior: smooth ? 'smooth' : 'auto'
+      })
+    }
+  }, [])
+
+  // Handle input focus - scroll container to bottom so messages stay visible
+  const handleInputFocus = useCallback(() => {
+    // Small delay to let keyboard animation start
+    setTimeout(() => {
+      scrollToBottom(true)
+    }, 150)
+  }, [scrollToBottom])
 
   const [uploadingImage, setUploadingImage] = useState(false)
 
@@ -2218,7 +2260,7 @@ export default function RoomPage() {
       </header>
 
       {/* Messages */}
-      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto scroll-smooth-ios hide-scrollbar">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overscroll-contain">
         <div className="max-w-3xl mx-auto px-3 py-3">
           {/* Error banner */}
           {error && (
@@ -2340,11 +2382,7 @@ export default function RoomPage() {
                         submitTurn()
                       }
                     }}
-                    onFocus={() => {
-                      setTimeout(() => {
-                        bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-                      }, 100)
-                    }}
+                    onFocus={handleInputFocus}
                   />
                   <button
                     onClick={submitTurn}
@@ -2422,12 +2460,7 @@ export default function RoomPage() {
                   sendChat()
                 }
               }}
-              onFocus={() => {
-                // Scroll to bottom when input is focused (helps on mobile with keyboard)
-                setTimeout(() => {
-                  bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-                }, 100)
-              }}
+              onFocus={handleInputFocus}
             />
             <button
               onClick={sendChat}
