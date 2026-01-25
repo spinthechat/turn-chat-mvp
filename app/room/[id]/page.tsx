@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
+import { useEffect, useMemo, useRef, useState, useCallback, useLayoutEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { supabase } from '@/lib/supabaseClient'
 import { useParams, useRouter } from 'next/navigation'
 
@@ -52,6 +53,150 @@ function useMobileViewport() {
   }, [])
 
   return { keyboardHeight }
+}
+
+// Emoji picker with smart positioning via portal
+// Renders to document.body and positions itself relative to anchor element
+function EmojiPickerPortal({
+  anchorRef,
+  emojis,
+  onSelect,
+  onClose,
+}: {
+  anchorRef: React.RefObject<HTMLElement | null>
+  emojis: readonly string[]
+  onSelect: (emoji: string) => void
+  onClose: () => void
+}) {
+  const pickerRef = useRef<HTMLDivElement>(null)
+  const [position, setPosition] = useState({ top: 0, left: 0 })
+  const [mounted, setMounted] = useState(false)
+
+  // Calculate position after mount
+  useLayoutEffect(() => {
+    setMounted(true)
+  }, [])
+
+  useLayoutEffect(() => {
+    if (!mounted) return
+
+    const calculatePosition = () => {
+      const anchor = anchorRef.current
+      const picker = pickerRef.current
+      if (!anchor || !picker) return
+
+      const anchorRect = anchor.getBoundingClientRect()
+      const pickerRect = picker.getBoundingClientRect()
+
+      // Viewport dimensions
+      const viewportWidth = window.innerWidth
+      const viewportHeight = window.innerHeight
+
+      // Safe area padding
+      const padding = 12
+
+      // Picker dimensions
+      const pickerWidth = pickerRect.width
+      const pickerHeight = pickerRect.height
+
+      // Prefer positioning above the message
+      // Check if there's enough space above
+      const spaceAbove = anchorRect.top - padding
+      const spaceBelow = viewportHeight - anchorRect.bottom - padding
+
+      let top: number
+      if (spaceAbove >= pickerHeight) {
+        // Position above
+        top = anchorRect.top - pickerHeight - 8
+      } else if (spaceBelow >= pickerHeight) {
+        // Position below
+        top = anchorRect.bottom + 8
+      } else {
+        // Not enough space either way, position in center of viewport
+        top = Math.max(padding, (viewportHeight - pickerHeight) / 2)
+      }
+
+      // Horizontal: center on anchor, but clamp to viewport
+      let left = anchorRect.left + anchorRect.width / 2 - pickerWidth / 2
+
+      // Clamp horizontal position
+      const minLeft = padding
+      const maxLeft = viewportWidth - pickerWidth - padding
+      left = Math.max(minLeft, Math.min(maxLeft, left))
+
+      // Clamp vertical position
+      const minTop = padding
+      const maxTop = viewportHeight - pickerHeight - padding
+      top = Math.max(minTop, Math.min(maxTop, top))
+
+      setPosition({ top, left })
+    }
+
+    calculatePosition()
+
+    // Recalculate on resize
+    window.addEventListener('resize', calculatePosition)
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', calculatePosition)
+    }
+
+    return () => {
+      window.removeEventListener('resize', calculatePosition)
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', calculatePosition)
+      }
+    }
+  }, [mounted, anchorRef])
+
+  // Close on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const picker = pickerRef.current
+      if (picker && !picker.contains(e.target as Node)) {
+        onClose()
+      }
+    }
+
+    // Delay adding listener to prevent immediate close
+    const timer = setTimeout(() => {
+      document.addEventListener('click', handleClickOutside)
+    }, 10)
+
+    return () => {
+      clearTimeout(timer)
+      document.removeEventListener('click', handleClickOutside)
+    }
+  }, [onClose])
+
+  if (!mounted) return null
+
+  return createPortal(
+    <div
+      ref={pickerRef}
+      style={{
+        position: 'fixed',
+        top: position.top,
+        left: position.left,
+        zIndex: 9999,
+      }}
+      className="bg-white rounded-xl shadow-lg ring-1 ring-stone-200 p-2 flex gap-1"
+      onClick={(e) => e.stopPropagation()}
+    >
+      {emojis.map(emoji => (
+        <button
+          key={emoji}
+          onClick={(e) => {
+            e.stopPropagation()
+            onSelect(emoji)
+          }}
+          className="w-10 h-10 flex items-center justify-center hover:bg-stone-100 rounded-lg text-xl active:scale-110 transition-transform"
+        >
+          {emoji}
+        </button>
+      ))}
+    </div>,
+    document.body
+  )
 }
 
 type Msg = {
@@ -349,6 +494,7 @@ function MessageBubble({
   const [showActions, setShowActions] = useState(false)
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [showReactorsFor, setShowReactorsFor] = useState<string | null>(null)
+  const bubbleRef = useRef<HTMLDivElement>(null)
 
   const isTurnResponse = message.type === 'turn_response'
   const isSystem = message.type === 'system'
@@ -534,28 +680,6 @@ function MessageBubble({
             <path strokeLinecap="round" strokeLinejoin="round" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </button>
-        {showEmojiPicker && (
-          <div
-            style={{
-              position: 'fixed',
-              bottom: '100px',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              zIndex: 9999,
-            }}
-            className="bg-white rounded-xl shadow-lg ring-1 ring-stone-200 p-2 flex gap-1"
-          >
-            {EMOJI_OPTIONS.map(emoji => (
-              <button
-                key={emoji}
-                onClick={(e) => { e.stopPropagation(); onReact(message.id, emoji); setShowEmojiPicker(false); setShowActions(false) }}
-                className="w-10 h-10 flex items-center justify-center hover:bg-stone-100 rounded-lg text-xl active:scale-110 transition-transform"
-              >
-                {emoji}
-              </button>
-            ))}
-          </div>
-        )}
       </div>
     )
   }
@@ -593,7 +717,7 @@ function MessageBubble({
               {user?.displayName ?? 'Unknown'}
             </span>
           )}
-          <div className="relative" onClick={handleMessageClick}>
+          <div ref={bubbleRef} className="relative" onClick={handleMessageClick}>
             <QuotedReply />
             <div className={`rounded-lg overflow-hidden cursor-pointer ${isMe ? '' : 'ring-1 ring-stone-200'}`}>
               <img src={message.content} alt="Photo" className="max-w-full max-h-48 object-contain bg-stone-100" loading="lazy" />
@@ -605,6 +729,14 @@ function MessageBubble({
             <ReactionPills />
           </div>
         </div>
+        {showEmojiPicker && (
+          <EmojiPickerPortal
+            anchorRef={bubbleRef}
+            emojis={EMOJI_OPTIONS}
+            onSelect={(emoji) => { onReact(message.id, emoji); setShowEmojiPicker(false); setShowActions(false) }}
+            onClose={() => { setShowEmojiPicker(false); setShowActions(false) }}
+          />
+        )}
       </div>
     )
   }
@@ -629,7 +761,7 @@ function MessageBubble({
               {user?.displayName ?? 'Unknown'}
             </span>
           )}
-          <div className="relative" onClick={handleMessageClick}>
+          <div ref={bubbleRef} className="relative" onClick={handleMessageClick}>
             <QuotedReply />
             <div className={`rounded-lg px-2.5 py-1.5 cursor-pointer ${
               isMe
@@ -656,6 +788,14 @@ function MessageBubble({
             <ReactionPills />
           </div>
         </div>
+        {showEmojiPicker && (
+          <EmojiPickerPortal
+            anchorRef={bubbleRef}
+            emojis={EMOJI_OPTIONS}
+            onSelect={(emoji) => { onReact(message.id, emoji); setShowEmojiPicker(false); setShowActions(false) }}
+            onClose={() => { setShowEmojiPicker(false); setShowActions(false) }}
+          />
+        )}
       </div>
     )
   }
@@ -695,7 +835,7 @@ function MessageBubble({
             {user?.displayName ?? 'Unknown'}
           </span>
         )}
-        <div className="relative" onClick={handleMessageClick}>
+        <div ref={bubbleRef} className="relative" onClick={handleMessageClick}>
           <div className={`${getBubbleRadius()} px-2.5 py-1.5 cursor-pointer ${
             isMe
               ? 'bg-stone-800 text-white'
@@ -711,6 +851,14 @@ function MessageBubble({
           <ReactionPills />
         </div>
       </div>
+      {showEmojiPicker && (
+        <EmojiPickerPortal
+          anchorRef={bubbleRef}
+          emojis={EMOJI_OPTIONS}
+          onSelect={(emoji) => { onReact(message.id, emoji); setShowEmojiPicker(false); setShowActions(false) }}
+          onClose={() => { setShowEmojiPicker(false); setShowActions(false) }}
+        />
+      )}
     </div>
   )
 }
