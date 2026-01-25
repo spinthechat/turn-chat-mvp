@@ -1,8 +1,35 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { useParams, useRouter } from 'next/navigation'
+
+// Hook to set --vh CSS variable for mobile viewport height
+function useViewportHeight() {
+  useEffect(() => {
+    const setVH = () => {
+      const vh = window.innerHeight * 0.01
+      document.documentElement.style.setProperty('--vh', `${vh}px`)
+    }
+
+    setVH()
+    window.addEventListener('resize', setVH)
+    window.addEventListener('orientationchange', setVH)
+
+    // Also update on visualViewport resize (keyboard open/close)
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', setVH)
+    }
+
+    return () => {
+      window.removeEventListener('resize', setVH)
+      window.removeEventListener('orientationchange', setVH)
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', setVH)
+      }
+    }
+  }, [])
+}
 
 type Msg = {
   id: string
@@ -1234,6 +1261,9 @@ export default function RoomPage() {
   const params = useParams<{ id: string }>()
   const roomId = params.id
 
+  // Set up mobile viewport height
+  useViewportHeight()
+
   const [userId, setUserId] = useState<string | null>(null)
   const [isHost, setIsHost] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
@@ -2050,7 +2080,7 @@ export default function RoomPage() {
   if (isLoading) return <LoadingState />
 
   return (
-    <div className="h-screen bg-stone-50 flex flex-col overflow-hidden">
+    <div className="h-screen-safe bg-stone-50 flex flex-col overflow-hidden">
       {/* Group Details Drawer */}
       <GroupDetailsDrawer
         isOpen={showGroupDetails}
@@ -2188,7 +2218,7 @@ export default function RoomPage() {
       </header>
 
       {/* Messages */}
-      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto scroll-smooth-ios hide-scrollbar">
         <div className="max-w-3xl mx-auto px-3 py-3">
           {/* Error banner */}
           {error && (
@@ -2242,7 +2272,7 @@ export default function RoomPage() {
       </div>
 
       {/* Bottom panel: Chat input (always primary) */}
-      <div className="bg-white border-t border-stone-200/50 flex-shrink-0">
+      <div className="bg-white border-t border-stone-200/50 flex-shrink-0 pb-safe">
         {/* Turn response input - only when it's your turn AND cooldown passed */}
         {gameActive && isMyTurn && !isWaitingForCooldown && (
           <div className={`border-b ${isPhotoPrompt ? 'border-violet-100 bg-violet-50/50' : 'border-indigo-100 bg-indigo-50/50'}`}>
@@ -2303,12 +2333,17 @@ export default function RoomPage() {
                     value={turnText}
                     onChange={(e) => setTurnText(e.target.value)}
                     placeholder="Type your response..."
-                    className="flex-1 bg-transparent px-3 py-2 text-sm placeholder:text-stone-400 focus:outline-none"
+                    className="flex-1 bg-transparent px-3 py-2 text-base placeholder:text-stone-400 focus:outline-none"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault()
                         submitTurn()
                       }
+                    }}
+                    onFocus={() => {
+                      setTimeout(() => {
+                        bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+                      }, 100)
                     }}
                   />
                   <button
@@ -2380,12 +2415,18 @@ export default function RoomPage() {
               value={chatText}
               onChange={(e) => setChatText(e.target.value)}
               placeholder="Type a message..."
-              className="flex-1 bg-transparent px-3 py-2.5 text-sm placeholder:text-stone-400 focus:outline-none"
+              className="flex-1 bg-transparent px-3 py-2.5 text-base placeholder:text-stone-400 focus:outline-none"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault()
                   sendChat()
                 }
+              }}
+              onFocus={() => {
+                // Scroll to bottom when input is focused (helps on mobile with keyboard)
+                setTimeout(() => {
+                  bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+                }, 100)
               }}
             />
             <button
