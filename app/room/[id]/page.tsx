@@ -713,7 +713,7 @@ function GroupDetailsDrawer({
   roomFrequency: number
   onLeave: () => void
   onUpdateFrequency: (minutes: number) => void
-  onAddMember: (email: string) => Promise<{ success: boolean; error?: string }>
+  onAddMember: (email: string) => Promise<{ success: boolean; error?: string; inviteCode?: string; alreadyMember?: boolean; alreadyInvited?: boolean }>
   onGetInviteLink: () => Promise<string | null>
   onUpdateRoomName: (name: string) => Promise<{ success: boolean; error?: string }>
 }) {
@@ -725,6 +725,8 @@ function GroupDetailsDrawer({
   const [emailInput, setEmailInput] = useState('')
   const [addingMember, setAddingMember] = useState(false)
   const [addError, setAddError] = useState<string | null>(null)
+  const [addSuccess, setAddSuccess] = useState<string | null>(null)
+  const [emailInviteLink, setEmailInviteLink] = useState<string | null>(null)
   const [inviteLink, setInviteLink] = useState<string | null>(null)
   const [loadingInvite, setLoadingInvite] = useState(false)
   const [editingName, setEditingName] = useState(false)
@@ -750,14 +752,48 @@ function GroupDetailsDrawer({
     if (!emailInput.trim()) return
     setAddingMember(true)
     setAddError(null)
+    setAddSuccess(null)
+    setEmailInviteLink(null)
+
     const result = await onAddMember(emailInput.trim())
-    if (result.success) {
-      setEmailInput('')
-      setShowAddMember(false)
-    } else {
-      setAddError(result.error || 'Failed to add member')
+
+    if (!result.success) {
+      setAddError(result.error || 'Failed to create invite')
+    } else if (result.alreadyMember) {
+      setAddError('This person is already a member of the group')
+    } else if (result.inviteCode) {
+      // Invite created (or already exists)
+      const link = `${window.location.origin}/join/${result.inviteCode}`
+      setEmailInviteLink(link)
+      setAddSuccess(result.alreadyInvited
+        ? `An invite for ${emailInput.trim()} already exists`
+        : `Invite created for ${emailInput.trim()}`)
     }
     setAddingMember(false)
+  }
+
+  const handleCopyEmailInvite = () => {
+    if (emailInviteLink) {
+      navigator.clipboard.writeText(emailInviteLink)
+      setCopiedInvite(true)
+      setTimeout(() => setCopiedInvite(false), 2000)
+    }
+  }
+
+  const handleSendEmailInvite = () => {
+    if (emailInviteLink && emailInput) {
+      const roomName = roomInfo?.name || 'a group'
+      const subject = encodeURIComponent(`Join ${roomName} on Turn Chat`)
+      const body = encodeURIComponent(`You've been invited to join ${roomName}!\n\nClick this link to join:\n${emailInviteLink}`)
+      window.open(`mailto:${emailInput}?subject=${subject}&body=${body}`)
+    }
+  }
+
+  const handleResetEmailInvite = () => {
+    setEmailInput('')
+    setEmailInviteLink(null)
+    setAddSuccess(null)
+    setAddError(null)
   }
 
   const handleGetInviteLink = async () => {
@@ -955,32 +991,91 @@ function GroupDetailsDrawer({
 
             {showAddMember && (
               <div className="space-y-3 mb-3">
-                {/* Add by email */}
-                <div>
-                  <label className="text-xs text-stone-500 mb-1 block">Add by email</label>
-                  <div className="flex gap-2">
-                    <input
-                      type="email"
-                      value={emailInput}
-                      onChange={(e) => setEmailInput(e.target.value)}
-                      placeholder="Enter email address"
-                      className="flex-1 px-3 py-2 text-sm bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') handleAddMember()
-                      }}
-                    />
-                    <button
-                      onClick={handleAddMember}
-                      disabled={addingMember || !emailInput.trim()}
-                      className="px-3 py-2 text-sm font-medium bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {addingMember ? '...' : 'Add'}
-                    </button>
+                {/* Invite by email */}
+                {!emailInviteLink ? (
+                  <div>
+                    <label className="text-xs text-stone-500 mb-1 block">Invite by email</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="email"
+                        value={emailInput}
+                        onChange={(e) => setEmailInput(e.target.value)}
+                        placeholder="Enter email address"
+                        className="flex-1 px-3 py-2 text-sm bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleAddMember()
+                        }}
+                      />
+                      <button
+                        onClick={handleAddMember}
+                        disabled={addingMember || !emailInput.trim()}
+                        className="px-3 py-2 text-sm font-medium bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {addingMember ? '...' : 'Invite'}
+                      </button>
+                    </div>
+                    {addError && (
+                      <p className="text-xs text-red-500 mt-1">{addError}</p>
+                    )}
+                    <p className="text-xs text-stone-400 mt-1">
+                      Works even if they haven't signed up yet
+                    </p>
                   </div>
-                  {addError && (
-                    <p className="text-xs text-red-500 mt-1">{addError}</p>
-                  )}
-                </div>
+                ) : (
+                  <div className="bg-emerald-50 rounded-lg p-3 space-y-3">
+                    <div className="flex items-start gap-2">
+                      <svg className="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <div>
+                        <p className="text-sm font-medium text-emerald-800">{addSuccess}</p>
+                        <p className="text-xs text-emerald-600 mt-0.5">Share the link below to invite them</p>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={emailInviteLink}
+                        readOnly
+                        className="flex-1 px-2 py-1.5 text-xs bg-white border border-emerald-200 rounded-lg text-stone-600 font-mono"
+                      />
+                      <button
+                        onClick={handleCopyEmailInvite}
+                        className="px-2 py-1.5 text-xs font-medium bg-white border border-emerald-200 text-emerald-700 rounded-lg hover:bg-emerald-100 flex items-center gap-1"
+                      >
+                        {copiedInvite ? (
+                          <>
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                            Copied
+                          </>
+                        ) : (
+                          'Copy'
+                        )}
+                      </button>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleSendEmailInvite}
+                        className="flex-1 px-3 py-2 text-sm font-medium bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 flex items-center justify-center gap-2"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                        </svg>
+                        Send via Email
+                      </button>
+                      <button
+                        onClick={handleResetEmailInvite}
+                        className="px-3 py-2 text-sm font-medium bg-white border border-emerald-200 text-emerald-700 rounded-lg hover:bg-emerald-50"
+                      >
+                        Invite Another
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 <div className="flex items-center gap-2 text-xs text-stone-400">
                   <div className="flex-1 h-px bg-stone-200" />
@@ -988,9 +1083,9 @@ function GroupDetailsDrawer({
                   <div className="flex-1 h-px bg-stone-200" />
                 </div>
 
-                {/* Invite link */}
+                {/* General invite link (open to anyone) */}
                 <div>
-                  <label className="text-xs text-stone-500 mb-1 block">Share invite link</label>
+                  <label className="text-xs text-stone-500 mb-1 block">Share open invite link</label>
                   {inviteLink ? (
                     <div className="flex gap-2">
                       <input
@@ -1021,16 +1116,21 @@ function GroupDetailsDrawer({
                       disabled={loadingInvite}
                       className="w-full px-3 py-2 text-sm font-medium bg-stone-100 text-stone-700 rounded-lg hover:bg-stone-200 disabled:opacity-50"
                     >
-                      {loadingInvite ? 'Generating...' : 'Generate Invite Link'}
+                      {loadingInvite ? 'Generating...' : 'Generate Open Link'}
                     </button>
                   )}
+                  <p className="text-xs text-stone-400 mt-1">
+                    Anyone with this link can join
+                  </p>
                 </div>
 
                 <button
                   onClick={() => {
                     setShowAddMember(false)
                     setAddError(null)
+                    setAddSuccess(null)
                     setEmailInput('')
+                    setEmailInviteLink(null)
                   }}
                   className="text-xs text-stone-400 hover:text-stone-600"
                 >
@@ -1852,23 +1952,31 @@ export default function RoomPage() {
     return { success: true }
   }
 
-  const addMemberByEmail = async (email: string): Promise<{ success: boolean; error?: string }> => {
-    const { error } = await supabase.rpc('add_member_by_email', {
+  const addMemberByEmail = async (email: string): Promise<{ success: boolean; error?: string; inviteCode?: string; alreadyMember?: boolean; alreadyInvited?: boolean }> => {
+    const { data, error } = await supabase.rpc('create_email_invite', {
       p_room_id: roomId,
       p_email: email,
     })
+
     if (error) {
       return { success: false, error: error.message }
     }
-    // Refetch members
-    const { data: members } = await supabase
-      .from('room_members')
-      .select('user_id, role, prompt_interval_minutes')
-      .eq('room_id', roomId)
-    if (members) {
-      setRoomMembers(members as RoomMember[])
+
+    // The RPC returns a table with: code, already_member, already_invited
+    const result = data?.[0]
+    if (!result) {
+      return { success: false, error: 'Failed to create invite' }
     }
-    return { success: true }
+
+    if (result.already_member) {
+      return { success: true, alreadyMember: true }
+    }
+
+    return {
+      success: true,
+      inviteCode: result.code,
+      alreadyInvited: result.already_invited
+    }
   }
 
   const getInviteLink = async (): Promise<string | null> => {
