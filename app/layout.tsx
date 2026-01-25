@@ -5,12 +5,17 @@ import { Inter } from 'next/font/google'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Turn Chat',
-  description: 'Chat + turn-based prompts',
+  title: 'Spin the Chat',
+  description: 'A group chat with turn-based prompts',
+  manifest: '/manifest.json',
+  themeColor: '#000000',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'Turn Chat',
+    title: 'SpinChat',
+  },
+  icons: {
+    apple: '/icons/icon-192.png',
   },
 }
 
@@ -19,7 +24,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   viewportFit: 'cover',
-  themeColor: '#fafaf9',
+  themeColor: '#000000',
 }
 
 export default function RootLayout({
