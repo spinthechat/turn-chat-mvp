@@ -49,6 +49,12 @@
   padding-top: env(safe-area-inset-top, 0px);
 }
 
+/* Horizontal safe area padding with minimum values */
+.px-safe {
+  padding-left: max(1rem, env(safe-area-inset-left, 1rem));
+  padding-right: max(1rem, env(safe-area-inset-right, 1rem));
+}
+
 /* ============================================
    Base Styles
    ============================================ */

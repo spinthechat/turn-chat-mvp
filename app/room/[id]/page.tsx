@@ -2466,7 +2466,7 @@ export default function RoomPage() {
         {/* Turn response input - only when it's your turn AND cooldown passed */}
         {gameActive && isMyTurn && !isWaitingForCooldown && (
           <div className={`border-b ${isPhotoPrompt ? 'border-violet-100 bg-violet-50/50' : 'border-indigo-100 bg-indigo-50/50'}`}>
-            <div className="max-w-3xl mx-auto px-4 py-2">
+            <div className="max-w-3xl mx-auto px-safe py-2">
               <div className="flex items-center gap-2 mb-2">
                 {/* Red "live" indicator */}
                 <span className="relative flex h-2 w-2 shrink-0">
@@ -2548,7 +2548,7 @@ export default function RoomPage() {
         {/* Reply preview */}
         {replyingTo && (
           <div className="border-b border-stone-200 bg-stone-50">
-            <div className="max-w-3xl mx-auto px-4 py-2 flex items-center gap-2">
+            <div className="max-w-3xl mx-auto px-safe py-2 flex items-center gap-2">
               <div className="w-1 h-8 bg-indigo-400 rounded-full" />
               <div className="flex-1 min-w-0">
                 <div className="text-xs font-medium text-indigo-600">
@@ -2571,7 +2571,7 @@ export default function RoomPage() {
         )}
 
         {/* Chat input (always available, always primary) */}
-        <div className="max-w-3xl mx-auto px-4 py-3">
+        <div className="max-w-3xl mx-auto px-safe py-3">
           <div className="flex gap-2 bg-stone-100 rounded-xl p-1.5">
             {/* Photo upload button */}
             <button
@@ -2601,7 +2601,7 @@ export default function RoomPage() {
               value={chatText}
               onChange={(e) => setChatText(e.target.value)}
               placeholder="Type a message..."
-              className="flex-1 bg-transparent px-3 py-2.5 text-base placeholder:text-stone-400 focus:outline-none"
+              className="flex-1 min-w-0 bg-transparent px-3 py-2.5 text-base placeholder:text-stone-400 focus:outline-none"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault()
@@ -2613,7 +2613,7 @@ export default function RoomPage() {
             <button
               onClick={sendChat}
               disabled={!chatText.trim()}
-              className="px-4 py-2 text-sm font-medium rounded-lg bg-stone-900 text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-stone-800 transition-colors"
+              className="shrink-0 px-4 py-2 text-sm font-medium rounded-lg bg-stone-900 text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-stone-800 transition-colors"
             >
               Send
             </button>
