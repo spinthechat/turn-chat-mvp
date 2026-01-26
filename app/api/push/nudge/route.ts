@@ -74,7 +74,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         sent: false,
-        message: 'Nudge recorded but user has notifications off'
+        message: 'Nudge recorded but user has notifications off',
+        all_nudged: nudgeResult.all_nudged ?? false
       })
     }
 
@@ -119,7 +120,11 @@ export async function POST(request: NextRequest) {
 
     sent = results.filter(r => r.status === 'fulfilled' && (r.value as { success: boolean }).success).length
 
-    return NextResponse.json({ success: true, sent: sent > 0 })
+    return NextResponse.json({
+      success: true,
+      sent: sent > 0,
+      all_nudged: nudgeResult.all_nudged ?? false
+    })
   } catch (err) {
     console.error('Nudge API error:', err)
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 })

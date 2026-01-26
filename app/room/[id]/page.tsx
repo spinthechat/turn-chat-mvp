@@ -2699,6 +2699,13 @@ export default function RoomPage() {
   const [hasNudgedThisTurn, setHasNudgedThisTurn] = useState(false)
   const [nudgeLoading, setNudgeLoading] = useState(false)
   const [nudgeToast, setNudgeToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
+  const [nudgeStatus, setNudgeStatus] = useState<{
+    eligible_count: number
+    nudge_count: number
+    all_nudged: boolean
+    all_nudged_at: string | null
+  } | null>(null)
+  const [wasRemoved, setWasRemoved] = useState(false)
 
   // Seen tracking state
   const [seenCounts, setSeenCounts] = useState<Map<string, number>>(new Map())
@@ -2783,13 +2790,27 @@ export default function RoomPage() {
     return metadata
   }, [messages, seenCounts])
 
-  // Check if user has nudged this turn - re-check when turn_instance_id changes
+  // Check if user has nudged this turn and get nudge status - re-check when turn_instance_id changes
   useEffect(() => {
     if (!userId || !roomId) return
-    supabase.rpc('has_nudged_this_turn', { p_room_id: roomId })
-      .then(({ data }) => {
-        setHasNudgedThisTurn(data === true)
-      })
+
+    // Fetch both in parallel
+    Promise.all([
+      supabase.rpc('has_nudged_this_turn', { p_room_id: roomId }),
+      supabase.rpc('get_nudge_status', { p_room_id: roomId })
+    ]).then(([nudgedResult, statusResult]) => {
+      setHasNudgedThisTurn(nudgedResult.data === true)
+      if (statusResult.data?.active) {
+        setNudgeStatus({
+          eligible_count: statusResult.data.eligible_count,
+          nudge_count: statusResult.data.nudge_count,
+          all_nudged: statusResult.data.all_nudged,
+          all_nudged_at: statusResult.data.all_nudged_at
+        })
+      } else {
+        setNudgeStatus(null)
+      }
+    })
   }, [userId, roomId, turnSession?.turn_instance_id])
 
   // Hide nudge toast after 3 seconds
@@ -2907,6 +2928,16 @@ export default function RoomPage() {
           message: result.sent ? 'Nudge sent!' : 'Nudge sent (notifications off)',
           type: 'success'
         })
+        // Refresh nudge status to update the count
+        const { data: statusResult } = await supabase.rpc('get_nudge_status', { p_room_id: roomId })
+        if (statusResult?.active) {
+          setNudgeStatus({
+            eligible_count: statusResult.eligible_count,
+            nudge_count: statusResult.nudge_count,
+            all_nudged: statusResult.all_nudged,
+            all_nudged_at: statusResult.all_nudged_at
+          })
+        }
       } else {
         setNudgeToast({ message: result.error || 'Failed to nudge', type: 'error' })
       }
@@ -3308,7 +3339,7 @@ export default function RoomPage() {
           console.log('[Realtime] Reactions subscription:', status, err ? `error: ${err}` : '')
         })
 
-      // Subscribe to room members changes (new members joining)
+      // Subscribe to room members changes (joins and removals)
       membersChannel = supabase
         .channel(`members:${roomId}`)
         .on(
@@ -3349,6 +3380,23 @@ export default function RoomPage() {
 
             // Update room members list
             setRoomMembers(prev => [...prev, newMember])
+          }
+        )
+        .on(
+          'postgres_changes',
+          { event: 'DELETE', schema: 'public', table: 'room_members', filter: `room_id=eq.${roomId}` },
+          (payload) => {
+            const removedMember = payload.old as { user_id: string }
+            console.log('[Realtime] Member removed:', removedMember.user_id)
+
+            // Check if we were removed
+            if (removedMember.user_id === uid) {
+              console.log('[Realtime] Current user was removed from room')
+              setWasRemoved(true)
+            }
+
+            // Update room members list
+            setRoomMembers(prev => prev.filter(m => m.user_id !== removedMember.user_id))
           }
         )
         .subscribe((status, err) => {
@@ -3806,6 +3854,29 @@ export default function RoomPage() {
 
   if (isLoading) return <LoadingState />
 
+  // Show removal screen if user was removed from the room
+  if (wasRemoved) {
+    return (
+      <div className="h-screen-safe bg-stone-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-lg p-6 max-w-sm w-full text-center">
+          <div className="text-4xl mb-4">👋</div>
+          <h2 className="text-xl font-semibold text-stone-800 mb-2">
+            You&apos;ve been removed
+          </h2>
+          <p className="text-stone-500 mb-6">
+            You were removed from this room due to inactivity. You can always join other rooms or create a new one.
+          </p>
+          <button
+            onClick={() => router.push('/')}
+            className="w-full bg-stone-800 text-white py-3 rounded-xl font-medium hover:bg-stone-700 transition-colors"
+          >
+            Go Home
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="h-screen-safe bg-stone-50 flex flex-col overflow-hidden max-w-full">
       {/* Group Details Drawer */}
@@ -3976,6 +4047,16 @@ export default function RoomPage() {
                   nudgeToast.type === 'success' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
                 }`}>
                   {nudgeToast.message}
+                </div>
+              )}
+              {/* Nudge status - show when waiting for someone else */}
+              {!isMyTurn && nudgeStatus && nudgeStatus.eligible_count > 0 && (
+                <div className="mt-1 text-xs text-stone-400">
+                  {nudgeStatus.all_nudged ? (
+                    <span className="text-amber-600">All nudged — auto-skip in 24h if not completed</span>
+                  ) : nudgeStatus.nudge_count > 0 ? (
+                    <span>{nudgeStatus.nudge_count}/{nudgeStatus.eligible_count} nudged</span>
+                  ) : null}
                 </div>
               )}
               {/* Show the prompt to all participants */}
