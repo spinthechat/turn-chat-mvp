@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback, useLayoutEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { supabase } from '@/lib/supabaseClient'
+import { usePushNotifications } from '@/lib/usePushNotifications'
 import { useParams, useRouter } from 'next/navigation'
 
 // Hook to handle mobile viewport height and keyboard
@@ -932,6 +933,47 @@ function GroupDetailsDrawer({
   const [savingName, setSavingName] = useState(false)
   const [nameError, setNameError] = useState<string | null>(null)
 
+  // Push notifications
+  const {
+    permission,
+    isSubscribed,
+    isLoading: notifLoading,
+    isPWAInstalled,
+    isSupported,
+    subscribe,
+    unsubscribe,
+  } = usePushNotifications()
+
+  const handleToggleNotifications = async () => {
+    if (isSubscribed) {
+      await unsubscribe()
+    } else {
+      await subscribe()
+    }
+  }
+
+  // Test notification
+  const [testingSend, setTestingSend] = useState(false)
+  const sendTestNotification = async () => {
+    setTestingSend(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) return
+
+      await fetch('/api/push/test', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      })
+    } catch {
+      // Silently fail
+    } finally {
+      setTestingSend(false)
+    }
+  }
+
   if (!isOpen) return null
 
   const handleCopyRoomId = () => {
@@ -1171,6 +1213,63 @@ function GroupDetailsDrawer({
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Turn Notifications */}
+          <div className="p-4 border-b border-stone-100">
+            <h4 className="text-sm font-medium text-stone-700 mb-2">Turn Notifications</h4>
+            <p className="text-xs text-stone-500 mb-3">Get notified when it's your turn</p>
+
+            {!isSupported ? (
+              <p className="text-xs text-stone-400">Notifications not supported on this browser</p>
+            ) : permission === 'denied' ? (
+              <p className="text-xs text-amber-600">Notifications blocked. Enable in browser settings.</p>
+            ) : !isPWAInstalled && /iPhone|iPad/.test(navigator.userAgent) ? (
+              <div className="bg-amber-50 rounded-lg p-3">
+                <p className="text-xs text-amber-700">
+                  <span className="font-medium">Install this app</span> to get turn notifications on iPhone.
+                </p>
+                <p className="text-xs text-amber-600 mt-1">
+                  Tap the Share button, then "Add to Home Screen"
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <button
+                  onClick={handleToggleNotifications}
+                  disabled={notifLoading}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm transition-colors ${
+                    isSubscribed
+                      ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
+                      : 'bg-stone-50 text-stone-700 hover:bg-stone-100'
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                    </svg>
+                    {isSubscribed ? 'Notifications enabled' : 'Enable notifications'}
+                  </span>
+                  {notifLoading ? (
+                    <div className="w-4 h-4 border-2 border-stone-300 border-t-stone-600 rounded-full animate-spin" />
+                  ) : isSubscribed ? (
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  ) : null}
+                </button>
+
+                {isSubscribed && (
+                  <button
+                    onClick={sendTestNotification}
+                    disabled={testingSend}
+                    className="w-full px-3 py-2 text-xs text-stone-500 hover:text-stone-700 hover:bg-stone-50 rounded-lg transition-colors"
+                  >
+                    {testingSend ? 'Sending...' : 'Send test notification'}
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Add Members section */}
@@ -2210,6 +2309,19 @@ export default function RoomPage() {
     return data as string
   }
 
+  // Notify next user about their turn (fire and forget)
+  const notifyNextTurn = async () => {
+    try {
+      await fetch('/api/push/notify-turn', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roomId }),
+      })
+    } catch {
+      // Silently ignore notification errors
+    }
+  }
+
   const submitTurn = async () => {
     if (!turnText.trim()) return
     setError(null)
@@ -2224,8 +2336,13 @@ export default function RoomPage() {
       p_content: content,
     })
 
-    if (error) setError(error.message)
-    else setTurnText('')
+    if (error) {
+      setError(error.message)
+    } else {
+      setTurnText('')
+      // Notify next user about their turn
+      notifyNextTurn()
+    }
   }
 
   // Submit photo for photo-required prompts
@@ -2257,8 +2374,12 @@ export default function RoomPage() {
       })
 
       if (turnError) throw new Error(turnError.message)
-    } catch (err: any) {
-      setError(err.message || 'Failed to submit photo')
+
+      // Notify next user about their turn
+      notifyNextTurn()
+    } catch (err: unknown) {
+      const error = err as Error
+      setError(error.message || 'Failed to submit photo')
     } finally {
       setUploadingImage(false)
     }
