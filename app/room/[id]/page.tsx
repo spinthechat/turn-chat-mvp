@@ -3864,11 +3864,17 @@ export default function RoomPage() {
               onFocus={handleInputFocus}
             />
             <button
-              onClick={sendChat}
+              onClick={() => {
+                hapticTick('light')
+                sendChat()
+              }}
               disabled={!chatText.trim()}
-              className="shrink-0 px-4 py-2 text-sm font-medium rounded-lg bg-stone-900 text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-stone-800 transition-colors"
+              aria-label="Send message"
+              className="shrink-0 w-10 h-10 flex items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 text-white disabled:from-stone-300 disabled:to-stone-300 disabled:cursor-not-allowed hover:from-indigo-600 hover:to-violet-600 active:scale-95 transition-all"
             >
-              Send
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+              </svg>
             </button>
           </div>
         </div>
