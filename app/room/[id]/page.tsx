@@ -464,6 +464,7 @@ type TurnSession = {
   turn_order: string[]
   current_turn_index: number
   current_turn_user_id: string | null
+  turn_instance_id: string | null
   is_active: boolean
   waiting_until: string | null
 }
@@ -2776,14 +2777,14 @@ export default function RoomPage() {
     return metadata
   }, [messages, seenCounts])
 
-  // Check if user has nudged this turn - re-check when turn advances
+  // Check if user has nudged this turn - re-check when turn_instance_id changes
   useEffect(() => {
     if (!userId || !roomId) return
     supabase.rpc('has_nudged_this_turn', { p_room_id: roomId })
       .then(({ data }) => {
         setHasNudgedThisTurn(data === true)
       })
-  }, [userId, roomId, turnSession?.current_turn_index])
+  }, [userId, roomId, turnSession?.turn_instance_id])
 
   // Hide nudge toast after 3 seconds
   useEffect(() => {
