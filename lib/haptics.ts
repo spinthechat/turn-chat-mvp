@@ -50,3 +50,45 @@ export function clearTextSelection(): void {
     // Silently fail
   }
 }
+
+/**
+ * Aggressively clear text selection multiple times to defeat iOS delayed selection
+ * iOS sometimes re-applies selection after the first clear, so we clear repeatedly
+ * @param durationMs - How long to keep clearing (default 300ms)
+ */
+export function clearTextSelectionAggressive(durationMs: number = 300): void {
+  const startTime = Date.now()
+
+  const clearLoop = () => {
+    try {
+      window.getSelection()?.removeAllRanges()
+    } catch {
+      // Silently fail
+    }
+
+    if (Date.now() - startTime < durationMs) {
+      requestAnimationFrame(clearLoop)
+    }
+  }
+
+  clearLoop()
+}
+
+/**
+ * Apply global no-select mode (for when overlay is open)
+ */
+export function setGlobalNoSelect(enabled: boolean): void {
+  try {
+    if (enabled) {
+      document.documentElement.classList.add('no-select')
+      document.body.style.webkitUserSelect = 'none'
+      document.body.style.userSelect = 'none'
+    } else {
+      document.documentElement.classList.remove('no-select')
+      document.body.style.webkitUserSelect = ''
+      document.body.style.userSelect = ''
+    }
+  } catch {
+    // Silently fail
+  }
+}

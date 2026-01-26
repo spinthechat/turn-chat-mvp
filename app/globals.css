@@ -139,3 +139,48 @@ body {
 ::selection {
   background: rgb(99 102 241 / 0.2);
 }
+
+/* ============================================
+   iOS Text Selection Prevention
+   ============================================ */
+
+/* Message bubble container - prevents iOS selection/callout */
+.msg-bubble-container {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: pan-y;
+}
+
+/* Message text wrapper - extra protection for text nodes */
+.msg-text {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  pointer-events: none;
+}
+
+/* Re-enable pointer events for interactive elements inside */
+.msg-text a,
+.msg-text button {
+  pointer-events: auto;
+  -webkit-user-select: auto;
+  user-select: auto;
+}
+
+/* Global no-select mode - applied when overlay is open */
+.no-select,
+.no-select * {
+  -webkit-user-select: none !important;
+  user-select: none !important;
+  -webkit-touch-callout: none !important;
+}
+
+/* Exclude inputs from no-select */
+.no-select input,
+.no-select textarea {
+  -webkit-user-select: text !important;
+  user-select: text !important;
+}

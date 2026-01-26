@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, useCallback, useLayoutEffect } fr
 import { createPortal } from 'react-dom'
 import { supabase } from '@/lib/supabaseClient'
 import { usePushNotifications } from '@/lib/usePushNotifications'
-import { hapticTick, clearTextSelection } from '@/lib/haptics'
+import { hapticTick, clearTextSelection, clearTextSelectionAggressive, setGlobalNoSelect } from '@/lib/haptics'
 import { useParams, useRouter } from 'next/navigation'
 
 // Hook to handle mobile viewport height and keyboard
@@ -808,8 +808,8 @@ function MessageBubble({
     // Start long press timer
     gestureState.current.longPressTimer = setTimeout(() => {
       if (gestureState.current.isLongPressing) {
-        // Clear any browser text selection that may have started
-        clearTextSelection()
+        // Aggressively clear any browser text selection (iOS re-applies selection)
+        clearTextSelectionAggressive(300)
 
         // Haptic feedback - use fallback animation if vibration unsupported
         const didVibrate = hapticTick('light')
@@ -819,6 +819,8 @@ function MessageBubble({
           setTimeout(() => setHapticPulse(false), 100)
         }
 
+        // Apply global no-select mode while overlay is open
+        setGlobalNoSelect(true)
         setShowContextMenu(true)
         resetGesture()
       }
@@ -889,6 +891,16 @@ function MessageBubble({
     setShowContextMenu(true)
   }, [])
 
+  // Prevent native drag (iOS/Android can trigger selection via drag)
+  const handleDragStart = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+  }, [])
+
+  // Prevent native text selection start
+  const handleSelectStart = useCallback((e: React.SyntheticEvent) => {
+    e.preventDefault()
+  }, [])
+
   // Handle click - desktop quick action (toggle actions or close context menu)
   const handleClick = useCallback(() => {
     if (showReactorsFor) {
@@ -939,8 +951,21 @@ function MessageBubble({
       if (gestureState.current.longPressTimer) {
         clearTimeout(gestureState.current.longPressTimer)
       }
+      // Ensure global no-select is removed on unmount
+      setGlobalNoSelect(false)
     }
   }, [])
+
+  // Manage global no-select state when context menu opens/closes
+  useEffect(() => {
+    if (showContextMenu) {
+      setGlobalNoSelect(true)
+      // Extra aggressive clearing when menu first opens
+      clearTextSelectionAggressive(300)
+    } else {
+      setGlobalNoSelect(false)
+    }
+  }, [showContextMenu])
 
   // Intersection Observer to detect when message is scrolled into view
   useEffect(() => {
@@ -1203,14 +1228,16 @@ function MessageBubble({
     return (
       <div
         ref={rowRef}
-        className={`flex ${isMe ? 'flex-row-reverse' : 'flex-row'} group relative touch-pan-y select-none`}
-        style={{ WebkitTouchCallout: 'none', WebkitTapHighlightColor: 'transparent', transform: `translateX(${swipeOffset}px)`, transition: swipeOffset === 0 ? 'transform 0.2s ease-out' : 'none' }}
+        className={`flex ${isMe ? 'flex-row-reverse' : 'flex-row'} group relative touch-pan-y select-none msg-bubble-container`}
+        style={{ WebkitTouchCallout: 'none', WebkitTapHighlightColor: 'transparent', WebkitUserSelect: 'none', userSelect: 'none', transform: `translateX(${swipeOffset}px)`, transition: swipeOffset === 0 ? 'transform 0.2s ease-out' : 'none' }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerCancel}
         onPointerLeave={handlePointerCancel}
         onContextMenu={handleContextMenu}
+        onDragStart={handleDragStart}
+        onSelectCapture={handleSelectStart}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
@@ -1282,14 +1309,16 @@ function MessageBubble({
     return (
       <div
         ref={rowRef}
-        className={`flex ${isMe ? 'flex-row-reverse' : 'flex-row'} group relative touch-pan-y select-none`}
-        style={{ WebkitTouchCallout: 'none', WebkitTapHighlightColor: 'transparent', transform: `translateX(${swipeOffset}px)`, transition: swipeOffset === 0 ? 'transform 0.2s ease-out' : 'none' }}
+        className={`flex ${isMe ? 'flex-row-reverse' : 'flex-row'} group relative touch-pan-y select-none msg-bubble-container`}
+        style={{ WebkitTouchCallout: 'none', WebkitTapHighlightColor: 'transparent', WebkitUserSelect: 'none', userSelect: 'none', transform: `translateX(${swipeOffset}px)`, transition: swipeOffset === 0 ? 'transform 0.2s ease-out' : 'none' }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerCancel}
         onPointerLeave={handlePointerCancel}
         onContextMenu={handleContextMenu}
+        onDragStart={handleDragStart}
+        onSelectCapture={handleSelectStart}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
@@ -1387,14 +1416,16 @@ function MessageBubble({
     return (
       <div
         ref={rowRef}
-        className={`flex ${isMe ? 'flex-row-reverse' : 'flex-row'} group relative touch-pan-y select-none`}
-        style={{ WebkitTouchCallout: 'none', WebkitTapHighlightColor: 'transparent', transform: `translateX(${swipeOffset}px)`, transition: swipeOffset === 0 ? 'transform 0.2s ease-out' : 'none' }}
+        className={`flex ${isMe ? 'flex-row-reverse' : 'flex-row'} group relative touch-pan-y select-none msg-bubble-container`}
+        style={{ WebkitTouchCallout: 'none', WebkitTapHighlightColor: 'transparent', WebkitUserSelect: 'none', userSelect: 'none', transform: `translateX(${swipeOffset}px)`, transition: swipeOffset === 0 ? 'transform 0.2s ease-out' : 'none' }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerCancel}
         onPointerLeave={handlePointerCancel}
         onContextMenu={handleContextMenu}
+        onDragStart={handleDragStart}
+        onSelectCapture={handleSelectStart}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
@@ -1445,7 +1476,7 @@ function MessageBubble({
                   {promptLine}
                 </div>
               )}
-              <div className="text-[13px] leading-snug whitespace-pre-wrap">{responseContent}</div>
+              <span className="msg-text text-[13px] leading-snug whitespace-pre-wrap block">{responseContent}</span>
               <div className={`text-[10px] mt-1 ${isMe ? 'text-white/50' : 'text-stone-400'}`}>
                 {formatTime(message.created_at)}
               </div>
@@ -1490,14 +1521,16 @@ function MessageBubble({
   return (
     <div
       ref={rowRef}
-      className={`flex ${isMe ? 'flex-row-reverse' : 'flex-row'} group relative touch-pan-y select-none`}
-      style={{ WebkitTouchCallout: 'none', WebkitTapHighlightColor: 'transparent', transform: `translateX(${swipeOffset}px)`, transition: swipeOffset === 0 ? 'transform 0.2s ease-out' : 'none' }}
+      className={`flex ${isMe ? 'flex-row-reverse' : 'flex-row'} group relative touch-pan-y select-none msg-bubble-container`}
+      style={{ WebkitTouchCallout: 'none', WebkitTapHighlightColor: 'transparent', WebkitUserSelect: 'none', userSelect: 'none', transform: `translateX(${swipeOffset}px)`, transition: swipeOffset === 0 ? 'transform 0.2s ease-out' : 'none' }}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerCancel}
       onPointerLeave={handlePointerCancel}
       onContextMenu={handleContextMenu}
+      onDragStart={handleDragStart}
+      onSelectCapture={handleSelectStart}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
@@ -1533,7 +1566,7 @@ function MessageBubble({
               : `bg-white ${showContextMenu ? '' : 'ring-1 ring-stone-200'} text-stone-900`
           }`}>
             <QuotedReply />
-            <div className="text-[13px] leading-snug whitespace-pre-wrap">{message.content}</div>
+            <span className="msg-text text-[13px] leading-snug whitespace-pre-wrap block">{message.content}</span>
             <div className={`text-[10px] mt-0.5 ${isMe ? 'text-white/50 text-right' : 'text-stone-400'}`}>
               {formatTime(message.created_at)}
             </div>
