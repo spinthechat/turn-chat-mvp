@@ -1144,6 +1144,35 @@ function GroupDetailsDrawer({
     }
   }
 
+  // Message notification preferences
+  const [messageNotifsEnabled, setMessageNotifsEnabled] = useState(true)
+  const [messageNotifsLoading, setMessageNotifsLoading] = useState(false)
+
+  // Load message notification preference when drawer opens
+  useEffect(() => {
+    if (isOpen && currentUserId) {
+      supabase.rpc('get_notification_prefs', { p_room_id: roomId })
+        .then(({ data }) => {
+          if (data && data.length > 0) {
+            setMessageNotifsEnabled(data[0].message_notifs_enabled)
+          }
+        })
+    }
+  }, [isOpen, currentUserId, roomId])
+
+  const handleToggleMessageNotifs = async () => {
+    setMessageNotifsLoading(true)
+    const newValue = !messageNotifsEnabled
+    const { error } = await supabase.rpc('update_notification_prefs', {
+      p_room_id: roomId,
+      p_message_notifs_enabled: newValue,
+    })
+    if (!error) {
+      setMessageNotifsEnabled(newValue)
+    }
+    setMessageNotifsLoading(false)
+  }
+
   if (!isOpen) return null
 
   const handleCopyRoomId = () => {
@@ -1432,6 +1461,37 @@ function GroupDetailsDrawer({
               </div>
             )}
           </div>
+
+          {/* Message Notifications */}
+          {isSupported && permission !== 'denied' && isSubscribed && (
+            <div className="p-4 border-b border-stone-100">
+              <h4 className="text-sm font-medium text-stone-700 mb-2">Message Notifications</h4>
+              <p className="text-xs text-stone-500 mb-3">Get notified when someone messages the group</p>
+              <button
+                onClick={handleToggleMessageNotifs}
+                disabled={messageNotifsLoading}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm transition-colors ${
+                  messageNotifsEnabled
+                    ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
+                    : 'bg-stone-50 text-stone-700 hover:bg-stone-100'
+                }`}
+              >
+                <span className="flex items-center gap-2">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                  {messageNotifsEnabled ? 'Message alerts on' : 'Message alerts off'}
+                </span>
+                {messageNotifsLoading ? (
+                  <div className="w-4 h-4 border-2 border-stone-300 border-t-stone-600 rounded-full animate-spin" />
+                ) : messageNotifsEnabled ? (
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                ) : null}
+              </button>
+            </div>
+          )}
 
           {/* Add Members section */}
           <div className="p-4 border-b border-stone-100">
@@ -2284,6 +2344,17 @@ export default function RoomPage() {
         // Neither exists (shouldn't happen), add the real one
         return [...prev, data as Msg]
       })
+
+      // Fire-and-forget: notify other members about the new message
+      fetch('/api/push/notify-message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          roomId,
+          messageId: (data as Msg).id,
+          senderId: userId,
+        }),
+      }).catch(() => {}) // Ignore errors silently
     }
   }
 
@@ -2358,16 +2429,29 @@ export default function RoomPage() {
       const imageUrl = urlData.publicUrl
       console.log('Image URL:', imageUrl)
 
-      const { error: msgError } = await supabase.from('messages').insert({
+      const { data: msgData, error: msgError } = await supabase.from('messages').insert({
         room_id: roomId,
         user_id: userId,
         type: 'image',
         content: imageUrl,
-      })
+      }).select().single()
 
       if (msgError) {
         console.error('Message insert error:', JSON.stringify(msgError))
         throw new Error(msgError.message || msgError.details || msgError.hint || 'Failed to save message')
+      }
+
+      // Fire-and-forget: notify other members about the new image
+      if (msgData) {
+        fetch('/api/push/notify-message', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            roomId,
+            messageId: msgData.id,
+            senderId: userId,
+          }),
+        }).catch(() => {}) // Ignore errors silently
       }
     } catch (err: any) {
       console.error('Image upload error:', err)
