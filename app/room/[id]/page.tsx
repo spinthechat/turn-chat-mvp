@@ -2684,8 +2684,8 @@ export default function RoomPage() {
   const [reactions, setReactions] = useState<Reaction[]>([])
   const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map())
 
-  // Nudge state
-  const [hasNudgedToday, setHasNudgedToday] = useState(false)
+  // Nudge state (scoped to current turn, not per-day)
+  const [hasNudgedThisTurn, setHasNudgedThisTurn] = useState(false)
   const [nudgeLoading, setNudgeLoading] = useState(false)
   const [nudgeToast, setNudgeToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
 
@@ -2750,14 +2750,14 @@ export default function RoomPage() {
     return () => clearInterval(interval)
   }, [isWaitingForCooldown])
 
-  // Check if user has nudged today when component mounts or roomId changes
+  // Check if user has nudged this turn - re-check when turn advances
   useEffect(() => {
     if (!userId || !roomId) return
-    supabase.rpc('has_nudged_today', { p_room_id: roomId })
+    supabase.rpc('has_nudged_this_turn', { p_room_id: roomId })
       .then(({ data }) => {
-        setHasNudgedToday(data === true)
+        setHasNudgedThisTurn(data === true)
       })
-  }, [userId, roomId])
+  }, [userId, roomId, turnSession?.current_turn_index])
 
   // Hide nudge toast after 3 seconds
   useEffect(() => {
@@ -2767,7 +2767,7 @@ export default function RoomPage() {
   }, [nudgeToast])
 
   const handleNudge = async () => {
-    if (!userId || nudgeLoading || hasNudgedToday || isMyTurn || !currentTurnUserId) return
+    if (!userId || nudgeLoading || hasNudgedThisTurn || isMyTurn || !currentTurnUserId) return
 
     setNudgeLoading(true)
     try {
@@ -2790,7 +2790,7 @@ export default function RoomPage() {
       const result = await res.json()
 
       if (result.success) {
-        setHasNudgedToday(true)
+        setHasNudgedThisTurn(true)
         setNudgeToast({
           message: result.sent ? 'Nudge sent!' : 'Nudge sent (notifications off)',
           type: 'success'
@@ -3817,9 +3817,9 @@ export default function RoomPage() {
                 {!isMyTurn && currentTurnUserId && (
                   <button
                     onClick={handleNudge}
-                    disabled={hasNudgedToday || nudgeLoading || isMyTurn}
+                    disabled={hasNudgedThisTurn || nudgeLoading || isMyTurn}
                     className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-colors ${
-                      hasNudgedToday || nudgeLoading
+                      hasNudgedThisTurn || nudgeLoading
                         ? 'bg-stone-100 text-stone-400 cursor-not-allowed'
                         : 'bg-amber-100 text-amber-700 hover:bg-amber-200 active:bg-amber-300'
                     }`}
@@ -3829,7 +3829,7 @@ export default function RoomPage() {
                     ) : (
                       <span>👀</span>
                     )}
-                    <span>{hasNudgedToday ? 'Nudged' : 'Nudge'}</span>
+                    <span>{hasNudgedThisTurn ? 'Nudged' : 'Nudge'}</span>
                   </button>
                 )}
               </div>
