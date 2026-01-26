@@ -344,6 +344,7 @@ type RoomInfo = {
   id: string
   name: string
   prompt_interval_minutes: number
+  last_active_at: string | null
 }
 
 // Generate consistent colors from user ID
@@ -547,6 +548,8 @@ function MessageBubble({
   onReact,
   onScrollToMessage,
   groupPosition = 'single',
+  seenCount = 0,
+  onVisible,
 }: {
   message: Msg
   isMe: boolean
@@ -561,12 +564,34 @@ function MessageBubble({
   onReact: (messageId: string, emoji: string) => void
   onScrollToMessage: (messageId: string) => void
   groupPosition?: MessageGroupPosition
+  seenCount?: number
+  onVisible?: () => void
 }) {
   const [showActions, setShowActions] = useState(false)
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [showReactorsFor, setShowReactorsFor] = useState<string | null>(null)
   const [showLightbox, setShowLightbox] = useState(false)
   const bubbleRef = useRef<HTMLDivElement>(null)
+  const hasBeenVisible = useRef(false)
+
+  // Intersection Observer to detect when message is scrolled into view
+  useEffect(() => {
+    if (!onVisible || hasBeenVisible.current || !bubbleRef.current) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !hasBeenVisible.current) {
+          hasBeenVisible.current = true
+          onVisible()
+          observer.disconnect()
+        }
+      },
+      { threshold: 0.5 }
+    )
+
+    observer.observe(bubbleRef.current)
+    return () => observer.disconnect()
+  }, [onVisible])
 
   const isTurnResponse = message.type === 'turn_response'
   const isSystem = message.type === 'system'
@@ -611,6 +636,26 @@ function MessageBubble({
   }, [reactions, currentUserId])
 
   const hasReactions = Object.keys(reactionData).length > 0
+
+  // Show "Seen by N" only when:
+  // - For own messages: only if seenCount > 1 (meaning someone else besides author saw it)
+  // - For others' messages: show if seenCount > 0
+  // - Never show on system messages
+  // Note: seenCount includes the viewer themselves
+  const showSeenIndicator = !isSystem && seenCount > 0 && (isMe ? seenCount > 1 : true)
+
+  // Seen indicator component
+  const SeenIndicator = () => {
+    if (!showSeenIndicator) return null
+    // For own messages, subtract 1 to not count self (author viewing their own msg)
+    const displayCount = isMe ? seenCount - 1 : seenCount
+    if (displayCount <= 0) return null
+    return (
+      <div className={`text-[10px] text-stone-400 mt-0.5 ${isMe ? 'text-right' : 'text-left'}`}>
+        Seen by {displayCount}
+      </div>
+    )
+  }
 
   // System messages - compact
   if (isSystem) {
@@ -836,6 +881,7 @@ function MessageBubble({
             </div>
             <ActionButtons />
             <ReactionPills />
+            <SeenIndicator />
           </div>
         </div>
         {showLightbox && (
@@ -914,6 +960,7 @@ function MessageBubble({
             </div>
             <ActionButtons />
             <ReactionPills />
+            <SeenIndicator />
           </div>
         </div>
         {showLightbox && (
@@ -979,6 +1026,7 @@ function MessageBubble({
             </div>
             <ActionButtons />
             <ReactionPills />
+            <SeenIndicator />
           </div>
         </div>
         {showEmojiPicker && (
@@ -1042,6 +1090,7 @@ function MessageBubble({
           </div>
           <ActionButtons />
           <ReactionPills />
+          <SeenIndicator />
         </div>
       </div>
       {showEmojiPicker && (
@@ -1275,6 +1324,23 @@ function GroupDetailsDrawer({
     }
   }
 
+  // Format relative time for "Last active"
+  const formatLastActive = (dateStr: string | null): string => {
+    if (!dateStr) return 'Never'
+    const date = new Date(dateStr)
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
+    const diffMins = Math.floor(diffMs / 60000)
+    const diffHours = Math.floor(diffMs / 3600000)
+    const diffDays = Math.floor(diffMs / 86400000)
+
+    if (diffMins < 1) return 'Just now'
+    if (diffMins < 60) return `${diffMins}m ago`
+    if (diffHours < 24) return `${diffHours}h ago`
+    if (diffDays < 7) return `${diffDays}d ago`
+    return date.toLocaleDateString()
+  }
+
   // Sort members: host first, then alphabetically
   const sortedMembers = [...members].sort((a, b) => {
     if (a.role === 'host' && b.role !== 'host') return -1
@@ -1387,6 +1453,18 @@ function GroupDetailsDrawer({
               </span>
             </button>
           </div>
+
+          {/* Last active indicator */}
+          {roomInfo?.last_active_at && (
+            <div className="px-4 py-2 border-b border-stone-100 bg-stone-50">
+              <div className="flex items-center gap-2 text-xs text-stone-500">
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>Last active: {formatLastActive(roomInfo.last_active_at)}</span>
+              </div>
+            </div>
+          )}
 
           {/* Prompt frequency setting - room-wide */}
           <div className="p-4 border-b border-stone-100">
@@ -1811,6 +1889,11 @@ export default function RoomPage() {
   const [nudgeLoading, setNudgeLoading] = useState(false)
   const [nudgeToast, setNudgeToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
 
+  // Seen tracking state
+  const [seenCounts, setSeenCounts] = useState<Map<string, number>>(new Map())
+  const pendingSeenRef = useRef<Set<string>>(new Set())
+  const seenDebounceRef = useRef<NodeJS.Timeout | null>(null)
+
   const gameActive = turnSession?.is_active ?? false
 
   // Use current_turn_user_id directly (dynamic turn order from room_members)
@@ -1922,6 +2005,60 @@ export default function RoomPage() {
     }
   }
 
+  // Mark a message as seen (adds to pending batch)
+  const markMessageSeen = useCallback((messageId: string) => {
+    if (!userId) return
+    pendingSeenRef.current.add(messageId)
+
+    // Debounce: flush pending seen messages after 500ms of inactivity
+    if (seenDebounceRef.current) {
+      clearTimeout(seenDebounceRef.current)
+    }
+    seenDebounceRef.current = setTimeout(async () => {
+      const pending = Array.from(pendingSeenRef.current)
+      if (pending.length === 0) return
+      pendingSeenRef.current.clear()
+
+      // Mark messages as seen in batch
+      await supabase.rpc('mark_messages_seen', { p_message_ids: pending })
+
+      // Refresh seen counts for these messages
+      const { data } = await supabase.rpc('get_message_seen_counts', { p_message_ids: pending })
+      if (data) {
+        setSeenCounts(prev => {
+          const next = new Map(prev)
+          for (const row of data as { message_id: string; seen_count: number }[]) {
+            next.set(row.message_id, row.seen_count)
+          }
+          return next
+        })
+      }
+    }, 500)
+  }, [userId])
+
+  // Fetch seen counts for all current messages
+  const fetchSeenCounts = useCallback(async (messageIds: string[]) => {
+    if (messageIds.length === 0) return
+    const { data } = await supabase.rpc('get_message_seen_counts', { p_message_ids: messageIds })
+    if (data) {
+      setSeenCounts(prev => {
+        const next = new Map(prev)
+        for (const row of data as { message_id: string; seen_count: number }[]) {
+          next.set(row.message_id, row.seen_count)
+        }
+        return next
+      })
+    }
+  }, [])
+
+  // Fetch initial seen counts when messages load
+  useEffect(() => {
+    if (messages.length > 0) {
+      const ids = messages.map(m => m.id).filter(id => !id.startsWith('optimistic-'))
+      fetchSeenCounts(ids)
+    }
+  }, [messages.length, fetchSeenCounts])
+
   const getUserInfo = (uid: string): UserInfo | null => {
     const existing = users.get(uid)
     if (existing) return existing
@@ -1971,7 +2108,7 @@ export default function RoomPage() {
       // Fetch room info
       const { data: room } = await supabase
         .from('rooms')
-        .select('id, name, prompt_interval_minutes')
+        .select('id, name, prompt_interval_minutes, last_active_at')
         .eq('id', roomId)
         .single()
 
@@ -2905,6 +3042,8 @@ export default function RoomPage() {
                     onReact={handleReact}
                     onScrollToMessage={scrollToMessage}
                     groupPosition={groupPosition}
+                    seenCount={seenCounts.get(m.id) ?? 0}
+                    onVisible={() => markMessageSeen(m.id)}
                   />
                 </div>
               )
