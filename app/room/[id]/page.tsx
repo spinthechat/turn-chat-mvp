@@ -2604,7 +2604,9 @@ export default function RoomPage() {
   const [messages, setMessages] = useState<Msg[]>([])
   const [hasMoreMessages, setHasMoreMessages] = useState(true)
   const [loadingOlderMessages, setLoadingOlderMessages] = useState(false)
-  const MESSAGES_PER_PAGE = 50
+  const [hasNewMessages, setHasNewMessages] = useState(false)
+  const INITIAL_MESSAGES = 20
+  const PAGE_SIZE = 30
 
   const [chatText, setChatText] = useState('')
   const [turnText, setTurnText] = useState('')
@@ -2663,6 +2665,9 @@ export default function RoomPage() {
   const [showPhotoSheet, setShowPhotoSheet] = useState(false)
   const [showTurnPhotoSheet, setShowTurnPhotoSheet] = useState(false)
 
+  // Track if user is at bottom of scroll
+  const isNearBottomRef = useRef(true)
+
   // Scroll the messages container to bottom (not the window!)
   const scrollToBottom = useCallback((smooth = true) => {
     const container = scrollContainerRef.current
@@ -2671,6 +2676,7 @@ export default function RoomPage() {
         top: container.scrollHeight,
         behavior: smooth ? 'smooth' : 'auto'
       })
+      setHasNewMessages(false)
     }
   }, [])
 
@@ -2809,7 +2815,7 @@ export default function RoomPage() {
         .eq('room_id', roomId)
         .lt('created_at', oldestMessage.created_at)
         .order('created_at', { ascending: false })
-        .limit(MESSAGES_PER_PAGE)
+        .limit(PAGE_SIZE)
 
       if (error) {
         console.error('Error loading older messages:', error)
@@ -2818,8 +2824,13 @@ export default function RoomPage() {
 
       if (olderMsgs && olderMsgs.length > 0) {
         const sortedOlder = olderMsgs.reverse() as Msg[]
-        setMessages(prev => [...sortedOlder, ...prev])
-        setHasMoreMessages(olderMsgs.length >= MESSAGES_PER_PAGE)
+        // Dedupe by message id
+        setMessages(prev => {
+          const existingIds = new Set(prev.map(m => m.id))
+          const newMsgs = sortedOlder.filter(m => !existingIds.has(m.id))
+          return [...newMsgs, ...prev]
+        })
+        setHasMoreMessages(olderMsgs.length >= PAGE_SIZE)
 
         // Fetch reactions for older messages
         const olderMsgIds = sortedOlder.map(m => m.id)
@@ -2846,6 +2857,26 @@ export default function RoomPage() {
       setLoadingOlderMessages(false)
     }
   }, [loadingOlderMessages, hasMoreMessages, messages, roomId])
+
+  // Handle scroll for infinite scroll up and tracking position
+  const handleScroll = useCallback(() => {
+    const container = scrollContainerRef.current
+    if (!container) return
+
+    // Check if near bottom (within 100px)
+    const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100
+    isNearBottomRef.current = isNearBottom
+
+    // If user scrolled to bottom, clear "new messages" indicator
+    if (isNearBottom) {
+      setHasNewMessages(false)
+    }
+
+    // Check if near top (within 200px) - trigger loading older messages
+    if (container.scrollTop < 200 && hasMoreMessages && !loadingOlderMessages) {
+      loadOlderMessages()
+    }
+  }, [hasMoreMessages, loadingOlderMessages, loadOlderMessages])
 
   const handleNudge = async () => {
     if (!userId || nudgeLoading || hasNudgedThisTurn || isMyTurn || !currentTurnUserId) return
@@ -2976,6 +3007,7 @@ export default function RoomPage() {
     const boot = async () => {
       setError(null)
       setIsLoading(true)
+      const bootStart = performance.now()
 
       const { data: authData } = await supabase.auth.getUser()
       if (!authData.user) {
@@ -3008,8 +3040,12 @@ export default function RoomPage() {
           .select('*')
           .eq('room_id', roomId)
           .order('created_at', { ascending: false })
-          .limit(MESSAGES_PER_PAGE)
+          .limit(INITIAL_MESSAGES)
       ])
+
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[room] initial fetch ms', Math.round(performance.now() - bootStart))
+      }
 
       const room = roomResult.data
       const members = membersResult.data
@@ -3124,7 +3160,11 @@ export default function RoomPage() {
       } else {
         const sortedMsgs = (msgs ?? []).reverse() as Msg[]
         setMessages(sortedMsgs)
-        setHasMoreMessages((msgs?.length ?? 0) >= MESSAGES_PER_PAGE)
+        setHasMoreMessages((msgs?.length ?? 0) >= INITIAL_MESSAGES)
+
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[room] render messages count', sortedMsgs.length)
+        }
 
         // Fetch reactions for these messages (parallel with seen counts would require messages first)
         const msgIds = sortedMsgs.map(m => m.id)
@@ -3174,6 +3214,11 @@ export default function RoomPage() {
                 const next = [...prev]
                 next[optimisticIndex] = newMsg
                 return next
+              }
+
+              // Show "new messages" pill if user is scrolled up
+              if (!isNearBottomRef.current) {
+                setHasNewMessages(true)
               }
 
               return [...prev, newMsg]
@@ -3961,7 +4006,7 @@ export default function RoomPage() {
       </header>
 
       {/* Messages */}
-      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain">
+      <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain relative">
         <div className="max-w-3xl mx-auto px-3 py-3">
           {/* Error banner */}
           {error && (
@@ -4054,6 +4099,16 @@ export default function RoomPage() {
           )}
           <div ref={bottomRef} />
         </div>
+
+        {/* New messages pill */}
+        {hasNewMessages && (
+          <button
+            onClick={() => scrollToBottom(true)}
+            className="absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 bg-indigo-500 text-white text-sm font-medium rounded-full shadow-lg hover:bg-indigo-600 transition-colors animate-in slide-in-from-bottom-2 duration-200"
+          >
+            New messages ↓
+          </button>
+        )}
       </div>
 
       {/* Bottom panel: Chat input (always primary) */}
