@@ -1806,6 +1806,11 @@ export default function RoomPage() {
   const [reactions, setReactions] = useState<Reaction[]>([])
   const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map())
 
+  // Nudge state
+  const [hasNudgedToday, setHasNudgedToday] = useState(false)
+  const [nudgeLoading, setNudgeLoading] = useState(false)
+  const [nudgeToast, setNudgeToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
+
   const gameActive = turnSession?.is_active ?? false
 
   // Use current_turn_user_id directly (dynamic turn order from room_members)
@@ -1861,6 +1866,61 @@ export default function RoomPage() {
     const interval = setInterval(() => setTick(t => t + 1), 60000)
     return () => clearInterval(interval)
   }, [isWaitingForCooldown])
+
+  // Check if user has nudged today when component mounts or roomId changes
+  useEffect(() => {
+    if (!userId || !roomId) return
+    supabase.rpc('has_nudged_today', { p_room_id: roomId })
+      .then(({ data }) => {
+        setHasNudgedToday(data === true)
+      })
+  }, [userId, roomId])
+
+  // Hide nudge toast after 3 seconds
+  useEffect(() => {
+    if (!nudgeToast) return
+    const timer = setTimeout(() => setNudgeToast(null), 3000)
+    return () => clearTimeout(timer)
+  }, [nudgeToast])
+
+  const handleNudge = async () => {
+    if (!userId || nudgeLoading || hasNudgedToday || isMyTurn || !currentTurnUserId) return
+
+    setNudgeLoading(true)
+    try {
+      const { data: sessionData } = await supabase.auth.getSession()
+      const accessToken = sessionData?.session?.access_token
+      if (!accessToken) {
+        setNudgeToast({ message: 'Not logged in', type: 'error' })
+        return
+      }
+
+      const res = await fetch('/api/push/nudge', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ roomId }),
+      })
+
+      const result = await res.json()
+
+      if (result.success) {
+        setHasNudgedToday(true)
+        setNudgeToast({
+          message: result.sent ? 'Nudge sent!' : 'Nudge sent (notifications off)',
+          type: 'success'
+        })
+      } else {
+        setNudgeToast({ message: result.error || 'Failed to nudge', type: 'error' })
+      }
+    } catch {
+      setNudgeToast({ message: 'Failed to nudge', type: 'error' })
+    } finally {
+      setNudgeLoading(false)
+    }
+  }
 
   const getUserInfo = (uid: string): UserInfo | null => {
     const existing = users.get(uid)
@@ -2745,7 +2805,34 @@ export default function RoomPage() {
                     </>
                   )}
                 </div>
+                {/* Nudge button - only show when it's not my turn */}
+                {!isMyTurn && currentTurnUserId && (
+                  <button
+                    onClick={handleNudge}
+                    disabled={hasNudgedToday || nudgeLoading || isMyTurn}
+                    className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-colors ${
+                      hasNudgedToday || nudgeLoading
+                        ? 'bg-stone-100 text-stone-400 cursor-not-allowed'
+                        : 'bg-amber-100 text-amber-700 hover:bg-amber-200 active:bg-amber-300'
+                    }`}
+                  >
+                    {nudgeLoading ? (
+                      <div className="w-3 h-3 border-2 border-stone-300 border-t-stone-500 rounded-full animate-spin" />
+                    ) : (
+                      <span>👀</span>
+                    )}
+                    <span>{hasNudgedToday ? 'Nudged' : 'Nudge'}</span>
+                  </button>
+                )}
               </div>
+              {/* Nudge toast notification */}
+              {nudgeToast && (
+                <div className={`mt-1 text-xs px-2 py-1 rounded ${
+                  nudgeToast.type === 'success' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
+                }`}>
+                  {nudgeToast.message}
+                </div>
+              )}
               {/* Show the prompt to all participants */}
               <div className="mt-1 text-sm text-stone-500 truncate flex items-center gap-2">
                 <span className="flex items-center gap-1.5">
