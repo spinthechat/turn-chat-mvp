@@ -345,13 +345,14 @@ type RoomInfo = {
   name: string
   prompt_interval_minutes: number
   last_active_at: string | null
-  prompt_mode: 'fun' | 'family'
+  prompt_mode: 'fun' | 'family' | 'deep'
 }
 
 // Prompt mode options for extensibility
 const PROMPT_MODES = [
   { value: 'fun', label: 'Fun', description: 'Lighthearted prompts for friends' },
   { value: 'family', label: 'Family', description: 'Warm prompts for family groups' },
+  { value: 'deep', label: 'Deep', description: 'More reflective questions. Answer at your own depth.' },
 ] as const
 
 // Generate consistent colors from user ID
@@ -1164,7 +1165,7 @@ function GroupDetailsDrawer({
   onAddMember: (email: string) => Promise<{ success: boolean; error?: string; inviteCode?: string; alreadyMember?: boolean; alreadyInvited?: boolean }>
   onGetInviteLink: () => Promise<string | null>
   onUpdateRoomName: (name: string) => Promise<{ success: boolean; error?: string }>
-  onUpdatePromptMode: (mode: 'fun' | 'family') => void
+  onUpdatePromptMode: (mode: 'fun' | 'family' | 'deep') => void
 }) {
   const [copied, setCopied] = useState(false)
   const [copiedInvite, setCopiedInvite] = useState(false)
@@ -2751,7 +2752,7 @@ export default function RoomPage() {
     return { success: true }
   }
 
-  const updateRoomPromptMode = async (mode: 'fun' | 'family') => {
+  const updateRoomPromptMode = async (mode: 'fun' | 'family' | 'deep') => {
     setError(null)
     const { error } = await supabase.rpc('update_room_prompt_mode', {
       p_room_id: roomId,
