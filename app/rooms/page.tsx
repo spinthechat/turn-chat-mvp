@@ -377,6 +377,7 @@ export default function ChatsPage() {
     let channel: any = null
 
     const init = async () => {
+      console.log('[lobby] init started')
       setLoading(true)
       setError(null)
 
@@ -402,7 +403,9 @@ export default function ChatsPage() {
         setUserProfile(myProfile as Profile)
       }
 
+      console.log('[lobby] calling loadChats for user:', user.id)
       await loadChats(user.id)
+      console.log('[lobby] loadChats completed')
       setLoading(false)
 
       // Subscribe to new messages for realtime inbox updates
