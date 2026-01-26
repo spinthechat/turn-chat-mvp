@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, useCallback, useLayoutEffect } fr
 import { createPortal } from 'react-dom'
 import { supabase } from '@/lib/supabaseClient'
 import { usePushNotifications } from '@/lib/usePushNotifications'
+import { hapticTick, clearTextSelection } from '@/lib/haptics'
 import { useParams, useRouter } from 'next/navigation'
 
 // Hook to handle mobile viewport height and keyboard
@@ -783,6 +784,9 @@ function MessageBubble({
     setSwipeOffset(0)
   }, [])
 
+  // State for haptic fallback animation
+  const [hapticPulse, setHapticPulse] = useState(false)
+
   // Handle pointer down - start long press detection
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     // Ignore if clicking on interactive elements
@@ -795,8 +799,17 @@ function MessageBubble({
     // Start long press timer
     gestureState.current.longPressTimer = setTimeout(() => {
       if (gestureState.current.isLongPressing) {
-        // Vibrate if supported (light haptic tick on activation only)
-        if (navigator.vibrate) navigator.vibrate(15)
+        // Clear any browser text selection that may have started
+        clearTextSelection()
+
+        // Haptic feedback - use fallback animation if vibration unsupported
+        const didVibrate = hapticTick('light')
+        if (!didVibrate) {
+          // Visual fallback: quick pulse animation
+          setHapticPulse(true)
+          setTimeout(() => setHapticPulse(false), 100)
+        }
+
         setShowContextMenu(true)
         resetGesture()
       }
@@ -843,8 +856,8 @@ function MessageBubble({
   const handlePointerUp = useCallback(() => {
     // Check if swipe completed
     if (gestureState.current.isSwiping && swipeOffset >= SWIPE_THRESHOLD) {
-      // Trigger reply
-      if (navigator.vibrate) navigator.vibrate(30)
+      // Trigger reply with haptic feedback
+      hapticTick('turn')
       onReply(message)
     }
     resetGesture()
@@ -898,9 +911,12 @@ function MessageBubble({
   const canCopy = message.type !== 'image' && !message.content.startsWith('{')
 
   // Selected bubble styling (WhatsApp-like lift effect)
+  // Also includes haptic pulse fallback animation when vibration is unsupported
   const selectedBubbleClass = showContextMenu
     ? 'scale-[1.02] shadow-xl ring-2 ring-indigo-400/50 relative z-[9999]'
-    : ''
+    : hapticPulse
+      ? 'scale-[0.98]'
+      : ''
 
   // Cleanup on unmount
   useEffect(() => {
@@ -1166,8 +1182,8 @@ function MessageBubble({
     return (
       <div
         ref={rowRef}
-        className={`flex ${isMe ? 'flex-row-reverse' : 'flex-row'} group relative ${hasReactions ? 'mb-2' : ''} touch-pan-y`}
-        style={{ transform: `translateX(${swipeOffset}px)`, transition: swipeOffset === 0 ? 'transform 0.2s ease-out' : 'none' }}
+        className={`flex ${isMe ? 'flex-row-reverse' : 'flex-row'} group relative ${hasReactions ? 'mb-2' : ''} touch-pan-y select-none`}
+        style={{ WebkitTouchCallout: 'none', WebkitTapHighlightColor: 'transparent', transform: `translateX(${swipeOffset}px)`, transition: swipeOffset === 0 ? 'transform 0.2s ease-out' : 'none' }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -1243,8 +1259,8 @@ function MessageBubble({
     return (
       <div
         ref={rowRef}
-        className={`flex ${isMe ? 'flex-row-reverse' : 'flex-row'} group relative ${hasReactions ? 'mb-2' : ''} touch-pan-y`}
-        style={{ transform: `translateX(${swipeOffset}px)`, transition: swipeOffset === 0 ? 'transform 0.2s ease-out' : 'none' }}
+        className={`flex ${isMe ? 'flex-row-reverse' : 'flex-row'} group relative ${hasReactions ? 'mb-2' : ''} touch-pan-y select-none`}
+        style={{ WebkitTouchCallout: 'none', WebkitTapHighlightColor: 'transparent', transform: `translateX(${swipeOffset}px)`, transition: swipeOffset === 0 ? 'transform 0.2s ease-out' : 'none' }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -1346,8 +1362,8 @@ function MessageBubble({
     return (
       <div
         ref={rowRef}
-        className={`flex ${isMe ? 'flex-row-reverse' : 'flex-row'} group relative ${hasReactions ? 'mb-2' : ''} touch-pan-y`}
-        style={{ transform: `translateX(${swipeOffset}px)`, transition: swipeOffset === 0 ? 'transform 0.2s ease-out' : 'none' }}
+        className={`flex ${isMe ? 'flex-row-reverse' : 'flex-row'} group relative ${hasReactions ? 'mb-2' : ''} touch-pan-y select-none`}
+        style={{ WebkitTouchCallout: 'none', WebkitTapHighlightColor: 'transparent', transform: `translateX(${swipeOffset}px)`, transition: swipeOffset === 0 ? 'transform 0.2s ease-out' : 'none' }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -1447,8 +1463,8 @@ function MessageBubble({
   return (
     <div
       ref={rowRef}
-      className={`flex ${isMe ? 'flex-row-reverse' : 'flex-row'} group relative ${hasReactions ? 'mb-2' : ''} touch-pan-y`}
-      style={{ transform: `translateX(${swipeOffset}px)`, transition: swipeOffset === 0 ? 'transform 0.2s ease-out' : 'none' }}
+      className={`flex ${isMe ? 'flex-row-reverse' : 'flex-row'} group relative ${hasReactions ? 'mb-2' : ''} touch-pan-y select-none`}
+      style={{ WebkitTouchCallout: 'none', WebkitTapHighlightColor: 'transparent', transform: `translateX(${swipeOffset}px)`, transition: swipeOffset === 0 ? 'transform 0.2s ease-out' : 'none' }}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
