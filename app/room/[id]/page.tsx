@@ -345,7 +345,14 @@ type RoomInfo = {
   name: string
   prompt_interval_minutes: number
   last_active_at: string | null
+  prompt_mode: 'fun' | 'family'
 }
+
+// Prompt mode options for extensibility
+const PROMPT_MODES = [
+  { value: 'fun', label: 'Fun', description: 'Lighthearted prompts for friends' },
+  { value: 'family', label: 'Family', description: 'Warm prompts for family groups' },
+] as const
 
 // Generate consistent colors from user ID
 const stringToColors = (str: string): { bg: string; text: string } => {
@@ -1142,6 +1149,7 @@ function GroupDetailsDrawer({
   onAddMember,
   onGetInviteLink,
   onUpdateRoomName,
+  onUpdatePromptMode,
 }: {
   isOpen: boolean
   onClose: () => void
@@ -1156,6 +1164,7 @@ function GroupDetailsDrawer({
   onAddMember: (email: string) => Promise<{ success: boolean; error?: string; inviteCode?: string; alreadyMember?: boolean; alreadyInvited?: boolean }>
   onGetInviteLink: () => Promise<string | null>
   onUpdateRoomName: (name: string) => Promise<{ success: boolean; error?: string }>
+  onUpdatePromptMode: (mode: 'fun' | 'family') => void
 }) {
   const [copied, setCopied] = useState(false)
   const [copiedInvite, setCopiedInvite] = useState(false)
@@ -1484,6 +1493,35 @@ function GroupDetailsDrawer({
                   <span>{option.label}</span>
                   {roomFrequency === option.value && (
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Prompt Mode */}
+          <div className="p-4 border-b border-stone-100">
+            <h4 className="text-sm font-medium text-stone-700 mb-2">Prompt Mode</h4>
+            <p className="text-xs text-stone-500 mb-3">This changes the tone of future prompts for the group</p>
+            <div className="space-y-1">
+              {PROMPT_MODES.map(mode => (
+                <button
+                  key={mode.value}
+                  onClick={() => onUpdatePromptMode(mode.value)}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors ${
+                    roomInfo?.prompt_mode === mode.value
+                      ? 'bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200'
+                      : 'hover:bg-stone-50 text-stone-700'
+                  }`}
+                >
+                  <div className="text-left">
+                    <div className="font-medium">{mode.label}</div>
+                    <div className="text-xs text-stone-400">{mode.description}</div>
+                  </div>
+                  {roomInfo?.prompt_mode === mode.value && (
+                    <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                     </svg>
                   )}
@@ -2108,11 +2146,11 @@ export default function RoomPage() {
       // Fetch room info
       const { data: room } = await supabase
         .from('rooms')
-        .select('id, name, prompt_interval_minutes, last_active_at')
+        .select('id, name, prompt_interval_minutes, last_active_at, prompt_mode')
         .eq('id', roomId)
         .single()
 
-      if (room) setRoomInfo(room as RoomInfo)
+      if (room) setRoomInfo({ ...room, prompt_mode: room.prompt_mode || 'fun' } as RoomInfo)
 
       // Fetch room members
       const { data: members } = await supabase
@@ -2713,6 +2751,20 @@ export default function RoomPage() {
     return { success: true }
   }
 
+  const updateRoomPromptMode = async (mode: 'fun' | 'family') => {
+    setError(null)
+    const { error } = await supabase.rpc('update_room_prompt_mode', {
+      p_room_id: roomId,
+      p_mode: mode,
+    })
+    if (error) {
+      setError(error.message)
+    } else {
+      // Update local state
+      setRoomInfo(prev => prev ? { ...prev, prompt_mode: mode } : prev)
+    }
+  }
+
   const addMemberByEmail = async (email: string): Promise<{ success: boolean; error?: string; inviteCode?: string; alreadyMember?: boolean; alreadyInvited?: boolean }> => {
     const { data, error } = await supabase.rpc('create_email_invite', {
       p_room_id: roomId,
@@ -2849,6 +2901,7 @@ export default function RoomPage() {
         onAddMember={addMemberByEmail}
         onGetInviteLink={getInviteLink}
         onUpdateRoomName={updateRoomName}
+        onUpdatePromptMode={updateRoomPromptMode}
       />
 
       {/* Header - fixed at top */}
