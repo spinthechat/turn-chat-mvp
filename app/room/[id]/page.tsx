@@ -56,9 +56,9 @@ function useMobileViewport() {
   return { keyboardHeight }
 }
 
-// Message Context Menu with emoji bar + actions (WhatsApp style)
-// Renders via portal with smart positioning
-function MessageContextMenu({
+// Message Selection Overlay with context menu (WhatsApp style)
+// Renders via portal: dark backdrop + blur + menu anchored to selected message
+function MessageSelectionOverlay({
   anchorRef,
   emojis,
   onReact,
@@ -83,6 +83,7 @@ function MessageContextMenu({
     setMounted(true)
   }, [])
 
+  // Calculate menu position
   useLayoutEffect(() => {
     if (!mounted) return
 
@@ -135,98 +136,118 @@ function MessageContextMenu({
     }
   }, [mounted, anchorRef])
 
-  // Close on click outside
+  // Handle Esc key and prevent scroll while open
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
-      const menu = menuRef.current
-      if (menu && !menu.contains(e.target as Node)) {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
         onClose()
       }
     }
 
-    const timer = setTimeout(() => {
-      document.addEventListener('click', handleClickOutside)
-      document.addEventListener('touchstart', handleClickOutside)
-    }, 10)
+    // Prevent scrolling on the body while overlay is open
+    const scrollY = window.scrollY
+    document.body.style.position = 'fixed'
+    document.body.style.top = `-${scrollY}px`
+    document.body.style.left = '0'
+    document.body.style.right = '0'
+    document.body.style.overflow = 'hidden'
+
+    document.addEventListener('keydown', handleKeyDown)
 
     return () => {
-      clearTimeout(timer)
-      document.removeEventListener('click', handleClickOutside)
-      document.removeEventListener('touchstart', handleClickOutside)
+      document.removeEventListener('keydown', handleKeyDown)
+      // Restore scroll position
+      document.body.style.position = ''
+      document.body.style.top = ''
+      document.body.style.left = ''
+      document.body.style.right = ''
+      document.body.style.overflow = ''
+      window.scrollTo(0, scrollY)
     }
   }, [onClose])
 
   if (!mounted) return null
 
   return createPortal(
-    <div
-      ref={menuRef}
-      style={{
-        position: 'fixed',
-        top: position.top,
-        left: position.left,
-        zIndex: 9999,
-      }}
-      className="bg-white rounded-2xl shadow-xl ring-1 ring-stone-200 overflow-hidden min-w-[200px]"
-      onClick={(e) => e.stopPropagation()}
-    >
-      {/* Emoji reaction bar */}
-      <div className="flex justify-center gap-1 p-2 border-b border-stone-100">
-        {emojis.map(emoji => (
-          <button
-            key={emoji}
-            onClick={() => { onReact(emoji); onClose() }}
-            aria-label={`React with ${emoji}`}
-            className="w-10 h-10 flex items-center justify-center hover:bg-stone-100 rounded-lg text-xl active:scale-110 transition-transform"
-          >
-            {emoji}
-          </button>
-        ))}
-      </div>
+    <>
+      {/* Backdrop overlay with blur */}
+      <div
+        className="fixed inset-0 bg-black/40 backdrop-blur-[2px] animate-in fade-in duration-150"
+        style={{ zIndex: 9998 }}
+        onClick={onClose}
+        onTouchEnd={(e) => { e.preventDefault(); onClose() }}
+      />
 
-      {/* Action menu */}
-      <div className="py-1">
-        <button
-          onClick={() => { onReply(); onClose() }}
-          aria-label="Reply to message"
-          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 active:bg-stone-100"
-        >
-          <svg className="w-5 h-5 text-stone-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-          </svg>
-          Reply
-        </button>
+      {/* Context menu */}
+      <div
+        ref={menuRef}
+        style={{
+          position: 'fixed',
+          top: position.top,
+          left: position.left,
+          zIndex: 10000,
+        }}
+        className="bg-white rounded-2xl shadow-2xl ring-1 ring-stone-200 overflow-hidden min-w-[220px] animate-in zoom-in-95 fade-in duration-150"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Emoji reaction bar */}
+        <div className="flex justify-center gap-1 p-2.5 border-b border-stone-100 bg-stone-50/50">
+          {emojis.map(emoji => (
+            <button
+              key={emoji}
+              onClick={() => { onReact(emoji); onClose() }}
+              aria-label={`React with ${emoji}`}
+              className="w-11 h-11 flex items-center justify-center hover:bg-white rounded-xl text-2xl active:scale-125 transition-transform shadow-sm bg-white ring-1 ring-stone-100"
+            >
+              {emoji}
+            </button>
+          ))}
+        </div>
 
-        {canCopy && onCopy && (
+        {/* Action menu */}
+        <div className="py-1">
           <button
-            onClick={() => { onCopy(); onClose() }}
-            aria-label="Copy message text"
-            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 active:bg-stone-100"
+            onClick={() => { onReply(); onClose() }}
+            aria-label="Reply"
+            className="w-full flex items-center gap-3 px-4 py-3 text-sm text-stone-700 hover:bg-stone-50 active:bg-stone-100 transition-colors"
           >
-            <svg className="w-5 h-5 text-stone-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
             </svg>
-            Copy text
+            Reply
           </button>
-        )}
 
-        <button
-          onClick={onClose}
-          aria-label="Cancel"
-          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-stone-400 hover:bg-stone-50 active:bg-stone-100"
-        >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-          Cancel
-        </button>
+          {canCopy && (
+            <button
+              onClick={() => { onCopy?.(); onClose() }}
+              aria-label="Copy text"
+              className="w-full flex items-center gap-3 px-4 py-3 text-sm text-stone-700 hover:bg-stone-50 active:bg-stone-100 transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+              Copy text
+            </button>
+          )}
+
+          <button
+            onClick={onClose}
+            aria-label="Cancel"
+            className="w-full flex items-center gap-3 px-4 py-3 text-sm text-stone-400 hover:bg-stone-50 active:bg-stone-100 transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            Cancel
+          </button>
+        </div>
       </div>
-    </div>,
+    </>,
     document.body
   )
 }
 
-// Legacy emoji picker (keeping for compatibility, but prefer MessageContextMenu)
+// Legacy emoji picker (keeping for compatibility, but prefer MessageSelectionOverlay)
 function EmojiPickerPortal({
   anchorRef,
   emojis,
@@ -774,8 +795,8 @@ function MessageBubble({
     // Start long press timer
     gestureState.current.longPressTimer = setTimeout(() => {
       if (gestureState.current.isLongPressing) {
-        // Vibrate if supported (haptic feedback)
-        if (navigator.vibrate) navigator.vibrate(50)
+        // Vibrate if supported (light haptic tick on activation only)
+        if (navigator.vibrate) navigator.vibrate(15)
         setShowContextMenu(true)
         resetGesture()
       }
@@ -875,6 +896,11 @@ function MessageBubble({
 
   // Determine if this message can be copied (text content only)
   const canCopy = message.type !== 'image' && !message.content.startsWith('{')
+
+  // Selected bubble styling (WhatsApp-like lift effect)
+  const selectedBubbleClass = showContextMenu
+    ? 'scale-[1.02] shadow-xl ring-2 ring-indigo-400/50 relative z-[9999]'
+    : ''
 
   // Cleanup on unmount
   useEffect(() => {
@@ -1176,10 +1202,10 @@ function MessageBubble({
               {user?.displayName ?? 'Unknown'}
             </span>
           )}
-          <div ref={bubbleRef} className="relative" onClick={handleClick}>
+          <div ref={bubbleRef} className={`relative transition-transform duration-150 ${selectedBubbleClass}`} onClick={handleClick}>
             <QuotedReply />
             <div
-              className={`rounded-lg overflow-hidden cursor-pointer ${isMe ? '' : 'ring-1 ring-stone-200'}`}
+              className={`rounded-lg overflow-hidden cursor-pointer ${isMe ? '' : 'ring-1 ring-stone-200'} ${showContextMenu ? 'ring-0' : ''}`}
               onClick={handleImageClick}
             >
               <img src={message.content} alt="Photo" className="max-w-full max-h-48 object-contain bg-stone-100" loading="lazy" />
@@ -1199,7 +1225,7 @@ function MessageBubble({
           />
         )}
         {showContextMenu && (
-          <MessageContextMenu
+          <MessageSelectionOverlay
             anchorRef={bubbleRef}
             emojis={EMOJI_OPTIONS}
             onReact={(emoji) => onReact(message.id, emoji)}
@@ -1254,12 +1280,12 @@ function MessageBubble({
               {user?.displayName ?? 'Unknown'}
             </span>
           )}
-          <div ref={bubbleRef} className="relative" onClick={handleClick}>
+          <div ref={bubbleRef} className={`relative transition-transform duration-150 ${selectedBubbleClass}`} onClick={handleClick}>
             <QuotedReply />
             <div className={`rounded-lg overflow-hidden ${
               isMe
                 ? 'bg-gradient-to-br from-indigo-500 to-violet-500 text-white'
-                : 'bg-white ring-1 ring-indigo-200 text-stone-900'
+                : `bg-white ${showContextMenu ? '' : 'ring-1 ring-indigo-200'} text-stone-900`
             }`}>
               <div className="px-2.5 pt-1.5 pb-1">
                 <div className={`text-[9px] font-semibold uppercase tracking-wide mb-1 flex items-center gap-1 ${isMe ? 'text-white/70' : 'text-indigo-500'}`}>
@@ -1302,7 +1328,7 @@ function MessageBubble({
           />
         )}
         {showContextMenu && (
-          <MessageContextMenu
+          <MessageSelectionOverlay
             anchorRef={bubbleRef}
             emojis={EMOJI_OPTIONS}
             onReact={(emoji) => onReact(message.id, emoji)}
@@ -1357,12 +1383,12 @@ function MessageBubble({
               {user?.displayName ?? 'Unknown'}
             </span>
           )}
-          <div ref={bubbleRef} className="relative" onClick={handleClick}>
+          <div ref={bubbleRef} className={`relative transition-transform duration-150 ${selectedBubbleClass}`} onClick={handleClick}>
             <QuotedReply />
             <div className={`rounded-lg px-2.5 py-1.5 cursor-pointer ${
               isMe
                 ? 'bg-gradient-to-br from-indigo-500 to-violet-500 text-white'
-                : 'bg-white ring-1 ring-indigo-200 text-stone-900'
+                : `bg-white ${showContextMenu ? '' : 'ring-1 ring-indigo-200'} text-stone-900`
             }`}>
               <div className={`text-[9px] font-semibold uppercase tracking-wide mb-1 flex items-center gap-1 ${isMe ? 'text-white/70' : 'text-indigo-500'}`}>
                 <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -1386,7 +1412,7 @@ function MessageBubble({
           </div>
         </div>
         {showContextMenu && (
-          <MessageContextMenu
+          <MessageSelectionOverlay
             anchorRef={bubbleRef}
             emojis={EMOJI_OPTIONS}
             onReact={(emoji) => onReact(message.id, emoji)}
@@ -1457,11 +1483,11 @@ function MessageBubble({
             {user?.displayName ?? 'Unknown'}
           </span>
         )}
-        <div ref={bubbleRef} className="relative" onClick={handleClick}>
+        <div ref={bubbleRef} className={`relative transition-transform duration-150 ${selectedBubbleClass}`} onClick={handleClick}>
           <div className={`${getBubbleRadius()} px-2.5 py-1.5 cursor-pointer ${
             isMe
               ? 'bg-stone-800 text-white'
-              : 'bg-white ring-1 ring-stone-200 text-stone-900'
+              : `bg-white ${showContextMenu ? '' : 'ring-1 ring-stone-200'} text-stone-900`
           }`}>
             <QuotedReply />
             <div className="text-[13px] leading-snug whitespace-pre-wrap">{message.content}</div>
@@ -1475,7 +1501,7 @@ function MessageBubble({
         </div>
       </div>
       {showContextMenu && (
-        <MessageContextMenu
+        <MessageSelectionOverlay
           anchorRef={bubbleRef}
           emojis={EMOJI_OPTIONS}
           onReact={(emoji) => onReact(message.id, emoji)}
