@@ -3213,6 +3213,11 @@ export default function RoomPage() {
 
       setIsLoading(false)
 
+      // Mark room as read now that we've loaded it
+      supabase.rpc('mark_room_read', { p_room_id: roomId }).then(({ error }) => {
+        if (error) console.warn('[room] Failed to mark room as read:', error)
+      })
+
       // Subscribe to messages with proper handling for new members
       msgChannel = supabase
         .channel(`room:${roomId}`)

@@ -21,8 +21,10 @@ type ChatItem = {
   type: 'dm' | 'group'
   last_message_at: string | null
   last_message_content: string | null
+  last_message_type: string | null
   last_message_user_id: string | null
   member_count: number
+  unread_count: number
   other_member?: {
     id: string
     email: string
@@ -180,6 +182,8 @@ function ChatListItem({
   currentUserId: string | null
   onClick: () => void
 }) {
+  const hasUnread = chat.unread_count > 0
+
   const displayName = useMemo(() => {
     if (chat.type === 'dm' && chat.other_member) {
       return chat.other_member.displayName
@@ -191,12 +195,25 @@ function ChatListItem({
     if (!chat.last_message_content) return 'No messages yet'
 
     let preview = chat.last_message_content
-    if (preview.startsWith('Reply to "')) {
-      // It's a turn response, show just the response part
-      const parts = preview.split('\n\n')
-      if (parts.length > 1) {
-        preview = parts.slice(1).join(' ')
+
+    // Handle photo turn JSON
+    if (chat.last_message_type === 'turn_response') {
+      try {
+        const parsed = JSON.parse(preview)
+        if (parsed.kind === 'photo_turn') {
+          preview = '📷 Photo'
+        }
+      } catch {
+        // Not JSON, check for turn response format
+        if (preview.startsWith('Reply to "')) {
+          const parts = preview.split('\n\n')
+          if (parts.length > 1) {
+            preview = parts.slice(1).join(' ')
+          }
+        }
       }
+    } else if (chat.last_message_type === 'image') {
+      preview = '📷 Photo'
     }
 
     // Truncate if too long
@@ -208,7 +225,7 @@ function ChatListItem({
     if (chat.last_message_user_id && chat.last_message_user_id !== currentUserId) {
       const sender = profiles.get(chat.last_message_user_id)
       if (sender) {
-        const senderName = getDisplayName(sender.email).split(' ')[0]
+        const senderName = sender.display_name?.split(' ')[0] || getDisplayName(sender.email).split(' ')[0]
         preview = `${senderName}: ${preview}`
       }
     } else if (chat.last_message_user_id === currentUserId) {
@@ -223,22 +240,35 @@ function ChatListItem({
       onClick={onClick}
       className="flex items-center gap-3 px-4 py-3 hover:bg-stone-50 cursor-pointer transition-colors"
     >
-      <ChatAvatar chat={chat} />
+      <div className="relative">
+        <ChatAvatar chat={chat} />
+      </div>
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2">
-          <span className="font-medium text-stone-900 truncate">{displayName}</span>
-          <span className="text-xs text-stone-400 flex-shrink-0">
+          <span className={`truncate ${hasUnread ? 'font-semibold text-stone-900' : 'font-medium text-stone-900'}`}>
+            {displayName}
+          </span>
+          <span className={`text-xs flex-shrink-0 ${hasUnread ? 'text-indigo-500 font-medium' : 'text-stone-400'}`}>
             {formatTime(chat.last_message_at)}
           </span>
         </div>
         <div className="flex items-center justify-between gap-2 mt-0.5">
-          <span className="text-sm text-stone-500 truncate">{lastMessagePreview}</span>
-          {chat.type === 'group' && (
-            <span className="text-[10px] text-stone-400 flex-shrink-0 bg-stone-100 px-1.5 py-0.5 rounded">
-              {chat.member_count}
-            </span>
-          )}
+          <span className={`text-sm truncate ${hasUnread ? 'text-stone-700 font-medium' : 'text-stone-500'}`}>
+            {lastMessagePreview}
+          </span>
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            {chat.type === 'group' && !hasUnread && (
+              <span className="text-[10px] text-stone-400 bg-stone-100 px-1.5 py-0.5 rounded">
+                {chat.member_count}
+              </span>
+            )}
+            {hasUnread && (
+              <span className="min-w-[20px] h-5 flex items-center justify-center bg-indigo-500 text-white text-[11px] font-semibold rounded-full px-1.5">
+                {chat.unread_count > 99 ? '99+' : chat.unread_count}
+              </span>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -279,104 +309,62 @@ export default function ChatsPage() {
     }
     setProfiles(profileMap)
 
-    // Fetch rooms with memberships
-    const { data: memberships, error: memErr } = await supabase
-      .from('room_members')
-      .select(`
-        room_id,
-        rooms (
-          id,
-          name,
-          type,
-          last_message_at,
-          created_at
-        )
-      `)
-      .eq('user_id', uid)
+    // Fetch rooms with unread counts using efficient RPC
+    const { data: roomsData, error: roomsErr } = await supabase.rpc('get_rooms_with_unread')
 
-    if (memErr) {
-      setError(memErr.message)
+    if (roomsErr) {
+      console.error('Error fetching rooms:', roomsErr)
+      setError(roomsErr.message)
       return
     }
 
-    // Get last messages for each room
-    const roomIds = memberships?.map((m: any) => m.room_id).filter(Boolean) ?? []
-
-    let lastMessages: any[] = []
-    if (roomIds.length > 0) {
-      const { data: msgs } = await supabase
-        .from('messages')
-        .select('room_id, content, user_id, created_at')
-        .in('room_id', roomIds)
-        .order('created_at', { ascending: false })
-
-      // Group by room_id and take first (latest) for each
-      const msgByRoom = new Map<string, any>()
-      for (const msg of msgs ?? []) {
-        if (!msgByRoom.has(msg.room_id)) {
-          msgByRoom.set(msg.room_id, msg)
-        }
-      }
-      lastMessages = Array.from(msgByRoom.values())
-    }
-
-    // Get member counts and other DM member
+    // Get member info for DMs
     const chatItems: ChatItem[] = []
 
-    for (const membership of memberships ?? []) {
-      const room = (membership as any).rooms
-      if (!room) continue
-
-      // Get members of this room
-      const { data: members } = await supabase
-        .from('room_members')
-        .select('user_id')
-        .eq('room_id', room.id)
-
-      const memberCount = members?.length ?? 0
-
+    for (const room of roomsData ?? []) {
       // For DMs, find the other member
       let otherMember = undefined
-      if (room.type === 'dm' && members) {
-        const otherUserId = members.find((m: any) => m.user_id !== uid)?.user_id
-        if (otherUserId) {
-          const otherProfile = profileMap.get(otherUserId)
-          if (otherProfile) {
-            const name = otherProfile.display_name || getDisplayName(otherProfile.email)
-            otherMember = {
-              id: otherUserId,
-              email: otherProfile.email,
-              displayName: name,
-              initials: otherProfile.display_name
-                ? otherProfile.display_name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
-                : getInitials(otherProfile.email),
-              color: stringToColor(otherUserId),
-              avatarUrl: otherProfile.avatar_url
+      if (room.room_type === 'dm') {
+        // Get members of this room to find the other person
+        const { data: members } = await supabase
+          .from('room_members')
+          .select('user_id')
+          .eq('room_id', room.room_id)
+
+        if (members) {
+          const otherUserId = members.find((m: any) => m.user_id !== uid)?.user_id
+          if (otherUserId) {
+            const otherProfile = profileMap.get(otherUserId)
+            if (otherProfile) {
+              const name = otherProfile.display_name || getDisplayName(otherProfile.email)
+              otherMember = {
+                id: otherUserId,
+                email: otherProfile.email,
+                displayName: name,
+                initials: otherProfile.display_name
+                  ? otherProfile.display_name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()
+                  : getInitials(otherProfile.email),
+                color: stringToColor(otherUserId),
+                avatarUrl: otherProfile.avatar_url
+              }
             }
           }
         }
       }
 
-      const lastMsg = lastMessages.find(m => m.room_id === room.id)
-
       chatItems.push({
-        id: room.id,
-        name: room.name,
-        type: room.type || 'group',
-        last_message_at: lastMsg?.created_at ?? room.last_message_at ?? room.created_at,
-        last_message_content: lastMsg?.content ?? null,
-        last_message_user_id: lastMsg?.user_id ?? null,
-        member_count: memberCount,
+        id: room.room_id,
+        name: room.room_name,
+        type: room.room_type || 'group',
+        last_message_at: room.last_message_at,
+        last_message_content: room.last_message_content,
+        last_message_type: room.last_message_type,
+        last_message_user_id: room.last_message_user_id,
+        member_count: Number(room.member_count),
+        unread_count: Number(room.unread_count),
         other_member: otherMember
       })
     }
-
-    // Sort by last_message_at descending
-    chatItems.sort((a, b) => {
-      const aTime = a.last_message_at ? new Date(a.last_message_at).getTime() : 0
-      const bTime = b.last_message_at ? new Date(b.last_message_at).getTime() : 0
-      return bTime - aTime
-    })
 
     setChats(chatItems)
   }, [])
