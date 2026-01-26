@@ -1011,19 +1011,8 @@ function MessageBubble({
   // - Never show on system messages
   // Note: seenCount includes the viewer themselves
   const showSeenIndicator = !isSystem && seenCount > 0 && (isMe ? seenCount > 1 : true)
-
-  // Seen indicator component
-  const SeenIndicator = () => {
-    if (!showSeenIndicator) return null
-    // For own messages, subtract 1 to not count self (author viewing their own msg)
-    const displayCount = isMe ? seenCount - 1 : seenCount
-    if (displayCount <= 0) return null
-    return (
-      <div className={`text-[10px] text-stone-400 mt-0.5 ${isMe ? 'text-right' : 'text-left'}`}>
-        Seen by {displayCount}
-      </div>
-    )
-  }
+  const seenDisplayCount = isMe ? seenCount - 1 : seenCount
+  const shouldShowSeen = showSeenIndicator && seenDisplayCount > 0
 
   // System messages - compact
   if (isSystem) {
@@ -1072,98 +1061,115 @@ function MessageBubble({
     )
   }
 
-  // Reaction pills - attached to bottom of bubble (WhatsApp style)
-  const ReactionPills = () => {
+  // Meta row: seen indicator (left) + reaction chips (right) - WhatsApp/Telegram style
+  const MetaRow = () => {
     const emojis = Object.entries(reactionData)
-    if (emojis.length === 0) return null
+    const hasContent = shouldShowSeen || emojis.length > 0
+
+    if (!hasContent) return null
 
     return (
-      <div className={`absolute -bottom-3 ${isMe ? 'right-2' : 'left-2'} flex gap-0.5 z-10`}>
-        {emojis.map(([emoji, { count, hasMyReaction, userIds }]) => (
-          <div key={emoji} className="relative">
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                setShowReactorsFor(showReactorsFor === emoji ? null : emoji)
-              }}
-              className={`text-[11px] px-1.5 py-0.5 rounded-full flex items-center gap-0.5 shadow-sm transition-all ${
-                hasMyReaction
-                  ? 'bg-indigo-50 ring-1 ring-indigo-200'
-                  : 'bg-white ring-1 ring-stone-200'
-              }`}
-            >
-              <span>{emoji}</span>
-              {count > 1 && <span className="text-[10px] text-stone-500">{count}</span>}
-            </button>
+      <div className={`flex items-center gap-2 mt-1 ${isMe ? 'justify-end' : 'justify-start'}`}>
+        {/* Seen indicator - left side, can truncate */}
+        {shouldShowSeen && (
+          <span className="text-[10px] text-stone-400 truncate min-w-0 flex-shrink">
+            Seen by {seenDisplayCount}
+          </span>
+        )}
 
-            {/* Who reacted popover */}
-            {showReactorsFor === emoji && (
-              <div
-                className={`absolute z-50 bottom-full mb-1 ${isMe ? 'right-0' : 'left-0'} bg-white rounded-lg shadow-lg ring-1 ring-stone-200 py-1 min-w-[140px]`}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="px-2 py-1 border-b border-stone-100 flex items-center justify-between">
-                  <span className="text-sm">{emoji}</span>
-                  <button
-                    onClick={() => setShowReactorsFor(null)}
-                    className="p-0.5 text-stone-400 hover:text-stone-600"
+        {/* Spacer to push reactions right when there's seen text */}
+        {shouldShowSeen && emojis.length > 0 && <div className="flex-1 min-w-1" />}
+
+        {/* Reaction chips - right side, never truncated */}
+        {emojis.length > 0 && (
+          <div className="inline-flex items-center gap-0.5 flex-shrink-0">
+            {emojis.map(([emoji, { count, hasMyReaction, userIds }]) => (
+              <div key={emoji} className="relative">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setShowReactorsFor(showReactorsFor === emoji ? null : emoji)
+                  }}
+                  className={`inline-flex items-center gap-0.5 text-[11px] px-1.5 py-0.5 rounded-full shadow-sm transition-all ${
+                    hasMyReaction
+                      ? 'bg-indigo-50 ring-1 ring-indigo-200'
+                      : 'bg-white ring-1 ring-stone-200'
+                  }`}
+                >
+                  <span>{emoji}</span>
+                  {count > 1 && <span className="text-[10px] text-stone-500">{count}</span>}
+                </button>
+
+                {/* Who reacted popover */}
+                {showReactorsFor === emoji && (
+                  <div
+                    className={`absolute z-50 bottom-full mb-1 ${isMe ? 'right-0' : 'left-0'} bg-white rounded-lg shadow-lg ring-1 ring-stone-200 py-1 min-w-[140px]`}
+                    onClick={(e) => e.stopPropagation()}
                   >
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-                <div className="max-h-32 overflow-y-auto">
-                  {userIds.map(uid => {
-                    const reactor = users.get(uid)
-                    const isCurrentUser = uid === currentUserId
-                    return (
-                      <div
-                        key={uid}
-                        className="px-2 py-1.5 flex items-center gap-2 hover:bg-stone-50"
+                    <div className="px-2 py-1 border-b border-stone-100 flex items-center justify-between">
+                      <span className="text-sm">{emoji}</span>
+                      <button
+                        onClick={() => setShowReactorsFor(null)}
+                        className="p-0.5 text-stone-400 hover:text-stone-600"
                       >
-                        {reactor?.avatarUrl ? (
-                          <img src={reactor.avatarUrl} alt="" className="w-5 h-5 rounded-full object-cover" />
-                        ) : (
-                          <div className={`w-5 h-5 rounded-full ${reactor?.color ?? 'bg-stone-300'} flex items-center justify-center text-white text-[9px] font-medium`}>
-                            {reactor?.initials ?? '??'}
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                    <div className="max-h-32 overflow-y-auto">
+                      {userIds.map(uid => {
+                        const reactor = users.get(uid)
+                        const isCurrentUser = uid === currentUserId
+                        return (
+                          <div
+                            key={uid}
+                            className="px-2 py-1.5 flex items-center gap-2 hover:bg-stone-50"
+                          >
+                            {reactor?.avatarUrl ? (
+                              <img src={reactor.avatarUrl} alt="" className="w-5 h-5 rounded-full object-cover" />
+                            ) : (
+                              <div className={`w-5 h-5 rounded-full ${reactor?.color ?? 'bg-stone-300'} flex items-center justify-center text-white text-[9px] font-medium`}>
+                                {reactor?.initials ?? '??'}
+                              </div>
+                            )}
+                            <span className="text-xs text-stone-700 truncate">
+                              {reactor?.displayName ?? 'Unknown'}
+                              {isCurrentUser && <span className="text-stone-400"> (you)</span>}
+                            </span>
                           </div>
-                        )}
-                        <span className="text-xs text-stone-700 truncate">
-                          {reactor?.displayName ?? 'Unknown'}
-                          {isCurrentUser && <span className="text-stone-400"> (you)</span>}
-                        </span>
-                      </div>
-                    )
-                  })}
-                </div>
-                {/* Tap own reaction to toggle */}
-                {reactionData[emoji].hasMyReaction && (
-                  <button
-                    onClick={() => { onReact(message.id, emoji); setShowReactorsFor(null) }}
-                    className="w-full px-2 py-1.5 text-[11px] text-red-500 hover:bg-red-50 border-t border-stone-100 text-left"
-                  >
-                    Remove your {emoji}
-                  </button>
+                        )
+                      })}
+                    </div>
+                    {/* Tap own reaction to toggle */}
+                    {reactionData[emoji].hasMyReaction && (
+                      <button
+                        onClick={() => { onReact(message.id, emoji); setShowReactorsFor(null) }}
+                        className="w-full px-2 py-1.5 text-[11px] text-red-500 hover:bg-red-50 border-t border-stone-100 text-left"
+                      >
+                        Remove your {emoji}
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
+            ))}
+
+            {/* Add reaction button (shows when viewing reactions) */}
+            {showReactorsFor && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setShowReactorsFor(null)
+                  setShowContextMenu(true)
+                }}
+                className="inline-flex items-center text-[11px] px-1.5 py-0.5 rounded-full bg-white ring-1 ring-stone-200 shadow-sm text-stone-400 hover:text-stone-600"
+                aria-label="Add reaction"
+              >
+                +
+              </button>
             )}
           </div>
-        ))}
-
-        {/* Add reaction button (shows when viewing reactions) */}
-        {showReactorsFor && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              setShowReactorsFor(null)
-              setShowContextMenu(true)
-            }}
-            className="text-[11px] px-1.5 py-0.5 rounded-full bg-white ring-1 ring-stone-200 shadow-sm text-stone-400 hover:text-stone-600"
-            aria-label="Add reaction"
-          >
-            +
-          </button>
         )}
       </div>
     )
@@ -1197,7 +1203,7 @@ function MessageBubble({
     return (
       <div
         ref={rowRef}
-        className={`flex ${isMe ? 'flex-row-reverse' : 'flex-row'} group relative ${hasReactions ? 'mb-2' : ''} touch-pan-y select-none overflow-x-hidden`}
+        className={`flex ${isMe ? 'flex-row-reverse' : 'flex-row'} group relative touch-pan-y select-none`}
         style={{ WebkitTouchCallout: 'none', WebkitTapHighlightColor: 'transparent', transform: `translateX(${swipeOffset}px)`, transition: swipeOffset === 0 ? 'transform 0.2s ease-out' : 'none' }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
@@ -1248,9 +1254,8 @@ function MessageBubble({
               {formatTime(message.created_at)}
             </div>
             <HoverMenuButton />
-            <ReactionPills />
-            <SeenIndicator />
           </div>
+          <MetaRow />
         </div>
         {showLightbox && (
           <PhotoLightbox
@@ -1277,7 +1282,7 @@ function MessageBubble({
     return (
       <div
         ref={rowRef}
-        className={`flex ${isMe ? 'flex-row-reverse' : 'flex-row'} group relative ${hasReactions ? 'mb-2' : ''} touch-pan-y select-none overflow-x-hidden`}
+        className={`flex ${isMe ? 'flex-row-reverse' : 'flex-row'} group relative touch-pan-y select-none`}
         style={{ WebkitTouchCallout: 'none', WebkitTapHighlightColor: 'transparent', transform: `translateX(${swipeOffset}px)`, transition: swipeOffset === 0 ? 'transform 0.2s ease-out' : 'none' }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
@@ -1354,9 +1359,8 @@ function MessageBubble({
               </div>
             </div>
             <HoverMenuButton />
-            <ReactionPills />
-            <SeenIndicator />
           </div>
+          <MetaRow />
         </div>
         {showLightbox && (
           <PhotoLightbox
@@ -1383,7 +1387,7 @@ function MessageBubble({
     return (
       <div
         ref={rowRef}
-        className={`flex ${isMe ? 'flex-row-reverse' : 'flex-row'} group relative ${hasReactions ? 'mb-2' : ''} touch-pan-y select-none overflow-x-hidden`}
+        className={`flex ${isMe ? 'flex-row-reverse' : 'flex-row'} group relative touch-pan-y select-none`}
         style={{ WebkitTouchCallout: 'none', WebkitTapHighlightColor: 'transparent', transform: `translateX(${swipeOffset}px)`, transition: swipeOffset === 0 ? 'transform 0.2s ease-out' : 'none' }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
@@ -1447,9 +1451,8 @@ function MessageBubble({
               </div>
             </div>
             <HoverMenuButton />
-            <ReactionPills />
-            <SeenIndicator />
           </div>
+          <MetaRow />
         </div>
         {showContextMenu && (
           <MessageSelectionOverlay
@@ -1487,7 +1490,7 @@ function MessageBubble({
   return (
     <div
       ref={rowRef}
-      className={`flex ${isMe ? 'flex-row-reverse' : 'flex-row'} group relative ${hasReactions ? 'mb-2' : ''} touch-pan-y select-none overflow-x-hidden`}
+      className={`flex ${isMe ? 'flex-row-reverse' : 'flex-row'} group relative touch-pan-y select-none`}
       style={{ WebkitTouchCallout: 'none', WebkitTapHighlightColor: 'transparent', transform: `translateX(${swipeOffset}px)`, transition: swipeOffset === 0 ? 'transform 0.2s ease-out' : 'none' }}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
@@ -1536,9 +1539,8 @@ function MessageBubble({
             </div>
           </div>
           <HoverMenuButton />
-          <ReactionPills />
-          <SeenIndicator />
         </div>
+        <MetaRow />
       </div>
       {showContextMenu && (
         <MessageSelectionOverlay
