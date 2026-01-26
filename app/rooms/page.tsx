@@ -312,6 +312,8 @@ export default function ChatsPage() {
     // Fetch rooms with unread counts using efficient RPC
     const { data: roomsData, error: roomsErr } = await supabase.rpc('get_rooms_with_unread')
 
+    console.log('[lobby] RPC response:', { roomsData, roomsErr })
+
     if (roomsErr) {
       console.error('Error fetching rooms:', roomsErr)
       setError(roomsErr.message)
@@ -366,6 +368,7 @@ export default function ChatsPage() {
       })
     }
 
+    console.log('[lobby] chatItems:', chatItems.map(c => ({ id: c.id, name: c.name, unread: c.unread_count })))
     setChats(chatItems)
   }, [])
 
