@@ -4,6 +4,17 @@ import { useEffect, useMemo, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { useRouter } from 'next/navigation'
 
+// Prompt mode options - matches room page
+const PROMPT_MODES = [
+  { value: 'fun', label: 'Fun', description: 'Light, playful questions to keep things moving' },
+  { value: 'family', label: 'Family', description: 'Warm prompts for families and close relatives' },
+  { value: 'deep', label: 'Deep', description: 'Reflective questions for meaningful conversations' },
+  { value: 'flirty', label: 'Flirty', description: 'Bold, playful prompts with a bit of spice' },
+  { value: 'couple', label: 'Couple', description: 'Designed for partners to connect and reflect' },
+] as const
+
+type PromptMode = typeof PROMPT_MODES[number]['value']
+
 type ChatItem = {
   id: string
   name: string
@@ -251,6 +262,7 @@ export default function ChatsPage() {
   const [dmEmail, setDmEmail] = useState('')
   const [groupName, setGroupName] = useState('')
   const [groupEmails, setGroupEmails] = useState('')
+  const [groupPromptMode, setGroupPromptMode] = useState<PromptMode | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
   const loadChats = useCallback(async (uid: string) => {
@@ -445,7 +457,7 @@ export default function ChatsPage() {
   }
 
   const createGroup = async () => {
-    if (!groupName.trim()) return
+    if (!groupName.trim() || !groupPromptMode) return
     setSubmitting(true)
     setError(null)
 
@@ -457,7 +469,8 @@ export default function ChatsPage() {
 
       const { data: roomId, error: err } = await supabase.rpc('create_group_with_members', {
         p_name: groupName.trim(),
-        p_member_emails: emails
+        p_member_emails: emails,
+        p_prompt_mode: groupPromptMode
       })
 
       if (err) throw err
@@ -465,6 +478,7 @@ export default function ChatsPage() {
       setShowNewGroup(false)
       setGroupName('')
       setGroupEmails('')
+      setGroupPromptMode(null)
       router.push(`/room/${roomId}`)
     } catch (e: any) {
       setError(e.message || 'Failed to create group')
@@ -620,7 +634,7 @@ export default function ChatsPage() {
       </Modal>
 
       {/* New Group Modal */}
-      <Modal isOpen={showNewGroup} onClose={() => setShowNewGroup(false)} title="New Group">
+      <Modal isOpen={showNewGroup} onClose={() => { setShowNewGroup(false); setGroupName(''); setGroupEmails(''); setGroupPromptMode(null) }} title="New Group">
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-stone-700 mb-1">Group Name</label>
@@ -631,6 +645,42 @@ export default function ChatsPage() {
               className="w-full bg-stone-50 border-0 rounded-xl px-4 py-3 text-sm placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
             />
           </div>
+
+          {/* Prompt Mode Selector */}
+          <div>
+            <label className="block text-sm font-medium text-stone-700 mb-1">Choose the vibe for this group</label>
+            <div className="space-y-1.5">
+              {PROMPT_MODES.map(mode => (
+                <button
+                  key={mode.value}
+                  type="button"
+                  onClick={() => setGroupPromptMode(mode.value)}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm transition-colors ${
+                    groupPromptMode === mode.value
+                      ? 'bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200'
+                      : 'bg-stone-50 hover:bg-stone-100 text-stone-700'
+                  }`}
+                >
+                  <div className="text-left">
+                    <div className="font-medium">{mode.label}</div>
+                    <div className="text-xs text-stone-400">{mode.description}</div>
+                  </div>
+                  {groupPromptMode === mode.value && (
+                    <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </button>
+              ))}
+            </div>
+            {/* Couple mode note for groups with >1 other member */}
+            {groupPromptMode === 'couple' && groupEmails.split(/[,\n]/).filter(e => e.trim().length > 0).length > 1 && (
+              <p className="text-xs text-amber-600 mt-2 px-1">
+                Couple mode works best in 1:1 chats.
+              </p>
+            )}
+          </div>
+
           <div>
             <label className="block text-sm font-medium text-stone-700 mb-1">
               Add Members (optional)
@@ -648,7 +698,7 @@ export default function ChatsPage() {
           </div>
           <button
             onClick={createGroup}
-            disabled={!groupName.trim() || submitting}
+            disabled={!groupName.trim() || !groupPromptMode || submitting}
             className="w-full bg-gradient-to-r from-indigo-500 to-violet-500 text-white py-3 rounded-xl text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:from-indigo-600 hover:to-violet-600"
           >
             {submitting ? 'Creating...' : 'Create Group'}
