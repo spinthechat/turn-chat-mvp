@@ -734,6 +734,7 @@ function MessageBubble({
   onProfileClick,
   groupPosition = 'single',
   seenCount = 0,
+  isSeenBoundary = false,
   onVisible,
 }: {
   message: Msg
@@ -751,6 +752,7 @@ function MessageBubble({
   onProfileClick: (userId: string) => void
   groupPosition?: MessageGroupPosition
   seenCount?: number
+  isSeenBoundary?: boolean
   onVisible?: () => void
 }) {
   const [showContextMenu, setShowContextMenu] = useState(false)
@@ -1031,13 +1033,16 @@ function MessageBubble({
   const hasReactions = Object.keys(reactionData).length > 0
 
   // Show "Seen by N" only when:
+  // - This message is a "boundary" (next message has different seenCount or this is the last message)
   // - For own messages: only if seenCount > 1 (meaning someone else besides author saw it)
   // - For others' messages: show if seenCount > 0
   // - Never show on system messages
   // Note: seenCount includes the viewer themselves
+  // This creates a WhatsApp-like collapsed view where seen indicators only appear
+  // at the last message of a contiguous run with the same seen count.
   const showSeenIndicator = !isSystem && seenCount > 0 && (isMe ? seenCount > 1 : true)
   const seenDisplayCount = isMe ? seenCount - 1 : seenCount
-  const shouldShowSeen = showSeenIndicator && seenDisplayCount > 0
+  const shouldShowSeen = showSeenIndicator && seenDisplayCount > 0 && isSeenBoundary
 
   // System messages - compact
   if (isSystem) {
@@ -3763,6 +3768,13 @@ export default function RoomPage() {
               const isFirstOrSingle = groupPosition === 'first' || groupPosition === 'single'
               const spacingClass = index === 0 ? '' : isFirstOrSingle ? 'mt-2' : 'mt-0.5'
 
+              // Compute if this message is a "seen boundary" - where we should show the seen indicator
+              // A boundary is where the seenCount differs from the next message, or this is the last message
+              const currentSeenCount = seenCounts.get(m.id) ?? 0
+              const nextMessage = messages[index + 1]
+              const nextSeenCount = nextMessage ? (seenCounts.get(nextMessage.id) ?? 0) : -1
+              const isSeenBoundary = nextMessage === undefined || currentSeenCount !== nextSeenCount
+
               return (
                 <div
                   key={m.id}
@@ -3783,7 +3795,8 @@ export default function RoomPage() {
                     onScrollToMessage={scrollToMessage}
                     onProfileClick={handleProfileClick}
                     groupPosition={groupPosition}
-                    seenCount={seenCounts.get(m.id) ?? 0}
+                    seenCount={currentSeenCount}
+                    isSeenBoundary={isSeenBoundary}
                     onVisible={() => markMessageSeen(m.id)}
                   />
                 </div>
