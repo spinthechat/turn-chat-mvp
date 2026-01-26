@@ -32,13 +32,31 @@ export const viewport: Viewport = {
   themeColor: '#2c4a7c',
 }
 
+// Script to prevent flash of wrong theme on load
+// This runs before React hydration to set the correct class
+const themeScript = `
+  (function() {
+    try {
+      var stored = localStorage.getItem('theme-preference');
+      var theme = stored || 'system';
+      var isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      if (isDark) {
+        document.documentElement.classList.add('dark');
+      }
+    } catch (e) {}
+  })();
+`
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body className={inter.className}>
         {children}
       </body>
