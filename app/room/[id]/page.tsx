@@ -577,8 +577,22 @@ function MessageBubble({
   const isLastInGroup = groupPosition === 'last' || groupPosition === 'single'
   const isGrouped = groupPosition !== 'single'
 
-  // Parse turn response content
-  const hasTurnPrompt = isTurnResponse && message.content.startsWith('Reply to "')
+  // Parse turn response content - check for photo turn (JSON) first
+  const photoTurnData = useMemo(() => {
+    if (!isTurnResponse) return null
+    try {
+      const parsed = JSON.parse(message.content)
+      if (parsed.kind === 'photo_turn' && parsed.image_url) {
+        return { prompt: parsed.prompt, imageUrl: parsed.image_url }
+      }
+    } catch {
+      // Not JSON, regular text turn response
+    }
+    return null
+  }, [isTurnResponse, message.content])
+
+  const isPhotoTurn = photoTurnData !== null
+  const hasTurnPrompt = isTurnResponse && !isPhotoTurn && message.content.startsWith('Reply to "')
   const promptLine = hasTurnPrompt ? message.content.split('\n\n')[0] : null
   const responseContent = hasTurnPrompt
     ? message.content.split('\n\n').slice(1).join('\n\n')
@@ -612,9 +626,23 @@ function MessageBubble({
   // Quoted reply preview component
   const QuotedReply = () => {
     if (!replyToMessage) return null
-    const previewText = replyToMessage.type === 'image'
-      ? '📷 Photo'
-      : replyToMessage.content.slice(0, 60) + (replyToMessage.content.length > 60 ? '...' : '')
+    let previewText: string
+    if (replyToMessage.type === 'image') {
+      previewText = '📷 Photo'
+    } else if (replyToMessage.type === 'turn_response') {
+      try {
+        const parsed = JSON.parse(replyToMessage.content)
+        if (parsed.kind === 'photo_turn') {
+          previewText = '📷 Photo Turn'
+        } else {
+          previewText = replyToMessage.content.slice(0, 60) + (replyToMessage.content.length > 60 ? '...' : '')
+        }
+      } catch {
+        previewText = replyToMessage.content.slice(0, 60) + (replyToMessage.content.length > 60 ? '...' : '')
+      }
+    } else {
+      previewText = replyToMessage.content.slice(0, 60) + (replyToMessage.content.length > 60 ? '...' : '')
+    }
 
     return (
       <div
@@ -813,6 +841,84 @@ function MessageBubble({
         {showLightbox && (
           <PhotoLightbox
             imageUrl={message.content}
+            onClose={() => setShowLightbox(false)}
+          />
+        )}
+        {showEmojiPicker && (
+          <EmojiPickerPortal
+            anchorRef={bubbleRef}
+            emojis={EMOJI_OPTIONS}
+            onSelect={(emoji) => { onReact(message.id, emoji); setShowEmojiPicker(false); setShowActions(false) }}
+            onClose={() => { setShowEmojiPicker(false); setShowActions(false) }}
+          />
+        )}
+      </div>
+    )
+  }
+
+  // Photo turn response - turn with image (distinct from regular image)
+  if (isPhotoTurn && photoTurnData) {
+    return (
+      <div className={`flex ${isMe ? 'flex-row-reverse' : 'flex-row'} group relative ${hasReactions ? 'mb-2' : ''}`}>
+        <div className={`w-0.5 rounded-full self-stretch ${isMe ? 'bg-indigo-500' : 'bg-indigo-300'} ${isMe ? 'ml-1.5' : 'mr-1.5'}`} />
+        {/* Avatar: visible only on last message in group, invisible spacer otherwise */}
+        <div className={`flex-shrink-0 ${isMe ? 'ml-1.5' : 'mr-1.5'}`}>
+          {isLastInGroup ? (
+            <Avatar user={user} size="xs" className="mt-0.5" />
+          ) : (
+            <div className="w-5 h-5" />
+          )}
+        </div>
+        <div className="flex flex-col max-w-[70%]">
+          {/* Name: visible only on first message in group */}
+          {showMeta && !isMe && isFirstInGroup && (
+            <span className={`text-[10px] font-medium mb-0.5 ${user?.textColor ?? 'text-stone-500'}`}>
+              {user?.displayName ?? 'Unknown'}
+            </span>
+          )}
+          <div ref={bubbleRef} className="relative" onClick={handleMessageClick}>
+            <QuotedReply />
+            <div className={`rounded-lg overflow-hidden ${
+              isMe
+                ? 'bg-gradient-to-br from-indigo-500 to-violet-500 text-white'
+                : 'bg-white ring-1 ring-indigo-200 text-stone-900'
+            }`}>
+              <div className="px-2.5 pt-1.5 pb-1">
+                <div className={`text-[9px] font-semibold uppercase tracking-wide mb-1 flex items-center gap-1 ${isMe ? 'text-white/70' : 'text-indigo-500'}`}>
+                  <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  Photo Turn
+                </div>
+                {photoTurnData.prompt && (
+                  <div className={`text-[11px] italic leading-snug ${isMe ? 'text-white/80' : 'text-indigo-600'}`}>
+                    &ldquo;{photoTurnData.prompt}&rdquo;
+                  </div>
+                )}
+              </div>
+              <div
+                className="cursor-pointer"
+                onClick={(e) => { e.stopPropagation(); setShowLightbox(true) }}
+              >
+                <img
+                  src={photoTurnData.imageUrl}
+                  alt="Photo turn response"
+                  className="w-full max-h-48 object-cover"
+                  loading="lazy"
+                />
+              </div>
+              <div className={`text-[10px] px-2.5 py-1 ${isMe ? 'text-white/50' : 'text-stone-400'}`}>
+                {formatTime(message.created_at)}
+              </div>
+            </div>
+            <ActionButtons />
+            <ReactionPills />
+          </div>
+        </div>
+        {showLightbox && (
+          <PhotoLightbox
+            imageUrl={photoTurnData.imageUrl}
             onClose={() => setShowLightbox(false)}
           />
         )}
@@ -2731,7 +2837,15 @@ export default function RoomPage() {
                   Replying to {replyingTo.user_id ? getUserInfo(replyingTo.user_id)?.displayName : 'message'}
                 </div>
                 <div className="text-xs text-stone-500 truncate">
-                  {replyingTo.type === 'image' ? '📷 Photo' : replyingTo.content.slice(0, 50)}
+                  {replyingTo.type === 'image' ? '📷 Photo' : (() => {
+                    if (replyingTo.type === 'turn_response') {
+                      try {
+                        const parsed = JSON.parse(replyingTo.content)
+                        if (parsed.kind === 'photo_turn') return '📷 Photo Turn'
+                      } catch { /* not JSON */ }
+                    }
+                    return replyingTo.content.slice(0, 50)
+                  })()}
                 </div>
               </div>
               <button
