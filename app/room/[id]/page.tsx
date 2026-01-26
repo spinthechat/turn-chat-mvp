@@ -200,6 +200,76 @@ function EmojiPickerPortal({
   )
 }
 
+// Photo Lightbox - fullscreen image viewer
+function PhotoLightbox({
+  imageUrl,
+  onClose,
+}: {
+  imageUrl: string
+  onClose: () => void
+}) {
+  const overlayRef = useRef<HTMLDivElement>(null)
+
+  // Prevent background scrolling when lightbox is open
+  useEffect(() => {
+    const originalOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = originalOverflow
+    }
+  }, [])
+
+  // Handle ESC key to close
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose()
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [onClose])
+
+  // Close when clicking overlay (not the image)
+  const handleOverlayClick = (e: React.MouseEvent) => {
+    if (e.target === overlayRef.current) {
+      onClose()
+    }
+  }
+
+  return createPortal(
+    <div
+      ref={overlayRef}
+      onClick={handleOverlayClick}
+      className="fixed inset-0 z-[9999] bg-black/90 flex items-center justify-center"
+      style={{ touchAction: 'pinch-zoom' }}
+    >
+      {/* Close button */}
+      <button
+        onClick={onClose}
+        className="absolute top-4 right-4 z-10 p-2 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors"
+        aria-label="Close"
+      >
+        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+
+      {/* Image container with scroll/zoom support */}
+      <div className="w-full h-full overflow-auto flex items-center justify-center p-4">
+        <img
+          src={imageUrl}
+          alt="Full size"
+          className="max-w-full max-h-full object-contain select-none"
+          style={{ touchAction: 'pinch-zoom' }}
+          onClick={(e) => e.stopPropagation()}
+        />
+      </div>
+    </div>,
+    document.body
+  )
+}
+
 type Msg = {
   id: string
   room_id: string
@@ -495,6 +565,7 @@ function MessageBubble({
   const [showActions, setShowActions] = useState(false)
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [showReactorsFor, setShowReactorsFor] = useState<string | null>(null)
+  const [showLightbox, setShowLightbox] = useState(false)
   const bubbleRef = useRef<HTMLDivElement>(null)
 
   const isTurnResponse = message.type === 'turn_response'
@@ -699,6 +770,12 @@ function MessageBubble({
     }
   }
 
+  // Handle image tap - open lightbox
+  const handleImageClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    setShowLightbox(true)
+  }
+
   // Image messages - compact (with grouping support)
   if (isImage) {
     return (
@@ -720,7 +797,10 @@ function MessageBubble({
           )}
           <div ref={bubbleRef} className="relative" onClick={handleMessageClick}>
             <QuotedReply />
-            <div className={`rounded-lg overflow-hidden cursor-pointer ${isMe ? '' : 'ring-1 ring-stone-200'}`}>
+            <div
+              className={`rounded-lg overflow-hidden cursor-pointer ${isMe ? '' : 'ring-1 ring-stone-200'}`}
+              onClick={handleImageClick}
+            >
               <img src={message.content} alt="Photo" className="max-w-full max-h-48 object-contain bg-stone-100" loading="lazy" />
             </div>
             <div className={`text-[10px] mt-0.5 ${isMe ? 'text-right text-stone-400' : 'text-stone-400'}`}>
@@ -730,6 +810,12 @@ function MessageBubble({
             <ReactionPills />
           </div>
         </div>
+        {showLightbox && (
+          <PhotoLightbox
+            imageUrl={message.content}
+            onClose={() => setShowLightbox(false)}
+          />
+        )}
         {showEmojiPicker && (
           <EmojiPickerPortal
             anchorRef={bubbleRef}
