@@ -345,7 +345,7 @@ type RoomInfo = {
   name: string
   prompt_interval_minutes: number
   last_active_at: string | null
-  prompt_mode: 'fun' | 'family' | 'deep' | 'flirty'
+  prompt_mode: 'fun' | 'family' | 'deep' | 'flirty' | 'couple'
 }
 
 // Prompt mode options for extensibility
@@ -354,6 +354,7 @@ const PROMPT_MODES = [
   { value: 'family', label: 'Family', description: 'Warm prompts for family groups' },
   { value: 'deep', label: 'Deep', description: 'More reflective questions. Answer at your own depth.' },
   { value: 'flirty', label: 'Flirty', description: 'Playful, bold prompts (not explicit).' },
+  { value: 'couple', label: 'Couple', description: 'Designed for partners — reflective, connective prompts.' },
 ] as const
 
 // Generate consistent colors from user ID
@@ -1166,7 +1167,7 @@ function GroupDetailsDrawer({
   onAddMember: (email: string) => Promise<{ success: boolean; error?: string; inviteCode?: string; alreadyMember?: boolean; alreadyInvited?: boolean }>
   onGetInviteLink: () => Promise<string | null>
   onUpdateRoomName: (name: string) => Promise<{ success: boolean; error?: string }>
-  onUpdatePromptMode: (mode: 'fun' | 'family' | 'deep' | 'flirty') => void
+  onUpdatePromptMode: (mode: 'fun' | 'family' | 'deep' | 'flirty' | 'couple') => void
 }) {
   const [copied, setCopied] = useState(false)
   const [copiedInvite, setCopiedInvite] = useState(false)
@@ -1530,6 +1531,11 @@ function GroupDetailsDrawer({
                 </button>
               ))}
             </div>
+            {roomInfo?.prompt_mode === 'couple' && members.length > 2 && (
+              <p className="text-xs text-amber-600 mt-2 px-1">
+                Couple mode works best in 1:1 chats.
+              </p>
+            )}
           </div>
 
           {/* Turn Notifications */}
@@ -2753,7 +2759,7 @@ export default function RoomPage() {
     return { success: true }
   }
 
-  const updateRoomPromptMode = async (mode: 'fun' | 'family' | 'deep' | 'flirty') => {
+  const updateRoomPromptMode = async (mode: 'fun' | 'family' | 'deep' | 'flirty' | 'couple') => {
     setError(null)
     const { error } = await supabase.rpc('update_room_prompt_mode', {
       p_room_id: roomId,
