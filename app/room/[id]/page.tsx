@@ -2601,6 +2601,10 @@ export default function RoomPage() {
   const [isLoading, setIsLoading] = useState(true)
 
   const [messages, setMessages] = useState<Msg[]>([])
+  const [hasMoreMessages, setHasMoreMessages] = useState(true)
+  const [loadingOlderMessages, setLoadingOlderMessages] = useState(false)
+  const MESSAGES_PER_PAGE = 50
+
   const [chatText, setChatText] = useState('')
   const [turnText, setTurnText] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -2750,6 +2754,28 @@ export default function RoomPage() {
     return () => clearInterval(interval)
   }, [isWaitingForCooldown])
 
+  // Pre-compute message metadata (group positions, seen boundaries) to avoid recalculating in render loop
+  const messageMetadata = useMemo(() => {
+    const metadata = new Map<string, { groupPosition: MessageGroupPosition; isSeenBoundary: boolean; spacingClass: string }>()
+
+    for (let index = 0; index < messages.length; index++) {
+      const m = messages[index]
+      const groupPosition = getMessageGroupPosition(messages, index)
+      const isFirstOrSingle = groupPosition === 'first' || groupPosition === 'single'
+      const spacingClass = index === 0 ? '' : isFirstOrSingle ? 'mt-2' : 'mt-0.5'
+
+      // Compute seen boundary
+      const currentSeenCount = seenCounts.get(m.id) ?? 0
+      const nextMessage = messages[index + 1]
+      const nextSeenCount = nextMessage ? (seenCounts.get(nextMessage.id) ?? 0) : -1
+      const isSeenBoundary = nextMessage === undefined || currentSeenCount !== nextSeenCount
+
+      metadata.set(m.id, { groupPosition, isSeenBoundary, spacingClass })
+    }
+
+    return metadata
+  }, [messages, seenCounts])
+
   // Check if user has nudged this turn - re-check when turn advances
   useEffect(() => {
     if (!userId || !roomId) return
@@ -2765,6 +2791,60 @@ export default function RoomPage() {
     const timer = setTimeout(() => setNudgeToast(null), 3000)
     return () => clearTimeout(timer)
   }, [nudgeToast])
+
+  // Load older messages (pagination)
+  const loadOlderMessages = useCallback(async () => {
+    if (loadingOlderMessages || !hasMoreMessages || messages.length === 0) return
+
+    setLoadingOlderMessages(true)
+    const oldestMessage = messages[0]
+    const scrollContainer = scrollContainerRef.current
+    const previousScrollHeight = scrollContainer?.scrollHeight ?? 0
+
+    try {
+      const { data: olderMsgs, error } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('room_id', roomId)
+        .lt('created_at', oldestMessage.created_at)
+        .order('created_at', { ascending: false })
+        .limit(MESSAGES_PER_PAGE)
+
+      if (error) {
+        console.error('Error loading older messages:', error)
+        return
+      }
+
+      if (olderMsgs && olderMsgs.length > 0) {
+        const sortedOlder = olderMsgs.reverse() as Msg[]
+        setMessages(prev => [...sortedOlder, ...prev])
+        setHasMoreMessages(olderMsgs.length >= MESSAGES_PER_PAGE)
+
+        // Fetch reactions for older messages
+        const olderMsgIds = sortedOlder.map(m => m.id)
+        const { data: reactionsData } = await supabase
+          .from('message_reactions')
+          .select('*')
+          .in('message_id', olderMsgIds)
+
+        if (reactionsData && reactionsData.length > 0) {
+          setReactions(prev => [...prev, ...reactionsData as Reaction[]])
+        }
+
+        // Maintain scroll position after prepending
+        requestAnimationFrame(() => {
+          if (scrollContainer) {
+            const newScrollHeight = scrollContainer.scrollHeight
+            scrollContainer.scrollTop = newScrollHeight - previousScrollHeight
+          }
+        })
+      } else {
+        setHasMoreMessages(false)
+      }
+    } finally {
+      setLoadingOlderMessages(false)
+    }
+  }, [loadingOlderMessages, hasMoreMessages, messages, roomId])
 
   const handleNudge = async () => {
     if (!userId || nudgeLoading || hasNudgedThisTurn || isMyTurn || !currentTurnUserId) return
@@ -2906,21 +2986,40 @@ export default function RoomPage() {
       const email = authData.user.email ?? ''
       setUserId(uid)
 
-      // Fetch room info
-      const { data: room } = await supabase
-        .from('rooms')
-        .select('id, name, type, prompt_interval_minutes, last_active_at, prompt_mode')
-        .eq('id', roomId)
-        .single()
+      // PARALLEL FETCH: Room, Members, Session, Messages all at once
+      const [roomResult, membersResult, sessResult, msgsResult] = await Promise.all([
+        supabase
+          .from('rooms')
+          .select('id, name, type, prompt_interval_minutes, last_active_at, prompt_mode')
+          .eq('id', roomId)
+          .single(),
+        supabase
+          .from('room_members')
+          .select('user_id, role, prompt_interval_minutes')
+          .eq('room_id', roomId),
+        supabase
+          .from('turn_sessions')
+          .select('*')
+          .eq('room_id', roomId)
+          .maybeSingle(),
+        supabase
+          .from('messages')
+          .select('*')
+          .eq('room_id', roomId)
+          .order('created_at', { ascending: false })
+          .limit(MESSAGES_PER_PAGE)
+      ])
 
+      const room = roomResult.data
+      const members = membersResult.data
+      const sess = sessResult.data
+      const msgs = msgsResult.data
+      const msgsErr = msgsResult.error
+
+      // Set room info
       if (room) setRoomInfo({ ...room, type: room.type || 'group', prompt_mode: room.prompt_mode || 'fun' } as RoomInfo)
 
-      // Fetch room members
-      const { data: members } = await supabase
-        .from('room_members')
-        .select('user_id, role, prompt_interval_minutes')
-        .eq('room_id', roomId)
-
+      // Set members and host
       if (members) {
         setRoomMembers(members as RoomMember[])
         const meMember = members.find(m => m.user_id === uid)
@@ -2935,11 +3034,14 @@ export default function RoomPage() {
         }
       }
 
-      // Add current user
-      // Fetch profiles with new fields
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, email, display_name, avatar_url, bio')
+      // Fetch profiles ONLY for room members (not all profiles!)
+      const memberIds = members?.map(m => m.user_id) ?? []
+      const { data: profiles } = memberIds.length > 0
+        ? await supabase
+            .from('profiles')
+            .select('id, email, display_name, avatar_url, bio')
+            .in('id', memberIds)
+        : { data: [] }
 
       setUsers(prev => {
         const next = new Map(prev)
@@ -3008,34 +3110,23 @@ export default function RoomPage() {
         return next
       })
 
-      // Fetch session
-      const { data: sess } = await supabase
-        .from('turn_sessions')
-        .select('*')
-        .eq('room_id', roomId)
-        .maybeSingle()
-
+      // Set session
       if (sess && (sess as any).is_active) {
         setTurnSession(sess as TurnSession)
       } else {
         setTurnSession(null)
       }
 
-      // Fetch messages
-      const { data: msgs, error: msgsErr } = await supabase
-        .from('messages')
-        .select('*')
-        .eq('room_id', roomId)
-        .order('created_at', { ascending: true })
-        .limit(200)
-
+      // Set messages (reverse to ascending order for display)
       if (msgsErr) {
         setError(msgsErr.message)
       } else {
-        setMessages((msgs ?? []) as Msg[])
+        const sortedMsgs = (msgs ?? []).reverse() as Msg[]
+        setMessages(sortedMsgs)
+        setHasMoreMessages((msgs?.length ?? 0) >= MESSAGES_PER_PAGE)
 
-        // Fetch reactions for these messages
-        const msgIds = (msgs ?? []).map(m => m.id)
+        // Fetch reactions for these messages (parallel with seen counts would require messages first)
+        const msgIds = sortedMsgs.map(m => m.id)
         if (msgIds.length > 0) {
           const { data: reactionsData } = await supabase
             .from('message_reactions')
@@ -3880,26 +3971,56 @@ export default function RoomPage() {
               {error}
             </div>
           )}
-          {messages.length === 0 ? (
+          {isLoading ? (
+            /* Skeleton loading state */
+            <div className="space-y-3 animate-pulse">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className={`flex ${i % 2 === 0 ? 'justify-start' : 'justify-end'}`}>
+                  <div className={`flex gap-2 max-w-[75%] ${i % 2 === 0 ? '' : 'flex-row-reverse'}`}>
+                    <div className="w-8 h-8 rounded-full bg-stone-200 dark:bg-stone-700 flex-shrink-0" />
+                    <div className="space-y-1.5">
+                      <div className={`h-4 bg-stone-200 dark:bg-stone-700 rounded-lg ${i % 3 === 0 ? 'w-48' : i % 3 === 1 ? 'w-32' : 'w-56'}`} />
+                      <div className={`h-4 bg-stone-200 dark:bg-stone-700 rounded-lg ${i % 2 === 0 ? 'w-36' : 'w-24'}`} />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : messages.length === 0 ? (
             <EmptyState gameActive={gameActive} isHost={isHost} />
           ) : (
-            messages.map((m, index) => {
+            <>
+              {/* Load older messages button */}
+              {hasMoreMessages && (
+                <div className="flex justify-center py-2 mb-2">
+                  <button
+                    onClick={loadOlderMessages}
+                    disabled={loadingOlderMessages}
+                    className="px-4 py-2 text-sm text-stone-500 hover:text-stone-700 hover:bg-stone-100 rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    {loadingOlderMessages ? (
+                      <span className="flex items-center gap-2">
+                        <div className="w-4 h-4 border-2 border-stone-300 border-t-stone-600 rounded-full animate-spin" />
+                        Loading...
+                      </span>
+                    ) : (
+                      'Load older messages'
+                    )}
+                  </button>
+                </div>
+              )}
+              {messages.map((m) => {
+              // Use pre-computed metadata for performance
+              const meta = messageMetadata.get(m.id)
+              const groupPosition = meta?.groupPosition ?? 'single'
+              const spacingClass = meta?.spacingClass ?? ''
+              const isSeenBoundary = meta?.isSeenBoundary ?? false
+              const currentSeenCount = seenCounts.get(m.id) ?? 0
+
               const replyTo = m.reply_to_message_id
                 ? messages.find(msg => msg.id === m.reply_to_message_id)
                 : null
               const replyToUser = replyTo?.user_id ? getUserInfo(replyTo.user_id) : null
-              const groupPosition = getMessageGroupPosition(messages, index)
-
-              // Spacing: first/single get full spacing, middle/last get reduced spacing for stacking
-              const isFirstOrSingle = groupPosition === 'first' || groupPosition === 'single'
-              const spacingClass = index === 0 ? '' : isFirstOrSingle ? 'mt-2' : 'mt-0.5'
-
-              // Compute if this message is a "seen boundary" - where we should show the seen indicator
-              // A boundary is where the seenCount differs from the next message, or this is the last message
-              const currentSeenCount = seenCounts.get(m.id) ?? 0
-              const nextMessage = messages[index + 1]
-              const nextSeenCount = nextMessage ? (seenCounts.get(nextMessage.id) ?? 0) : -1
-              const isSeenBoundary = nextMessage === undefined || currentSeenCount !== nextSeenCount
 
               return (
                 <div
@@ -3927,7 +4048,8 @@ export default function RoomPage() {
                   />
                 </div>
               )
-            })
+            })}
+            </>
           )}
           <div ref={bottomRef} />
         </div>
