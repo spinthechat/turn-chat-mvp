@@ -391,6 +391,7 @@ DECLARE
   sess RECORD;
   curr_turn_user UUID;
   v_result JSON;
+  photo_turn_content TEXT;
 BEGIN
   IF caller_id IS NULL THEN
     RAISE EXCEPTION 'Not authenticated';
@@ -418,11 +419,16 @@ BEGIN
     RAISE EXCEPTION 'Photo URL is required';
   END IF;
 
-  INSERT INTO messages (room_id, user_id, type, content)
-  VALUES (p_room_id, caller_id, 'image', p_image_url);
+  -- Build JSON content for photo turn response (stores prompt snapshot)
+  photo_turn_content := json_build_object(
+    'kind', 'photo_turn',
+    'prompt', sess.prompt_text,
+    'image_url', p_image_url
+  )::TEXT;
 
+  -- Insert as turn_response with JSON content (NOT 'image' type)
   INSERT INTO messages (room_id, user_id, type, content)
-  VALUES (p_room_id, NULL, 'system', 'Photo prompt completed!');
+  VALUES (p_room_id, caller_id, 'turn_response', photo_turn_content);
 
   -- Advance turn using canonical function
   v_result := advance_turn(p_room_id, 'completed', NULL);
