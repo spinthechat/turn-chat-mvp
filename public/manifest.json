@@ -1,12 +1,15 @@
 {
+  "id": "/",
   "name": "Spin the Chat",
   "short_name": "SpinChat",
   "description": "A group chat with turn-based prompts",
-  "start_url": "/",
+  "start_url": "/?v=2",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#fafaf9",
   "theme_color": "#2c4a7c",
   "orientation": "portrait",
+  "categories": ["social", "communication"],
   "icons": [
     {
       "src": "/icons/icon-192.png",
@@ -31,6 +34,12 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
+    },
+    {
+      "src": "/icons/mono-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "monochrome"
     }
   ]
 }
