@@ -766,9 +766,9 @@ function MessageBubble({
   // Long press threshold (400ms)
   const LONG_PRESS_DURATION = 400
   // Swipe threshold to trigger reply (pixels)
-  const SWIPE_THRESHOLD = 80
-  // Max swipe distance for visual feedback
-  const MAX_SWIPE = 100
+  const SWIPE_THRESHOLD = 48
+  // Max swipe distance for visual feedback (subtle, not too far)
+  const MAX_SWIPE = 56
   // Movement threshold to cancel long press
   const MOVE_CANCEL_THRESHOLD = 10
 
@@ -837,17 +837,23 @@ function MessageBubble({
         gestureState.current.isLongPressing = false
 
         // Determine if this is a horizontal swipe (swipe-to-reply)
-        if (absX > absY && absX > 15) {
+        // Use stricter check: absX > 12 AND absX > absY * 1.2
+        if (absX > 12 && absX > absY * 1.2 && deltaX > 0) {
           gestureState.current.swipeLocked = true
           gestureState.current.isSwiping = true
+          // Prevent browser horizontal scroll when we lock into swipe mode
+          e.preventDefault()
         }
+        // If vertical scroll dominates, let it happen naturally (don't set isSwiping)
       }
     }
 
-    // If swiping, update the swipe offset
+    // If swiping, update the swipe offset and prevent default
     if (gestureState.current.swipeLocked && gestureState.current.isSwiping) {
-      // Only allow right swipe (positive deltaX)
-      const offset = Math.max(0, Math.min(MAX_SWIPE, deltaX))
+      // Prevent browser's horizontal panning during our swipe
+      e.preventDefault()
+      // Only allow right swipe (positive deltaX), clamp to 0-56px for subtle feedback
+      const offset = Math.max(0, Math.min(56, deltaX))
       setSwipeOffset(offset)
     }
   }, [])
@@ -1182,7 +1188,7 @@ function MessageBubble({
     return (
       <div
         ref={rowRef}
-        className={`flex ${isMe ? 'flex-row-reverse' : 'flex-row'} group relative ${hasReactions ? 'mb-2' : ''} touch-pan-y select-none`}
+        className={`flex ${isMe ? 'flex-row-reverse' : 'flex-row'} group relative ${hasReactions ? 'mb-2' : ''} touch-pan-y select-none overflow-hidden`}
         style={{ WebkitTouchCallout: 'none', WebkitTapHighlightColor: 'transparent', transform: `translateX(${swipeOffset}px)`, transition: swipeOffset === 0 ? 'transform 0.2s ease-out' : 'none' }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
@@ -1211,7 +1217,7 @@ function MessageBubble({
             <div className="w-5 h-5" />
           )}
         </div>
-        <div className="flex flex-col max-w-[70%]">
+        <div className="flex flex-col max-w-[70%] min-w-0">
           {/* Name: visible only on first message in group */}
           {showMeta && !isMe && isFirstInGroup && (
             <span className={`text-[10px] font-medium mb-0.5 ${user?.textColor ?? 'text-stone-500'}`}>
@@ -1259,7 +1265,7 @@ function MessageBubble({
     return (
       <div
         ref={rowRef}
-        className={`flex ${isMe ? 'flex-row-reverse' : 'flex-row'} group relative ${hasReactions ? 'mb-2' : ''} touch-pan-y select-none`}
+        className={`flex ${isMe ? 'flex-row-reverse' : 'flex-row'} group relative ${hasReactions ? 'mb-2' : ''} touch-pan-y select-none overflow-hidden`}
         style={{ WebkitTouchCallout: 'none', WebkitTapHighlightColor: 'transparent', transform: `translateX(${swipeOffset}px)`, transition: swipeOffset === 0 ? 'transform 0.2s ease-out' : 'none' }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
@@ -1289,7 +1295,7 @@ function MessageBubble({
             <div className="w-5 h-5" />
           )}
         </div>
-        <div className="flex flex-col max-w-[70%]">
+        <div className="flex flex-col max-w-[70%] min-w-0">
           {/* Name: visible only on first message in group */}
           {showMeta && !isMe && isFirstInGroup && (
             <span className={`text-[10px] font-medium mb-0.5 ${user?.textColor ?? 'text-stone-500'}`}>
@@ -1362,7 +1368,7 @@ function MessageBubble({
     return (
       <div
         ref={rowRef}
-        className={`flex ${isMe ? 'flex-row-reverse' : 'flex-row'} group relative ${hasReactions ? 'mb-2' : ''} touch-pan-y select-none`}
+        className={`flex ${isMe ? 'flex-row-reverse' : 'flex-row'} group relative ${hasReactions ? 'mb-2' : ''} touch-pan-y select-none overflow-hidden`}
         style={{ WebkitTouchCallout: 'none', WebkitTapHighlightColor: 'transparent', transform: `translateX(${swipeOffset}px)`, transition: swipeOffset === 0 ? 'transform 0.2s ease-out' : 'none' }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
@@ -1392,7 +1398,7 @@ function MessageBubble({
             <div className="w-5 h-5" />
           )}
         </div>
-        <div className="flex flex-col max-w-[70%]">
+        <div className="flex flex-col max-w-[70%] min-w-0">
           {/* Name: visible only on first message in group */}
           {showMeta && !isMe && isFirstInGroup && (
             <span className={`text-[10px] font-medium mb-0.5 ${user?.textColor ?? 'text-stone-500'}`}>
@@ -1463,7 +1469,7 @@ function MessageBubble({
   return (
     <div
       ref={rowRef}
-      className={`flex ${isMe ? 'flex-row-reverse' : 'flex-row'} group relative ${hasReactions ? 'mb-2' : ''} touch-pan-y select-none`}
+      className={`flex ${isMe ? 'flex-row-reverse' : 'flex-row'} group relative ${hasReactions ? 'mb-2' : ''} touch-pan-y select-none overflow-hidden`}
       style={{ WebkitTouchCallout: 'none', WebkitTapHighlightColor: 'transparent', transform: `translateX(${swipeOffset}px)`, transition: swipeOffset === 0 ? 'transform 0.2s ease-out' : 'none' }}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
@@ -1492,7 +1498,7 @@ function MessageBubble({
           <div className="w-5 h-5" />
         )}
       </div>
-      <div className="flex flex-col max-w-[75%]">
+      <div className="flex flex-col max-w-[75%] min-w-0">
         {/* Name: visible only on first message in group */}
         {showMeta && !isMe && isFirstInGroup && (
           <span className={`text-[10px] font-medium mb-0.5 ${user?.textColor ?? 'text-stone-500'}`}>
@@ -3309,7 +3315,7 @@ export default function RoomPage() {
   if (isLoading) return <LoadingState />
 
   return (
-    <div className="h-screen-safe bg-stone-50 flex flex-col overflow-hidden">
+    <div className="h-screen-safe bg-stone-50 flex flex-col overflow-hidden max-w-full">
       {/* Group Details Drawer */}
       <GroupDetailsDrawer
         isOpen={showGroupDetails}
@@ -3475,7 +3481,7 @@ export default function RoomPage() {
       </header>
 
       {/* Messages */}
-      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overscroll-contain">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain">
         <div className="max-w-3xl mx-auto px-3 py-3">
           {/* Error banner */}
           {error && (
