@@ -296,6 +296,7 @@ export default function ChatsPage() {
   const [submitting, setSubmitting] = useState(false)
 
   const loadChats = useCallback(async (uid: string) => {
+    console.log('[lobby] loadChats called with uid:', uid)
     // Fetch all profiles first
     const { data: profilesData } = await supabase
       .from('profiles')
