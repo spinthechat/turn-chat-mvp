@@ -511,6 +511,7 @@ const formatTimeRemaining = (targetDate: Date): string => {
 type RoomInfo = {
   id: string
   name: string
+  type: 'dm' | 'group'
   prompt_interval_minutes: number
   last_active_at: string | null
   prompt_mode: 'fun' | 'family' | 'deep' | 'flirty' | 'couple'
@@ -2454,6 +2455,35 @@ export default function RoomPage() {
   const [selectedProfileUserId, setSelectedProfileUserId] = useState<string | null>(null)
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set())
 
+  // For DM rooms, compute the "other member" display info
+  const dmDisplayInfo = useMemo(() => {
+    if (roomInfo?.type !== 'dm' || !userId) return null
+
+    // Find the other member (not the current user)
+    const otherMemberId = roomMembers.find(m => m.user_id !== userId)?.user_id
+    if (!otherMemberId) return null
+
+    const otherUser = users.get(otherMemberId)
+    if (!otherUser) {
+      // Fallback if user not loaded yet
+      return {
+        displayName: 'Direct Message',
+        initials: 'DM',
+        color: 'bg-stone-400',
+        avatarUrl: null,
+        isOnline: onlineUsers.has(otherMemberId)
+      }
+    }
+
+    return {
+      displayName: otherUser.displayName,
+      initials: otherUser.initials,
+      color: otherUser.color,
+      avatarUrl: otherUser.avatarUrl,
+      isOnline: onlineUsers.has(otherMemberId)
+    }
+  }, [roomInfo?.type, userId, roomMembers, users, onlineUsers])
+
   const bottomRef = useRef<HTMLDivElement | null>(null)
   const scrollContainerRef = useRef<HTMLDivElement | null>(null)
   const turnInputRef = useRef<HTMLInputElement | null>(null)
@@ -2712,11 +2742,11 @@ export default function RoomPage() {
       // Fetch room info
       const { data: room } = await supabase
         .from('rooms')
-        .select('id, name, prompt_interval_minutes, last_active_at, prompt_mode')
+        .select('id, name, type, prompt_interval_minutes, last_active_at, prompt_mode')
         .eq('id', roomId)
         .single()
 
-      if (room) setRoomInfo({ ...room, prompt_mode: room.prompt_mode || 'fun' } as RoomInfo)
+      if (room) setRoomInfo({ ...room, type: room.type || 'group', prompt_mode: room.prompt_mode || 'fun' } as RoomInfo)
 
       // Fetch room members
       const { data: members } = await supabase
@@ -3520,20 +3550,43 @@ export default function RoomPage() {
               onClick={() => setShowGroupDetails(true)}
               className="flex items-center gap-3 hover:bg-stone-50 rounded-lg px-2 py-1 -mx-2 transition-colors"
             >
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center">
-                <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" />
-                </svg>
-              </div>
+              {/* Avatar: DM shows other person, group shows chat icon */}
+              {roomInfo?.type === 'dm' && dmDisplayInfo ? (
+                <div className="relative">
+                  {dmDisplayInfo.avatarUrl ? (
+                    <img
+                      src={dmDisplayInfo.avatarUrl}
+                      alt={dmDisplayInfo.displayName}
+                      className="w-8 h-8 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className={`w-8 h-8 rounded-full ${dmDisplayInfo.color} flex items-center justify-center`}>
+                      <span className="text-xs font-medium text-white">{dmDisplayInfo.initials}</span>
+                    </div>
+                  )}
+                  {/* Online indicator */}
+                  {dmDisplayInfo.isOnline && (
+                    <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white" />
+                  )}
+                </div>
+              ) : (
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center">
+                  <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" />
+                  </svg>
+                </div>
+              )}
               <div className="text-left">
                 <h1 className="text-sm font-semibold text-stone-900 leading-tight flex items-center gap-1">
-                  {roomInfo?.name ?? 'Room'}
+                  {roomInfo?.type === 'dm' && dmDisplayInfo ? dmDisplayInfo.displayName : (roomInfo?.name ?? 'Room')}
                   <svg className="w-3 h-3 text-stone-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                   </svg>
                 </h1>
                 <span className="text-[11px] text-stone-400">
-                  {roomMembers.length} members
+                  {roomInfo?.type === 'dm' && dmDisplayInfo
+                    ? (dmDisplayInfo.isOnline ? 'Online' : 'Offline')
+                    : `${roomMembers.length} members`}
                 </span>
               </div>
             </button>
