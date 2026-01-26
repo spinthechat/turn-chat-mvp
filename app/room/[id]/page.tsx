@@ -2649,11 +2649,14 @@ export default function RoomPage() {
   const turnInputRef = useRef<HTMLInputElement | null>(null)
   const imageInputRef = useRef<HTMLInputElement | null>(null)
   const cameraInputRef = useRef<HTMLInputElement | null>(null)
+  const turnCameraInputRef = useRef<HTMLInputElement | null>(null)
+  const turnLibraryInputRef = useRef<HTMLInputElement | null>(null)
   const chatInputRef = useRef<HTMLInputElement | null>(null)
   const hasInitiallyScrolled = useRef(false)
 
   // Photo action sheet state
   const [showPhotoSheet, setShowPhotoSheet] = useState(false)
+  const [showTurnPhotoSheet, setShowTurnPhotoSheet] = useState(false)
 
   // Scroll the messages container to bottom (not the window!)
   const scrollToBottom = useCallback((smooth = true) => {
@@ -3953,10 +3956,12 @@ export default function RoomPage() {
               {isPhotoPrompt ? (
                 /* Photo prompt UI */
                 <div className="flex gap-2">
+                  {/* Hidden inputs for camera vs library */}
                   <input
+                    ref={turnCameraInputRef}
                     type="file"
                     accept="image/*"
-                    id="photo-turn-input"
+                    capture="environment"
                     className="hidden"
                     onChange={(e) => {
                       const file = e.target.files?.[0]
@@ -3964,8 +3969,27 @@ export default function RoomPage() {
                       e.target.value = ''
                     }}
                   />
-                  <label
-                    htmlFor="photo-turn-input"
+                  <input
+                    ref={turnLibraryInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) submitPhotoTurn(file)
+                      e.target.value = ''
+                    }}
+                  />
+                  <PhotoActionSheet
+                    isOpen={showTurnPhotoSheet}
+                    onClose={() => setShowTurnPhotoSheet(false)}
+                    onTakePhoto={() => turnCameraInputRef.current?.click()}
+                    onChooseLibrary={() => turnLibraryInputRef.current?.click()}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowTurnPhotoSheet(true)}
+                    disabled={uploadingImage}
                     className={`flex-1 flex items-center justify-center gap-2 py-3 bg-white rounded-lg ring-1 ring-violet-200 cursor-pointer hover:bg-violet-50 transition-colors ${uploadingImage ? 'opacity-50 pointer-events-none' : ''}`}
                   >
                     {uploadingImage ? (
@@ -3982,7 +4006,7 @@ export default function RoomPage() {
                         <span className="text-sm font-medium text-violet-600">Take or Choose Photo</span>
                       </>
                     )}
-                  </label>
+                  </button>
                 </div>
               ) : (
                 /* Text prompt UI */
