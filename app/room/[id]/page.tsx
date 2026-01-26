@@ -1196,7 +1196,7 @@ function MessageBubble({
     return (
       <div
         ref={rowRef}
-        className={`flex ${isMe ? 'flex-row-reverse' : 'flex-row'} group relative ${hasReactions ? 'mb-2' : ''} touch-pan-y select-none overflow-hidden`}
+        className={`flex ${isMe ? 'flex-row-reverse' : 'flex-row'} group relative ${hasReactions ? 'mb-2' : ''} touch-pan-y select-none overflow-x-hidden`}
         style={{ WebkitTouchCallout: 'none', WebkitTapHighlightColor: 'transparent', transform: `translateX(${swipeOffset}px)`, transition: swipeOffset === 0 ? 'transform 0.2s ease-out' : 'none' }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
@@ -1276,7 +1276,7 @@ function MessageBubble({
     return (
       <div
         ref={rowRef}
-        className={`flex ${isMe ? 'flex-row-reverse' : 'flex-row'} group relative ${hasReactions ? 'mb-2' : ''} touch-pan-y select-none overflow-hidden`}
+        className={`flex ${isMe ? 'flex-row-reverse' : 'flex-row'} group relative ${hasReactions ? 'mb-2' : ''} touch-pan-y select-none overflow-x-hidden`}
         style={{ WebkitTouchCallout: 'none', WebkitTapHighlightColor: 'transparent', transform: `translateX(${swipeOffset}px)`, transition: swipeOffset === 0 ? 'transform 0.2s ease-out' : 'none' }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
@@ -1382,7 +1382,7 @@ function MessageBubble({
     return (
       <div
         ref={rowRef}
-        className={`flex ${isMe ? 'flex-row-reverse' : 'flex-row'} group relative ${hasReactions ? 'mb-2' : ''} touch-pan-y select-none overflow-hidden`}
+        className={`flex ${isMe ? 'flex-row-reverse' : 'flex-row'} group relative ${hasReactions ? 'mb-2' : ''} touch-pan-y select-none overflow-x-hidden`}
         style={{ WebkitTouchCallout: 'none', WebkitTapHighlightColor: 'transparent', transform: `translateX(${swipeOffset}px)`, transition: swipeOffset === 0 ? 'transform 0.2s ease-out' : 'none' }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
@@ -1486,7 +1486,7 @@ function MessageBubble({
   return (
     <div
       ref={rowRef}
-      className={`flex ${isMe ? 'flex-row-reverse' : 'flex-row'} group relative ${hasReactions ? 'mb-2' : ''} touch-pan-y select-none overflow-hidden`}
+      className={`flex ${isMe ? 'flex-row-reverse' : 'flex-row'} group relative ${hasReactions ? 'mb-2' : ''} touch-pan-y select-none overflow-x-hidden`}
       style={{ WebkitTouchCallout: 'none', WebkitTapHighlightColor: 'transparent', transform: `translateX(${swipeOffset}px)`, transition: swipeOffset === 0 ? 'transform 0.2s ease-out' : 'none' }}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
