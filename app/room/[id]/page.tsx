@@ -952,28 +952,6 @@ function GroupDetailsDrawer({
     }
   }
 
-  // Test notification
-  const [testingSend, setTestingSend] = useState(false)
-  const sendTestNotification = async () => {
-    setTestingSend(true)
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session?.access_token) return
-
-      await fetch('/api/push/test', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-      })
-    } catch {
-      // Silently fail
-    } finally {
-      setTestingSend(false)
-    }
-  }
-
   if (!isOpen) return null
 
   const handleCopyRoomId = () => {
@@ -1259,15 +1237,6 @@ function GroupDetailsDrawer({
                   ) : null}
                 </button>
 
-                {isSubscribed && (
-                  <button
-                    onClick={sendTestNotification}
-                    disabled={testingSend}
-                    className="w-full px-3 py-2 text-xs text-stone-500 hover:text-stone-700 hover:bg-stone-50 rounded-lg transition-colors"
-                  >
-                    {testingSend ? 'Sending...' : 'Send test notification'}
-                  </button>
-                )}
               </div>
             )}
           </div>
