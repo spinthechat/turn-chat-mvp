@@ -56,24 +56,29 @@ function useMobileViewport() {
   return { keyboardHeight }
 }
 
-// Emoji picker with smart positioning via portal
-// Renders to document.body and positions itself relative to anchor element
-function EmojiPickerPortal({
+// Message Context Menu with emoji bar + actions (WhatsApp style)
+// Renders via portal with smart positioning
+function MessageContextMenu({
   anchorRef,
   emojis,
-  onSelect,
+  onReact,
+  onReply,
+  onCopy,
   onClose,
+  canCopy,
 }: {
   anchorRef: React.RefObject<HTMLElement | null>
   emojis: readonly string[]
-  onSelect: (emoji: string) => void
+  onReact: (emoji: string) => void
+  onReply: () => void
+  onCopy?: () => void
   onClose: () => void
+  canCopy: boolean
 }) {
-  const pickerRef = useRef<HTMLDivElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
   const [position, setPosition] = useState({ top: 0, left: 0 })
   const [mounted, setMounted] = useState(false)
 
-  // Calculate position after mount
   useLayoutEffect(() => {
     setMounted(true)
   }, [])
@@ -83,59 +88,40 @@ function EmojiPickerPortal({
 
     const calculatePosition = () => {
       const anchor = anchorRef.current
-      const picker = pickerRef.current
-      if (!anchor || !picker) return
+      const menu = menuRef.current
+      if (!anchor || !menu) return
 
       const anchorRect = anchor.getBoundingClientRect()
-      const pickerRect = picker.getBoundingClientRect()
-
-      // Viewport dimensions
+      const menuRect = menu.getBoundingClientRect()
       const viewportWidth = window.innerWidth
       const viewportHeight = window.innerHeight
-
-      // Safe area padding
       const padding = 12
 
-      // Picker dimensions
-      const pickerWidth = pickerRect.width
-      const pickerHeight = pickerRect.height
+      const menuWidth = menuRect.width
+      const menuHeight = menuRect.height
 
-      // Prefer positioning above the message
-      // Check if there's enough space above
+      // Prefer above, fall back to below, then center
       const spaceAbove = anchorRect.top - padding
       const spaceBelow = viewportHeight - anchorRect.bottom - padding
 
       let top: number
-      if (spaceAbove >= pickerHeight) {
-        // Position above
-        top = anchorRect.top - pickerHeight - 8
-      } else if (spaceBelow >= pickerHeight) {
-        // Position below
+      if (spaceAbove >= menuHeight) {
+        top = anchorRect.top - menuHeight - 8
+      } else if (spaceBelow >= menuHeight) {
         top = anchorRect.bottom + 8
       } else {
-        // Not enough space either way, position in center of viewport
-        top = Math.max(padding, (viewportHeight - pickerHeight) / 2)
+        top = Math.max(padding, (viewportHeight - menuHeight) / 2)
       }
 
-      // Horizontal: center on anchor, but clamp to viewport
-      let left = anchorRect.left + anchorRect.width / 2 - pickerWidth / 2
-
-      // Clamp horizontal position
-      const minLeft = padding
-      const maxLeft = viewportWidth - pickerWidth - padding
-      left = Math.max(minLeft, Math.min(maxLeft, left))
-
-      // Clamp vertical position
-      const minTop = padding
-      const maxTop = viewportHeight - pickerHeight - padding
-      top = Math.max(minTop, Math.min(maxTop, top))
+      // Center horizontally on anchor, clamp to viewport
+      let left = anchorRect.left + anchorRect.width / 2 - menuWidth / 2
+      left = Math.max(padding, Math.min(viewportWidth - menuWidth - padding, left))
+      top = Math.max(padding, Math.min(viewportHeight - menuHeight - padding, top))
 
       setPosition({ top, left })
     }
 
     calculatePosition()
-
-    // Recalculate on resize
     window.addEventListener('resize', calculatePosition)
     if (window.visualViewport) {
       window.visualViewport.addEventListener('resize', calculatePosition)
@@ -151,6 +137,166 @@ function EmojiPickerPortal({
 
   // Close on click outside
   useEffect(() => {
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
+      const menu = menuRef.current
+      if (menu && !menu.contains(e.target as Node)) {
+        onClose()
+      }
+    }
+
+    const timer = setTimeout(() => {
+      document.addEventListener('click', handleClickOutside)
+      document.addEventListener('touchstart', handleClickOutside)
+    }, 10)
+
+    return () => {
+      clearTimeout(timer)
+      document.removeEventListener('click', handleClickOutside)
+      document.removeEventListener('touchstart', handleClickOutside)
+    }
+  }, [onClose])
+
+  if (!mounted) return null
+
+  return createPortal(
+    <div
+      ref={menuRef}
+      style={{
+        position: 'fixed',
+        top: position.top,
+        left: position.left,
+        zIndex: 9999,
+      }}
+      className="bg-white rounded-2xl shadow-xl ring-1 ring-stone-200 overflow-hidden min-w-[200px]"
+      onClick={(e) => e.stopPropagation()}
+    >
+      {/* Emoji reaction bar */}
+      <div className="flex justify-center gap-1 p-2 border-b border-stone-100">
+        {emojis.map(emoji => (
+          <button
+            key={emoji}
+            onClick={() => { onReact(emoji); onClose() }}
+            aria-label={`React with ${emoji}`}
+            className="w-10 h-10 flex items-center justify-center hover:bg-stone-100 rounded-lg text-xl active:scale-110 transition-transform"
+          >
+            {emoji}
+          </button>
+        ))}
+      </div>
+
+      {/* Action menu */}
+      <div className="py-1">
+        <button
+          onClick={() => { onReply(); onClose() }}
+          aria-label="Reply to message"
+          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 active:bg-stone-100"
+        >
+          <svg className="w-5 h-5 text-stone-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+          </svg>
+          Reply
+        </button>
+
+        {canCopy && onCopy && (
+          <button
+            onClick={() => { onCopy(); onClose() }}
+            aria-label="Copy message text"
+            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 active:bg-stone-100"
+          >
+            <svg className="w-5 h-5 text-stone-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg>
+            Copy text
+          </button>
+        )}
+
+        <button
+          onClick={onClose}
+          aria-label="Cancel"
+          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-stone-400 hover:bg-stone-50 active:bg-stone-100"
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+          Cancel
+        </button>
+      </div>
+    </div>,
+    document.body
+  )
+}
+
+// Legacy emoji picker (keeping for compatibility, but prefer MessageContextMenu)
+function EmojiPickerPortal({
+  anchorRef,
+  emojis,
+  onSelect,
+  onClose,
+}: {
+  anchorRef: React.RefObject<HTMLElement | null>
+  emojis: readonly string[]
+  onSelect: (emoji: string) => void
+  onClose: () => void
+}) {
+  const pickerRef = useRef<HTMLDivElement>(null)
+  const [position, setPosition] = useState({ top: 0, left: 0 })
+  const [mounted, setMounted] = useState(false)
+
+  useLayoutEffect(() => {
+    setMounted(true)
+  }, [])
+
+  useLayoutEffect(() => {
+    if (!mounted) return
+
+    const calculatePosition = () => {
+      const anchor = anchorRef.current
+      const picker = pickerRef.current
+      if (!anchor || !picker) return
+
+      const anchorRect = anchor.getBoundingClientRect()
+      const pickerRect = picker.getBoundingClientRect()
+      const viewportWidth = window.innerWidth
+      const viewportHeight = window.innerHeight
+      const padding = 12
+
+      const pickerWidth = pickerRect.width
+      const pickerHeight = pickerRect.height
+
+      const spaceAbove = anchorRect.top - padding
+      const spaceBelow = viewportHeight - anchorRect.bottom - padding
+
+      let top: number
+      if (spaceAbove >= pickerHeight) {
+        top = anchorRect.top - pickerHeight - 8
+      } else if (spaceBelow >= pickerHeight) {
+        top = anchorRect.bottom + 8
+      } else {
+        top = Math.max(padding, (viewportHeight - pickerHeight) / 2)
+      }
+
+      let left = anchorRect.left + anchorRect.width / 2 - pickerWidth / 2
+      left = Math.max(padding, Math.min(viewportWidth - pickerWidth - padding, left))
+      top = Math.max(padding, Math.min(viewportHeight - pickerHeight - padding, top))
+
+      setPosition({ top, left })
+    }
+
+    calculatePosition()
+    window.addEventListener('resize', calculatePosition)
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', calculatePosition)
+    }
+
+    return () => {
+      window.removeEventListener('resize', calculatePosition)
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', calculatePosition)
+      }
+    }
+  }, [mounted, anchorRef])
+
+  useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       const picker = pickerRef.current
       if (picker && !picker.contains(e.target as Node)) {
@@ -158,7 +304,6 @@ function EmojiPickerPortal({
       }
     }
 
-    // Delay adding listener to prevent immediate close
     const timer = setTimeout(() => {
       document.addEventListener('click', handleClickOutside)
     }, 10)
@@ -577,12 +722,168 @@ function MessageBubble({
   seenCount?: number
   onVisible?: () => void
 }) {
-  const [showActions, setShowActions] = useState(false)
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+  const [showContextMenu, setShowContextMenu] = useState(false)
   const [showReactorsFor, setShowReactorsFor] = useState<string | null>(null)
   const [showLightbox, setShowLightbox] = useState(false)
+  const [swipeOffset, setSwipeOffset] = useState(0)
+  const [isHovered, setIsHovered] = useState(false)
   const bubbleRef = useRef<HTMLDivElement>(null)
+  const rowRef = useRef<HTMLDivElement>(null)
   const hasBeenVisible = useRef(false)
+
+  // Gesture state refs (to avoid re-renders during gesture)
+  const gestureState = useRef({
+    isLongPressing: false,
+    longPressTimer: null as NodeJS.Timeout | null,
+    startX: 0,
+    startY: 0,
+    isSwiping: false,
+    swipeLocked: false, // true once we decide this is a horizontal swipe
+  })
+
+  // Long press threshold (400ms)
+  const LONG_PRESS_DURATION = 400
+  // Swipe threshold to trigger reply (pixels)
+  const SWIPE_THRESHOLD = 80
+  // Max swipe distance for visual feedback
+  const MAX_SWIPE = 100
+  // Movement threshold to cancel long press
+  const MOVE_CANCEL_THRESHOLD = 10
+
+  // Clean up gesture state
+  const resetGesture = useCallback(() => {
+    if (gestureState.current.longPressTimer) {
+      clearTimeout(gestureState.current.longPressTimer)
+      gestureState.current.longPressTimer = null
+    }
+    gestureState.current.isLongPressing = false
+    gestureState.current.isSwiping = false
+    gestureState.current.swipeLocked = false
+    setSwipeOffset(0)
+  }, [])
+
+  // Handle pointer down - start long press detection
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    // Ignore if clicking on interactive elements
+    if ((e.target as HTMLElement).closest('button, a, img')) return
+
+    gestureState.current.startX = e.clientX
+    gestureState.current.startY = e.clientY
+    gestureState.current.isLongPressing = true
+
+    // Start long press timer
+    gestureState.current.longPressTimer = setTimeout(() => {
+      if (gestureState.current.isLongPressing) {
+        // Vibrate if supported (haptic feedback)
+        if (navigator.vibrate) navigator.vibrate(50)
+        setShowContextMenu(true)
+        resetGesture()
+      }
+    }, LONG_PRESS_DURATION)
+  }, [resetGesture])
+
+  // Handle pointer move - detect swipe or cancel long press
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    if (!gestureState.current.isLongPressing && !gestureState.current.isSwiping) return
+
+    const deltaX = e.clientX - gestureState.current.startX
+    const deltaY = e.clientY - gestureState.current.startY
+    const absX = Math.abs(deltaX)
+    const absY = Math.abs(deltaY)
+
+    // If we haven't locked the gesture yet
+    if (!gestureState.current.swipeLocked && gestureState.current.isLongPressing) {
+      // Check if user moved enough to cancel long press
+      if (absX > MOVE_CANCEL_THRESHOLD || absY > MOVE_CANCEL_THRESHOLD) {
+        // Cancel long press
+        if (gestureState.current.longPressTimer) {
+          clearTimeout(gestureState.current.longPressTimer)
+          gestureState.current.longPressTimer = null
+        }
+        gestureState.current.isLongPressing = false
+
+        // Determine if this is a horizontal swipe (swipe-to-reply)
+        if (absX > absY && absX > 15) {
+          gestureState.current.swipeLocked = true
+          gestureState.current.isSwiping = true
+        }
+      }
+    }
+
+    // If swiping, update the swipe offset
+    if (gestureState.current.swipeLocked && gestureState.current.isSwiping) {
+      // Only allow right swipe (positive deltaX)
+      const offset = Math.max(0, Math.min(MAX_SWIPE, deltaX))
+      setSwipeOffset(offset)
+    }
+  }, [])
+
+  // Handle pointer up - complete gesture
+  const handlePointerUp = useCallback(() => {
+    // Check if swipe completed
+    if (gestureState.current.isSwiping && swipeOffset >= SWIPE_THRESHOLD) {
+      // Trigger reply
+      if (navigator.vibrate) navigator.vibrate(30)
+      onReply(message)
+    }
+    resetGesture()
+  }, [swipeOffset, onReply, message, resetGesture])
+
+  // Handle pointer cancel/leave
+  const handlePointerCancel = useCallback(() => {
+    resetGesture()
+  }, [resetGesture])
+
+  // Handle right-click context menu (desktop)
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    setShowContextMenu(true)
+  }, [])
+
+  // Handle click - desktop quick action (toggle actions or close context menu)
+  const handleClick = useCallback(() => {
+    if (showReactorsFor) {
+      setShowReactorsFor(null)
+      return
+    }
+    // On click, just close context menu if open
+    if (showContextMenu) {
+      setShowContextMenu(false)
+    }
+  }, [showReactorsFor, showContextMenu])
+
+  // Copy message text to clipboard
+  const handleCopy = useCallback(async () => {
+    const textContent = message.type === 'turn_response'
+      ? message.content.includes('\n\n')
+        ? message.content.split('\n\n').slice(1).join('\n\n')
+        : message.content
+      : message.content
+
+    try {
+      await navigator.clipboard.writeText(textContent)
+    } catch {
+      // Fallback for older browsers
+      const textarea = document.createElement('textarea')
+      textarea.value = textContent
+      document.body.appendChild(textarea)
+      textarea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textarea)
+    }
+  }, [message])
+
+  // Determine if this message can be copied (text content only)
+  const canCopy = message.type !== 'image' && !message.content.startsWith('{')
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (gestureState.current.longPressTimer) {
+        clearTimeout(gestureState.current.longPressTimer)
+      }
+    }
+  }, [])
 
   // Intersection Observer to detect when message is scrolled into view
   useEffect(() => {
@@ -799,10 +1100,10 @@ function MessageBubble({
             onClick={(e) => {
               e.stopPropagation()
               setShowReactorsFor(null)
-              setShowEmojiPicker(true)
-              setShowActions(true)
+              setShowContextMenu(true)
             }}
             className="text-[11px] px-1.5 py-0.5 rounded-full bg-white ring-1 ring-stone-200 shadow-sm text-stone-400 hover:text-stone-600"
+            aria-label="Add reaction"
           >
             +
           </button>
@@ -811,46 +1112,21 @@ function MessageBubble({
     )
   }
 
-  // Action buttons (reply, react) - shown on click/tap
-  const ActionButtons = () => {
-    if (!showActions && !showEmojiPicker) return null
+  // Desktop hover menu button (accessibility - allows reply/react without gestures)
+  const HoverMenuButton = () => {
+    if (!isHovered) return null
 
     return (
-      <div className={`absolute top-0 ${isMe ? 'left-0 -translate-x-full pr-1' : 'right-0 translate-x-full pl-1'} flex gap-0.5 z-10`}>
-        <button
-          onClick={(e) => { e.stopPropagation(); onReply(message); setShowActions(false) }}
-          className="p-1.5 rounded-full bg-white shadow-md ring-1 ring-stone-200 text-stone-500 hover:text-stone-700 hover:bg-stone-50"
-          title="Reply"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-          </svg>
-        </button>
-        <button
-          onClick={(e) => { e.stopPropagation(); setShowEmojiPicker(!showEmojiPicker) }}
-          className="p-1.5 rounded-full bg-white shadow-md ring-1 ring-stone-200 text-stone-500 hover:text-stone-700 hover:bg-stone-50"
-          title="React"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        </button>
-      </div>
+      <button
+        onClick={(e) => { e.stopPropagation(); setShowContextMenu(true) }}
+        aria-label="Message actions"
+        className={`absolute top-1 ${isMe ? 'left-1' : 'right-1'} p-1 rounded-full bg-white/90 shadow-sm ring-1 ring-stone-200 text-stone-400 hover:text-stone-600 hover:bg-white opacity-0 group-hover:opacity-100 transition-opacity z-10`}
+      >
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+        </svg>
+      </button>
     )
-  }
-
-  // Handle click outside to close actions
-  const handleMessageClick = () => {
-    if (showReactorsFor) {
-      setShowReactorsFor(null)
-      return
-    }
-    if (showEmojiPicker) {
-      setShowEmojiPicker(false)
-      setShowActions(false)
-    } else {
-      setShowActions(!showActions)
-    }
   }
 
   // Handle image tap - open lightbox
@@ -862,7 +1138,29 @@ function MessageBubble({
   // Image messages - compact (with grouping support)
   if (isImage) {
     return (
-      <div className={`flex ${isMe ? 'flex-row-reverse' : 'flex-row'} group relative ${hasReactions ? 'mb-2' : ''}`}>
+      <div
+        ref={rowRef}
+        className={`flex ${isMe ? 'flex-row-reverse' : 'flex-row'} group relative ${hasReactions ? 'mb-2' : ''} touch-pan-y`}
+        style={{ transform: `translateX(${swipeOffset}px)`, transition: swipeOffset === 0 ? 'transform 0.2s ease-out' : 'none' }}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
+        onPointerLeave={handlePointerCancel}
+        onContextMenu={handleContextMenu}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
+        {/* Swipe reply indicator */}
+        {swipeOffset > 0 && (
+          <div className={`absolute ${isMe ? 'right-full mr-2' : 'left-0 -ml-8'} top-1/2 -translate-y-1/2 transition-opacity ${swipeOffset >= SWIPE_THRESHOLD ? 'opacity-100' : 'opacity-50'}`}>
+            <div className={`p-1.5 rounded-full ${swipeOffset >= SWIPE_THRESHOLD ? 'bg-indigo-500 text-white' : 'bg-stone-200 text-stone-500'}`}>
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+              </svg>
+            </div>
+          </div>
+        )}
         {/* Avatar: visible only on last message in group, invisible spacer otherwise */}
         <div className={`flex-shrink-0 ${isMe ? 'ml-1.5' : 'mr-1.5'}`}>
           {isLastInGroup ? (
@@ -878,7 +1176,7 @@ function MessageBubble({
               {user?.displayName ?? 'Unknown'}
             </span>
           )}
-          <div ref={bubbleRef} className="relative" onClick={handleMessageClick}>
+          <div ref={bubbleRef} className="relative" onClick={handleClick}>
             <QuotedReply />
             <div
               className={`rounded-lg overflow-hidden cursor-pointer ${isMe ? '' : 'ring-1 ring-stone-200'}`}
@@ -889,7 +1187,7 @@ function MessageBubble({
             <div className={`text-[10px] mt-0.5 ${isMe ? 'text-right text-stone-400' : 'text-stone-400'}`}>
               {formatTime(message.created_at)}
             </div>
-            <ActionButtons />
+            <HoverMenuButton />
             <ReactionPills />
             <SeenIndicator />
           </div>
@@ -900,12 +1198,14 @@ function MessageBubble({
             onClose={() => setShowLightbox(false)}
           />
         )}
-        {showEmojiPicker && (
-          <EmojiPickerPortal
+        {showContextMenu && (
+          <MessageContextMenu
             anchorRef={bubbleRef}
             emojis={EMOJI_OPTIONS}
-            onSelect={(emoji) => { onReact(message.id, emoji); setShowEmojiPicker(false); setShowActions(false) }}
-            onClose={() => { setShowEmojiPicker(false); setShowActions(false) }}
+            onReact={(emoji) => onReact(message.id, emoji)}
+            onReply={() => onReply(message)}
+            onClose={() => setShowContextMenu(false)}
+            canCopy={false}
           />
         )}
       </div>
@@ -915,7 +1215,29 @@ function MessageBubble({
   // Photo turn response - turn with image (distinct from regular image)
   if (isPhotoTurn && photoTurnData) {
     return (
-      <div className={`flex ${isMe ? 'flex-row-reverse' : 'flex-row'} group relative ${hasReactions ? 'mb-2' : ''}`}>
+      <div
+        ref={rowRef}
+        className={`flex ${isMe ? 'flex-row-reverse' : 'flex-row'} group relative ${hasReactions ? 'mb-2' : ''} touch-pan-y`}
+        style={{ transform: `translateX(${swipeOffset}px)`, transition: swipeOffset === 0 ? 'transform 0.2s ease-out' : 'none' }}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
+        onPointerLeave={handlePointerCancel}
+        onContextMenu={handleContextMenu}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
+        {/* Swipe reply indicator */}
+        {swipeOffset > 0 && (
+          <div className={`absolute ${isMe ? 'right-full mr-2' : 'left-0 -ml-8'} top-1/2 -translate-y-1/2 transition-opacity ${swipeOffset >= SWIPE_THRESHOLD ? 'opacity-100' : 'opacity-50'}`}>
+            <div className={`p-1.5 rounded-full ${swipeOffset >= SWIPE_THRESHOLD ? 'bg-indigo-500 text-white' : 'bg-stone-200 text-stone-500'}`}>
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+              </svg>
+            </div>
+          </div>
+        )}
         <div className={`w-0.5 rounded-full self-stretch ${isMe ? 'bg-indigo-500' : 'bg-indigo-300'} ${isMe ? 'ml-1.5' : 'mr-1.5'}`} />
         {/* Avatar: visible only on last message in group, invisible spacer otherwise */}
         <div className={`flex-shrink-0 ${isMe ? 'ml-1.5' : 'mr-1.5'}`}>
@@ -932,7 +1254,7 @@ function MessageBubble({
               {user?.displayName ?? 'Unknown'}
             </span>
           )}
-          <div ref={bubbleRef} className="relative" onClick={handleMessageClick}>
+          <div ref={bubbleRef} className="relative" onClick={handleClick}>
             <QuotedReply />
             <div className={`rounded-lg overflow-hidden ${
               isMe
@@ -968,7 +1290,7 @@ function MessageBubble({
                 {formatTime(message.created_at)}
               </div>
             </div>
-            <ActionButtons />
+            <HoverMenuButton />
             <ReactionPills />
             <SeenIndicator />
           </div>
@@ -979,12 +1301,14 @@ function MessageBubble({
             onClose={() => setShowLightbox(false)}
           />
         )}
-        {showEmojiPicker && (
-          <EmojiPickerPortal
+        {showContextMenu && (
+          <MessageContextMenu
             anchorRef={bubbleRef}
             emojis={EMOJI_OPTIONS}
-            onSelect={(emoji) => { onReact(message.id, emoji); setShowEmojiPicker(false); setShowActions(false) }}
-            onClose={() => { setShowEmojiPicker(false); setShowActions(false) }}
+            onReact={(emoji) => onReact(message.id, emoji)}
+            onReply={() => onReply(message)}
+            onClose={() => setShowContextMenu(false)}
+            canCopy={false}
           />
         )}
       </div>
@@ -994,7 +1318,29 @@ function MessageBubble({
   // Turn response - compact but distinct (with grouping support)
   if (isTurnResponse) {
     return (
-      <div className={`flex ${isMe ? 'flex-row-reverse' : 'flex-row'} group relative ${hasReactions ? 'mb-2' : ''}`}>
+      <div
+        ref={rowRef}
+        className={`flex ${isMe ? 'flex-row-reverse' : 'flex-row'} group relative ${hasReactions ? 'mb-2' : ''} touch-pan-y`}
+        style={{ transform: `translateX(${swipeOffset}px)`, transition: swipeOffset === 0 ? 'transform 0.2s ease-out' : 'none' }}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
+        onPointerLeave={handlePointerCancel}
+        onContextMenu={handleContextMenu}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
+        {/* Swipe reply indicator */}
+        {swipeOffset > 0 && (
+          <div className={`absolute ${isMe ? 'right-full mr-2' : 'left-0 -ml-8'} top-1/2 -translate-y-1/2 transition-opacity ${swipeOffset >= SWIPE_THRESHOLD ? 'opacity-100' : 'opacity-50'}`}>
+            <div className={`p-1.5 rounded-full ${swipeOffset >= SWIPE_THRESHOLD ? 'bg-indigo-500 text-white' : 'bg-stone-200 text-stone-500'}`}>
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+              </svg>
+            </div>
+          </div>
+        )}
         <div className={`w-0.5 rounded-full self-stretch ${isMe ? 'bg-indigo-500' : 'bg-indigo-300'} ${isMe ? 'ml-1.5' : 'mr-1.5'}`} />
         {/* Avatar: visible only on last message in group, invisible spacer otherwise */}
         <div className={`flex-shrink-0 ${isMe ? 'ml-1.5' : 'mr-1.5'}`}>
@@ -1011,7 +1357,7 @@ function MessageBubble({
               {user?.displayName ?? 'Unknown'}
             </span>
           )}
-          <div ref={bubbleRef} className="relative" onClick={handleMessageClick}>
+          <div ref={bubbleRef} className="relative" onClick={handleClick}>
             <QuotedReply />
             <div className={`rounded-lg px-2.5 py-1.5 cursor-pointer ${
               isMe
@@ -1034,17 +1380,20 @@ function MessageBubble({
                 {formatTime(message.created_at)}
               </div>
             </div>
-            <ActionButtons />
+            <HoverMenuButton />
             <ReactionPills />
             <SeenIndicator />
           </div>
         </div>
-        {showEmojiPicker && (
-          <EmojiPickerPortal
+        {showContextMenu && (
+          <MessageContextMenu
             anchorRef={bubbleRef}
             emojis={EMOJI_OPTIONS}
-            onSelect={(emoji) => { onReact(message.id, emoji); setShowEmojiPicker(false); setShowActions(false) }}
-            onClose={() => { setShowEmojiPicker(false); setShowActions(false) }}
+            onReact={(emoji) => onReact(message.id, emoji)}
+            onReply={() => onReply(message)}
+            onCopy={handleCopy}
+            onClose={() => setShowContextMenu(false)}
+            canCopy={canCopy}
           />
         )}
       </div>
@@ -1070,7 +1419,29 @@ function MessageBubble({
   }
 
   return (
-    <div className={`flex ${isMe ? 'flex-row-reverse' : 'flex-row'} group relative ${hasReactions ? 'mb-2' : ''}`}>
+    <div
+      ref={rowRef}
+      className={`flex ${isMe ? 'flex-row-reverse' : 'flex-row'} group relative ${hasReactions ? 'mb-2' : ''} touch-pan-y`}
+      style={{ transform: `translateX(${swipeOffset}px)`, transition: swipeOffset === 0 ? 'transform 0.2s ease-out' : 'none' }}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerCancel}
+      onPointerLeave={handlePointerCancel}
+      onContextMenu={handleContextMenu}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {/* Swipe reply indicator */}
+      {swipeOffset > 0 && (
+        <div className={`absolute ${isMe ? 'right-full mr-2' : 'left-0 -ml-8'} top-1/2 -translate-y-1/2 transition-opacity ${swipeOffset >= SWIPE_THRESHOLD ? 'opacity-100' : 'opacity-50'}`}>
+          <div className={`p-1.5 rounded-full ${swipeOffset >= SWIPE_THRESHOLD ? 'bg-indigo-500 text-white' : 'bg-stone-200 text-stone-500'}`}>
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+            </svg>
+          </div>
+        </div>
+      )}
       {/* Avatar: visible only on last message in group, invisible spacer otherwise */}
       <div className={`flex-shrink-0 ${isMe ? 'ml-1.5' : 'mr-1.5'}`}>
         {isLastInGroup ? (
@@ -1086,7 +1457,7 @@ function MessageBubble({
             {user?.displayName ?? 'Unknown'}
           </span>
         )}
-        <div ref={bubbleRef} className="relative" onClick={handleMessageClick}>
+        <div ref={bubbleRef} className="relative" onClick={handleClick}>
           <div className={`${getBubbleRadius()} px-2.5 py-1.5 cursor-pointer ${
             isMe
               ? 'bg-stone-800 text-white'
@@ -1098,17 +1469,20 @@ function MessageBubble({
               {formatTime(message.created_at)}
             </div>
           </div>
-          <ActionButtons />
+          <HoverMenuButton />
           <ReactionPills />
           <SeenIndicator />
         </div>
       </div>
-      {showEmojiPicker && (
-        <EmojiPickerPortal
+      {showContextMenu && (
+        <MessageContextMenu
           anchorRef={bubbleRef}
           emojis={EMOJI_OPTIONS}
-          onSelect={(emoji) => { onReact(message.id, emoji); setShowEmojiPicker(false); setShowActions(false) }}
-          onClose={() => { setShowEmojiPicker(false); setShowActions(false) }}
+          onReact={(emoji) => onReact(message.id, emoji)}
+          onReply={() => onReply(message)}
+          onCopy={handleCopy}
+          onClose={() => setShowContextMenu(false)}
+          canCopy={canCopy}
         />
       )}
     </div>
