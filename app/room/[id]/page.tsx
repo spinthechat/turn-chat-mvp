@@ -1739,7 +1739,9 @@ export default function RoomPage() {
   const bottomRef = useRef<HTMLDivElement | null>(null)
   const scrollContainerRef = useRef<HTMLDivElement | null>(null)
   const headerRef = useRef<HTMLElement | null>(null)
+  const inputAreaRef = useRef<HTMLDivElement | null>(null)
   const [headerHeight, setHeaderHeight] = useState(64) // Default header height
+  const [inputHeight, setInputHeight] = useState(60) // Default input height
   const turnInputRef = useRef<HTMLInputElement | null>(null)
   const imageInputRef = useRef<HTMLInputElement | null>(null)
   const cameraInputRef = useRef<HTMLInputElement | null>(null)
@@ -1871,17 +1873,25 @@ export default function RoomPage() {
     return () => clearInterval(interval)
   }, [isWaitingForCooldown])
 
-  // Measure header height for the spacer (header is now position: fixed)
+  // Measure header and input heights for fixed layout offsets
   useLayoutEffect(() => {
-    if (!headerRef.current) return
-    const updateHeight = () => {
-      const height = headerRef.current?.getBoundingClientRect().height ?? 64
-      setHeaderHeight(height)
+    const updateHeights = () => {
+      // Measure header (includes turn panel when visible)
+      const hHeight = headerRef.current?.getBoundingClientRect().height ?? 64
+      setHeaderHeight(hHeight)
+
+      // Measure input area
+      const iHeight = inputAreaRef.current?.getBoundingClientRect().height ?? 60
+      setInputHeight(iHeight)
     }
-    updateHeight()
-    // Re-measure on resize
-    window.addEventListener('resize', updateHeight)
-    return () => window.removeEventListener('resize', updateHeight)
+    updateHeights()
+    // Re-measure on resize and after short delay (for animations)
+    window.addEventListener('resize', updateHeights)
+    const timer = setTimeout(updateHeights, 100) // Catch late layout shifts
+    return () => {
+      window.removeEventListener('resize', updateHeights)
+      clearTimeout(timer)
+    }
   }, [gameActive, isMyTurn, isWaitingForCooldown])
 
   // Pre-compute message metadata (group positions, seen boundaries) to avoid recalculating in render loop
@@ -3042,17 +3052,31 @@ export default function RoomPage() {
     )
   }
 
+  // Debug assertion - header must always be at top
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development' && headerRef.current) {
+      const checkHeader = () => {
+        const rect = headerRef.current?.getBoundingClientRect()
+        if (rect && rect.top !== 0) {
+          console.error('❌ HEADER MOVED — THIS IS A BUG. header.top =', rect.top)
+        }
+      }
+      checkHeader()
+      window.addEventListener('resize', checkHeader)
+      return () => window.removeEventListener('resize', checkHeader)
+    }
+  }, [])
+
   return (
-    <div className="chat-viewport-shell">
-      <div
-        className={`chat-layout chat-theme-container ${
-          isDM
-            ? 'bg-gradient-to-b from-stone-50 via-stone-50/95 to-stone-100/90'
-            : theme.bgGradient
-        } ${!isDM && theme.bgOverlay ? `theme-${theme.mode}` : ''}`}
-        style={!isDM ? getThemeCSSVars(theme) : undefined}
-      >
-        {/* Group Details Drawer */}
+    <div
+      className={`chat-page chat-theme-container ${
+        isDM
+          ? 'bg-gradient-to-b from-stone-50 via-stone-50/95 to-stone-100/90'
+          : theme.bgGradient
+      } ${!isDM && theme.bgOverlay ? `theme-${theme.mode}` : ''}`}
+      style={!isDM ? getThemeCSSVars(theme) : undefined}
+    >
+      {/* Group Details Drawer */}
       <GroupDetailsDrawer
         isOpen={showGroupDetails}
         onClose={() => setShowGroupDetails(false)}
@@ -3310,7 +3334,12 @@ export default function RoomPage() {
       </header>
 
       {/* Messages scroller - the ONLY scrollable area */}
-      <div ref={scrollContainerRef} onScroll={handleScroll} className="chat-messages-scroller">
+      <div
+        ref={scrollContainerRef}
+        onScroll={handleScroll}
+        className="chat-messages-scroller"
+        style={{ paddingTop: headerHeight, paddingBottom: inputHeight }}
+      >
         <div className="chat-messages">
         <div className={`max-w-3xl mx-auto py-4 ${isDM ? 'px-3' : 'px-4'}`}>
           {/* Error banner */}
@@ -3431,10 +3460,9 @@ export default function RoomPage() {
         )}
         </div>
         </div>
-      </div>
 
       {/* Bottom panel: Chat input - docked at bottom */}
-      <div className={`chat-input-area ${
+      <div ref={inputAreaRef} className={`chat-input-area ${
         isDM
           ? 'bg-white/80 backdrop-blur-xl border-t border-stone-200/40'
           : isFlirtyTheme
