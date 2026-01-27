@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { GroupAvatarMosaic, type GroupMember } from '@/app/components/GroupAvatarMosaic'
+import { usePushNotifications } from '@/lib/usePushNotifications'
+import { useThemePreference, type ThemePreference } from '@/lib/useThemePreference'
 
 // Prompt mode options
 const PROMPT_MODES = [
@@ -327,6 +329,236 @@ function EmptyState({ onNewChat, onNewGroup }: { onNewChat: () => void; onNewGro
   )
 }
 
+// Profile menu component
+function ProfileMenu({
+  isOpen,
+  onClose,
+  userProfile,
+  userEmail,
+  onEditProfile,
+  onSignOut,
+}: {
+  isOpen: boolean
+  onClose: () => void
+  userProfile: Profile | null
+  userEmail: string | null
+  onEditProfile: () => void
+  onSignOut: () => void
+}) {
+  const { preference: themePreference, setPreference: setThemePreference } = useThemePreference()
+  const {
+    permission,
+    isSubscribed,
+    isLoading: notifLoading,
+    isPWAInstalled,
+    isSupported,
+    subscribe,
+    unsubscribe,
+  } = usePushNotifications()
+
+  const [testSending, setTestSending] = useState(false)
+
+  const handleToggleNotifications = async () => {
+    if (isSubscribed) {
+      await unsubscribe()
+    } else {
+      await subscribe()
+    }
+  }
+
+  const handleSendTestNotification = async () => {
+    setTestSending(true)
+    try {
+      const res = await fetch('/api/push/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: 'Test Notification',
+          body: 'Push notifications are working!',
+          test: true,
+        }),
+      })
+      if (!res.ok) throw new Error('Failed to send')
+    } catch (err) {
+      console.error('Test notification error:', err)
+    } finally {
+      setTestSending(false)
+    }
+  }
+
+  if (!isOpen) return null
+
+  const displayName = userProfile?.display_name || getDisplayName(userEmail || '')
+  const initials = userProfile?.display_name
+    ? userProfile.display_name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
+    : getInitials(userEmail || '')
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 bg-black/30 z-40 animate-fade-in"
+        onClick={onClose}
+      />
+
+      {/* Bottom sheet */}
+      <div className="fixed inset-x-0 bottom-0 z-50 animate-slide-up">
+        <div className="bg-white rounded-t-2xl max-h-[85vh] overflow-y-auto shadow-xl">
+          {/* Handle */}
+          <div className="flex justify-center pt-3 pb-2">
+            <div className="w-10 h-1 rounded-full bg-stone-200" />
+          </div>
+
+          {/* User info */}
+          <div className="px-5 pb-4 border-b border-stone-100">
+            <div className="flex items-center gap-3">
+              {userProfile?.avatar_url ? (
+                <Image
+                  src={userProfile.avatar_url}
+                  alt=""
+                  width={48}
+                  height={48}
+                  className="w-12 h-12 rounded-full object-cover"
+                />
+              ) : (
+                <div className={`w-12 h-12 rounded-full ${stringToColor(userEmail || '')} flex items-center justify-center text-white font-semibold`}>
+                  {initials}
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-stone-900 truncate">{displayName}</p>
+                <p className="text-sm text-stone-500 truncate">{userEmail}</p>
+              </div>
+              <button
+                onClick={onEditProfile}
+                className="p-2 rounded-full hover:bg-stone-100 transition-colors text-stone-500"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          {/* Appearance */}
+          <div className="p-5 border-b border-stone-100">
+            <h4 className="text-sm font-medium text-stone-700 mb-3">Appearance</h4>
+            <div className="flex gap-1 bg-stone-100 p-1 rounded-lg">
+              {([
+                { value: 'system' as ThemePreference, label: 'System', icon: (
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                )},
+                { value: 'light' as ThemePreference, label: 'Light', icon: (
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                  </svg>
+                )},
+                { value: 'dark' as ThemePreference, label: 'Dark', icon: (
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                  </svg>
+                )},
+              ]).map(option => (
+                <button
+                  key={option.value}
+                  onClick={() => setThemePreference(option.value)}
+                  className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    themePreference === option.value
+                      ? 'bg-white text-stone-900 shadow-sm'
+                      : 'text-stone-600 hover:text-stone-900'
+                  }`}
+                >
+                  {option.icon}
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Notifications */}
+          <div className="p-5 border-b border-stone-100">
+            <h4 className="text-sm font-medium text-stone-700 mb-1">Notifications</h4>
+            <p className="text-xs text-stone-500 mb-3">Get notified when it's your turn or someone messages</p>
+
+            {!isSupported ? (
+              <p className="text-xs text-stone-400">Notifications not supported on this browser</p>
+            ) : permission === 'denied' ? (
+              <p className="text-xs text-amber-600">Notifications blocked. Enable in browser settings.</p>
+            ) : !isPWAInstalled && typeof navigator !== 'undefined' && /iPhone|iPad/.test(navigator.userAgent) ? (
+              <div className="bg-amber-50 rounded-lg p-3">
+                <p className="text-xs text-amber-700">
+                  <span className="font-medium">Install this app</span> to get notifications on iPhone.
+                </p>
+                <p className="text-xs text-amber-600 mt-1">
+                  Tap the Share button, then "Add to Home Screen"
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <button
+                  onClick={handleToggleNotifications}
+                  disabled={notifLoading}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm transition-colors ${
+                    isSubscribed
+                      ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
+                      : 'bg-stone-50 text-stone-700 hover:bg-stone-100'
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                    </svg>
+                    {isSubscribed ? 'Notifications enabled' : 'Enable notifications'}
+                  </span>
+                  {notifLoading ? (
+                    <div className="w-4 h-4 border-2 border-stone-300 border-t-stone-600 rounded-full animate-spin" />
+                  ) : isSubscribed ? (
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  ) : null}
+                </button>
+
+                {isSubscribed && (
+                  <button
+                    onClick={handleSendTestNotification}
+                    disabled={testSending}
+                    className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm bg-stone-50 text-stone-600 hover:bg-stone-100 transition-colors"
+                  >
+                    {testSending ? (
+                      <div className="w-4 h-4 border-2 border-stone-300 border-t-stone-600 rounded-full animate-spin" />
+                    ) : (
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5.636 18.364a9 9 0 010-12.728m12.728 0a9 9 0 010 12.728m-9.9-2.829a5 5 0 010-7.07m7.072 0a5 5 0 010 7.07M13 12a1 1 0 11-2 0 1 1 0 012 0z" />
+                      </svg>
+                    )}
+                    Send test notification
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Sign out */}
+          <div className="p-5 pb-8">
+            <button
+              onClick={onSignOut}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-red-600 hover:bg-red-50 transition-colors font-medium"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+              Sign out
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
+  )
+}
+
 export default function ChatsPage() {
   const router = useRouter()
 
@@ -341,6 +573,7 @@ export default function ChatsPage() {
   // Modal states
   const [showNewDM, setShowNewDM] = useState(false)
   const [showNewGroup, setShowNewGroup] = useState(false)
+  const [showProfileMenu, setShowProfileMenu] = useState(false)
   const [dmEmail, setDmEmail] = useState('')
   const [groupName, setGroupName] = useState('')
   const [groupEmails, setGroupEmails] = useState('')
@@ -560,6 +793,11 @@ export default function ChatsPage() {
     }
   }
 
+  const handleSignOut = async () => {
+    await supabase.auth.signOut()
+    router.push('/login')
+  }
+
   return (
     <div className="min-h-screen bg-white flex flex-col">
       {/* Header */}
@@ -582,14 +820,16 @@ export default function ChatsPage() {
               </button>
               {/* Profile button */}
               <button
-                onClick={() => router.push('/profile')}
+                onClick={() => setShowProfileMenu(true)}
                 className="ml-1"
                 title="Profile"
               >
                 {userProfile?.avatar_url ? (
-                  <img
+                  <Image
                     src={userProfile.avatar_url}
                     alt="Profile"
+                    width={36}
+                    height={36}
                     className="w-9 h-9 rounded-full object-cover ring-2 ring-stone-100 hover:ring-stone-200 transition-all"
                   />
                 ) : (
@@ -757,6 +997,19 @@ export default function ChatsPage() {
           </button>
         </div>
       </Modal>
+
+      {/* Profile Menu */}
+      <ProfileMenu
+        isOpen={showProfileMenu}
+        onClose={() => setShowProfileMenu(false)}
+        userProfile={userProfile}
+        userEmail={userEmail}
+        onEditProfile={() => {
+          setShowProfileMenu(false)
+          router.push('/profile')
+        }}
+        onSignOut={handleSignOut}
+      />
     </div>
   )
 }
