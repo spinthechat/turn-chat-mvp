@@ -280,3 +280,153 @@ body {
 .dark ::selection {
   background: rgb(129 140 248 / 0.3);
 }
+
+/* ============================================
+   Chat Room Theme Overlays
+   ============================================ */
+
+/* Base theme container */
+.chat-theme-container {
+  position: relative;
+}
+
+.chat-theme-container::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0;
+  transition: opacity 0.5s ease-out;
+}
+
+/* FAMILY theme - warm family silhouette */
+.chat-theme-container.theme-family::before {
+  opacity: 0.045;
+  background:
+    radial-gradient(ellipse 60% 40% at 50% 85%, rgba(217, 119, 6, 0.08) 0%, transparent 70%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 100' fill='%23b45309' opacity='0.4'%3E%3Cellipse cx='70' cy='75' rx='12' ry='20'/%3E%3Cellipse cx='100' cy='70' rx='14' ry='24'/%3E%3Cellipse cx='130' cy='75' rx='12' ry='20'/%3E%3Cellipse cx='85' cy='80' rx='8' ry='14'/%3E%3Cellipse cx='115' cy='80' rx='8' ry='14'/%3E%3Ccircle cx='70' cy='52' r='8'/%3E%3Ccircle cx='100' cy='44' r='10'/%3E%3Ccircle cx='130' cy='52' r='8'/%3E%3Ccircle cx='85' cy='62' r='6'/%3E%3Ccircle cx='115' cy='62' r='6'/%3E%3C/svg%3E") no-repeat center 95% / 280px auto;
+}
+
+/* FLIRTY theme - moody bar ambience */
+.chat-theme-container.theme-flirty::before {
+  opacity: 0.06;
+  background:
+    radial-gradient(ellipse 80% 50% at 30% 90%, rgba(244, 63, 94, 0.12) 0%, transparent 50%),
+    radial-gradient(ellipse 60% 40% at 70% 85%, rgba(168, 85, 247, 0.08) 0%, transparent 50%),
+    radial-gradient(circle at 25% 80%, rgba(251, 191, 36, 0.06) 0%, transparent 30%),
+    radial-gradient(circle at 75% 85%, rgba(251, 191, 36, 0.04) 0%, transparent 25%);
+}
+
+/* COUPLE theme - intertwining abstract shapes */
+.chat-theme-container.theme-couple::before {
+  opacity: 0.05;
+  background:
+    radial-gradient(ellipse 50% 60% at 50% 90%, rgba(236, 72, 153, 0.1) 0%, transparent 60%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 120' fill='none' stroke='%23ec4899' stroke-width='1.5' opacity='0.5'%3E%3Cpath d='M60 100 Q80 60 100 80 Q120 100 100 60 Q80 20 60 60 Q40 100 60 100Z'/%3E%3Cpath d='M140 100 Q120 60 100 80 Q80 100 100 60 Q120 20 140 60 Q160 100 140 100Z'/%3E%3C/svg%3E") no-repeat center 92% / 200px auto;
+}
+
+/* DEEP theme - no illustration, just subtle depth gradient */
+.chat-theme-container.theme-deep::before {
+  opacity: 0.03;
+  background: linear-gradient(to bottom,
+    transparent 0%,
+    rgba(59, 130, 246, 0.04) 50%,
+    rgba(99, 102, 241, 0.06) 100%
+  );
+}
+
+/* ============================================
+   Flirty Theme Dark Mode Overrides
+   ============================================ */
+
+.chat-theme-container.theme-flirty {
+  color-scheme: dark;
+}
+
+/* Override light backgrounds for flirty mode */
+.theme-flirty .bg-white {
+  background-color: rgba(30, 27, 36, 0.95);
+}
+
+.theme-flirty .bg-white\/80,
+.theme-flirty .bg-white\/85,
+.theme-flirty .bg-white\/90 {
+  background-color: rgba(30, 27, 36, 0.85);
+}
+
+.theme-flirty .bg-slate-100\/80,
+.theme-flirty .bg-slate-100 {
+  background-color: rgba(45, 40, 52, 0.8);
+}
+
+.theme-flirty .bg-slate-50\/80 {
+  background-color: rgba(35, 32, 42, 0.8);
+}
+
+/* Text colors for flirty */
+.theme-flirty .text-slate-900 {
+  color: #f8fafc;
+}
+
+.theme-flirty .text-slate-700 {
+  color: #cbd5e1;
+}
+
+.theme-flirty .text-slate-600 {
+  color: #94a3b8;
+}
+
+.theme-flirty .text-slate-500 {
+  color: #64748b;
+}
+
+.theme-flirty .text-slate-400 {
+  color: #94a3b8;
+}
+
+/* Borders for flirty */
+.theme-flirty .border-slate-200\/40,
+.theme-flirty .border-slate-200\/50 {
+  border-color: rgba(148, 163, 184, 0.15);
+}
+
+.theme-flirty .ring-slate-200\/80,
+.theme-flirty .ring-slate-200\/50 {
+  --tw-ring-color: rgba(148, 163, 184, 0.2);
+}
+
+/* Message bubbles for flirty - keep readable */
+.theme-flirty .msg-bubble-other {
+  background-color: rgba(45, 40, 52, 0.95);
+  color: #f1f5f9;
+}
+
+/* Input styling for flirty */
+.theme-flirty input::placeholder {
+  color: rgba(148, 163, 184, 0.6);
+}
+
+/* ============================================
+   Theme Accent Color Utilities
+   ============================================ */
+
+/* Family accent colors */
+.theme-family .theme-accent-text { color: rgb(180 83 9); }
+.theme-family .theme-accent-bg { background-color: rgb(245 158 11); }
+.theme-family .theme-accent-ring { --tw-ring-color: rgb(251 191 36 / 0.6); }
+
+/* Flirty accent colors */
+.theme-flirty .theme-accent-text { color: rgb(251 113 133); }
+.theme-flirty .theme-accent-bg { background-color: rgb(244 63 94); }
+.theme-flirty .theme-accent-ring { --tw-ring-color: rgb(251 113 133 / 0.5); }
+
+/* Deep accent colors */
+.theme-deep .theme-accent-text { color: rgb(37 99 235); }
+.theme-deep .theme-accent-bg { background-color: rgb(59 130 246); }
+.theme-deep .theme-accent-ring { --tw-ring-color: rgb(96 165 250 / 0.5); }
+
+/* Couple accent colors */
+.theme-couple .theme-accent-text { color: rgb(219 39 119); }
+.theme-couple .theme-accent-bg { background-color: rgb(236 72 153); }
+.theme-couple .theme-accent-ring { --tw-ring-color: rgb(244 114 182 / 0.5); }
