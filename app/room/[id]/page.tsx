@@ -3990,7 +3990,7 @@ export default function RoomPage() {
                 }`}>
                   {isDM && dmDisplayInfo
                     ? (dmDisplayInfo.isOnline ? 'Online now' : 'Offline')
-                    : `${roomMembers.length} members${onlineUsers.size > 0 ? ` \u00b7 ${onlineUsers.size} online` : ''}`}
+                    : `${roomMembers.length} members${onlineUsers.size > 0 ? ` · ${onlineUsers.size} online` : ''}`}
                 </span>
               </div>
             </button>
@@ -4023,7 +4023,7 @@ export default function RoomPage() {
                       <>
                         <span className="w-2 h-2 rounded-full bg-amber-400 shadow-sm shadow-amber-400/50" />
                         <span className="text-amber-600 font-medium">Your turn</span>
-                        <span className={isDM ? 'text-stone-300' : 'text-slate-300'}>\u00b7</span>
+                        <span className={isDM ? 'text-stone-300' : 'text-slate-300'}>·</span>
                         <span className={`text-xs ${isDM ? 'text-stone-400' : 'text-slate-400'}`}>
                           available in {waitingUntil ? formatTimeRemaining(waitingUntil) : '...'}
                         </span>
@@ -4035,7 +4035,7 @@ export default function RoomPage() {
                           <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500 shadow-sm shadow-indigo-500/50"></span>
                         </span>
                         <span className="text-indigo-600 font-semibold">
-                          Your turn {isPhotoPrompt ? '\u2014 photo required' : '\u2014 ready now'}
+                          Your turn {isPhotoPrompt ? '— photo required' : '— ready now'}
                         </span>
                       </>
                     )
@@ -4046,7 +4046,7 @@ export default function RoomPage() {
                         {isWaitingForCooldown ? (
                           <>
                             <span className="font-medium">{currentPlayerInfo?.displayName ?? 'Someone'}</span>&apos;s turn
-                            <span className={isDM ? 'text-stone-400' : 'text-slate-400'}> \u00b7 in {waitingUntil ? formatTimeRemaining(waitingUntil) : '...'}</span>
+                            <span className={isDM ? 'text-stone-400' : 'text-slate-400'}> · in {waitingUntil ? formatTimeRemaining(waitingUntil) : '...'}</span>
                           </>
                         ) : (
                           <>
@@ -4056,7 +4056,7 @@ export default function RoomPage() {
                       </span>
                       {!isWaitingForCooldown && myTurnPosition && myTurnPosition.position > 0 && (
                         <>
-                          <span className={isDM ? 'text-stone-300' : 'text-slate-300'}>\u00b7</span>
+                          <span className={isDM ? 'text-stone-300' : 'text-slate-300'}>·</span>
                           <span className={`text-xs ${isDM ? 'text-stone-400' : 'text-slate-400'}`}>{myTurnPosition.label}</span>
                         </>
                       )}
@@ -4095,7 +4095,7 @@ export default function RoomPage() {
               {!isMyTurn && nudgeStatus && nudgeStatus.eligible_count > 0 && (
                 <div className={`mt-1.5 text-xs ${isDM ? 'text-stone-400' : 'text-slate-400'}`}>
                   {nudgeStatus.all_nudged ? (
-                    <span className="text-amber-600">All nudged \u2014 auto-skip in 24h if not completed</span>
+                    <span className="text-amber-600">All nudged — auto-skip in 24h if not completed</span>
                   ) : nudgeStatus.nudge_count > 0 ? (
                     <span>{nudgeStatus.nudge_count}/{nudgeStatus.eligible_count} nudged</span>
                   ) : null}
@@ -4257,10 +4257,10 @@ export default function RoomPage() {
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
                 </span>
                 <span className={`text-xs font-semibold ${isPhotoPrompt ? 'text-violet-600' : 'text-indigo-600'}`}>
-                  Your turn {isPhotoPrompt && '\u2014 upload a photo'}
+                  Your turn {isPhotoPrompt && '— upload a photo'}
                 </span>
                 <span className={`text-xs ${isPhotoPrompt ? 'text-violet-400' : 'text-indigo-400'}`}>
-                  \u00b7 &ldquo;{turnSession?.prompt_text}&rdquo;
+                  · &ldquo;{turnSession?.prompt_text}&rdquo;
                 </span>
               </div>
 
