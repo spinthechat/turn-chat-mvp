@@ -105,12 +105,12 @@ const formatTime = (date: string | null): string => {
 function SkeletonRow() {
   return (
     <div className="flex items-center gap-4 px-5 py-4">
-      <div className="w-14 h-14 rounded-full bg-stone-100 animate-pulse" />
+      <div className="w-14 h-14 rounded-full bg-stone-100 dark:bg-stone-800 animate-pulse" />
       <div className="flex-1 space-y-2.5">
-        <div className="h-4 bg-stone-100 rounded-full w-32 animate-pulse" />
-        <div className="h-3.5 bg-stone-50 rounded-full w-48 animate-pulse" />
+        <div className="h-4 bg-stone-100 dark:bg-stone-800 rounded-full w-32 animate-pulse" />
+        <div className="h-3.5 bg-stone-50 dark:bg-stone-800/50 rounded-full w-48 animate-pulse" />
       </div>
-      <div className="h-3 bg-stone-50 rounded-full w-10 animate-pulse" />
+      <div className="h-3 bg-stone-50 dark:bg-stone-800/50 rounded-full w-10 animate-pulse" />
     </div>
   )
 }
@@ -132,15 +132,15 @@ function Modal({
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity"
+        className="absolute inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-sm transition-opacity"
         onClick={onClose}
       />
-      <div className="relative bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl shadow-2xl overflow-hidden transform transition-all">
-        <div className="flex items-center justify-between px-6 py-5 border-b border-stone-100">
-          <h2 className="text-lg font-semibold text-stone-900">{title}</h2>
+      <div className="relative bg-white dark:bg-stone-900 w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl shadow-2xl overflow-hidden transform transition-all">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-stone-100 dark:border-stone-800">
+          <h2 className="text-lg font-semibold text-stone-900 dark:text-stone-50">{title}</h2>
           <button
             onClick={onClose}
-            className="p-2 -mr-2 rounded-full text-stone-400 hover:text-stone-600 hover:bg-stone-100 transition-colors"
+            className="p-2 -mr-2 rounded-full text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -320,7 +320,7 @@ function EmptyState({ onNewChat, onNewGroup }: { onNewChat: () => void; onNewGro
         </button>
         <button
           onClick={onNewGroup}
-          className="px-5 py-2.5 bg-stone-100 text-stone-700 text-sm font-medium rounded-full hover:bg-stone-200 transition-colors"
+          className="px-5 py-2.5 bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-200 text-sm font-medium rounded-full hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors"
         >
           New Group
         </button>
@@ -403,14 +403,14 @@ function ProfileMenu({
 
       {/* Bottom sheet */}
       <div className="fixed inset-x-0 bottom-0 z-50 animate-slide-up">
-        <div className="bg-white rounded-t-2xl max-h-[85vh] overflow-y-auto shadow-xl">
+        <div className="bg-white dark:bg-stone-900 rounded-t-2xl max-h-[85vh] overflow-y-auto shadow-xl">
           {/* Handle */}
           <div className="flex justify-center pt-3 pb-2">
-            <div className="w-10 h-1 rounded-full bg-stone-200" />
+            <div className="w-10 h-1 rounded-full bg-stone-200 dark:bg-stone-700" />
           </div>
 
           {/* User info */}
-          <div className="px-5 pb-4 border-b border-stone-100">
+          <div className="px-5 pb-4 border-b border-stone-100 dark:border-stone-800">
             <div className="flex items-center gap-3">
               {userProfile?.avatar_url ? (
                 <Image
@@ -426,12 +426,12 @@ function ProfileMenu({
                 </div>
               )}
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-stone-900 truncate">{displayName}</p>
-                <p className="text-sm text-stone-500 truncate">{userEmail}</p>
+                <p className="font-semibold text-stone-900 dark:text-stone-50 truncate">{displayName}</p>
+                <p className="text-sm text-stone-500 dark:text-stone-400 truncate">{userEmail}</p>
               </div>
               <button
                 onClick={onEditProfile}
-                className="p-2 rounded-full hover:bg-stone-100 transition-colors text-stone-500"
+                className="p-2 rounded-full hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors text-stone-500 dark:text-stone-400"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
@@ -441,9 +441,9 @@ function ProfileMenu({
           </div>
 
           {/* Appearance */}
-          <div className="p-5 border-b border-stone-100">
-            <h4 className="text-sm font-medium text-stone-700 mb-3">Appearance</h4>
-            <div className="flex gap-1 bg-stone-100 p-1 rounded-lg">
+          <div className="p-5 border-b border-stone-100 dark:border-stone-800">
+            <h4 className="text-sm font-medium text-stone-700 dark:text-stone-200 mb-3">Appearance</h4>
+            <div className="flex gap-1 bg-stone-100 dark:bg-stone-800 p-1 rounded-lg">
               {([
                 { value: 'system' as ThemePreference, label: 'System', icon: (
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -466,8 +466,8 @@ function ProfileMenu({
                   onClick={() => setThemePreference(option.value)}
                   className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                     themePreference === option.value
-                      ? 'bg-white text-stone-900 shadow-sm'
-                      : 'text-stone-600 hover:text-stone-900'
+                      ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-50 shadow-sm'
+                      : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200'
                   }`}
                 >
                   {option.icon}
@@ -478,20 +478,20 @@ function ProfileMenu({
           </div>
 
           {/* Notifications */}
-          <div className="p-5 border-b border-stone-100">
-            <h4 className="text-sm font-medium text-stone-700 mb-1">Notifications</h4>
-            <p className="text-xs text-stone-500 mb-3">Get notified when it's your turn or someone messages</p>
+          <div className="p-5 border-b border-stone-100 dark:border-stone-800">
+            <h4 className="text-sm font-medium text-stone-700 dark:text-stone-200 mb-1">Notifications</h4>
+            <p className="text-xs text-stone-500 dark:text-stone-400 mb-3">Get notified when it's your turn or someone messages</p>
 
             {!isSupported ? (
-              <p className="text-xs text-stone-400">Notifications not supported on this browser</p>
+              <p className="text-xs text-stone-400 dark:text-stone-500">Notifications not supported on this browser</p>
             ) : permission === 'denied' ? (
-              <p className="text-xs text-amber-600">Notifications blocked. Enable in browser settings.</p>
+              <p className="text-xs text-amber-600 dark:text-amber-400">Notifications blocked. Enable in browser settings.</p>
             ) : !isPWAInstalled && typeof navigator !== 'undefined' && /iPhone|iPad/.test(navigator.userAgent) ? (
-              <div className="bg-amber-50 rounded-lg p-3">
-                <p className="text-xs text-amber-700">
+              <div className="bg-amber-50 dark:bg-amber-900/30 rounded-lg p-3">
+                <p className="text-xs text-amber-700 dark:text-amber-300">
                   <span className="font-medium">Install this app</span> to get notifications on iPhone.
                 </p>
-                <p className="text-xs text-amber-600 mt-1">
+                <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
                   Tap the Share button, then "Add to Home Screen"
                 </p>
               </div>
@@ -502,8 +502,8 @@ function ProfileMenu({
                   disabled={notifLoading}
                   className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm transition-colors ${
                     isSubscribed
-                      ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
-                      : 'bg-stone-50 text-stone-700 hover:bg-stone-100'
+                      ? 'bg-emerald-50 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-200 dark:ring-emerald-700'
+                      : 'bg-stone-50 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700'
                   }`}
                 >
                   <span className="flex items-center gap-2">
@@ -525,7 +525,7 @@ function ProfileMenu({
                   <button
                     onClick={handleSendTestNotification}
                     disabled={testSending}
-                    className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm bg-stone-50 text-stone-600 hover:bg-stone-100 transition-colors"
+                    className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm bg-stone-50 dark:bg-stone-800 text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700 transition-colors"
                   >
                     {testSending ? (
                       <div className="w-4 h-4 border-2 border-stone-300 border-t-stone-600 rounded-full animate-spin" />
@@ -545,7 +545,7 @@ function ProfileMenu({
           <div className="p-5 pb-8">
             <button
               onClick={onSignOut}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-red-600 hover:bg-red-50 transition-colors font-medium"
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors font-medium"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -855,7 +855,7 @@ export default function ChatsPage() {
                     className="w-9 h-9 rounded-full object-cover ring-2 ring-stone-100 hover:ring-stone-200 transition-all"
                   />
                 ) : (
-                  <div className="w-9 h-9 rounded-full bg-stone-100 flex items-center justify-center text-stone-600 text-sm font-medium hover:bg-stone-200 transition-colors">
+                  <div className="w-9 h-9 rounded-full bg-stone-100 dark:bg-stone-800 flex items-center justify-center text-stone-600 dark:text-stone-300 text-sm font-medium hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors">
                     {userProfile?.display_name
                       ? userProfile.display_name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
                       : getInitials(userEmail || '')}
@@ -870,12 +870,12 @@ export default function ChatsPage() {
       {/* Error banner */}
       {error && (
         <div className="max-w-2xl mx-auto w-full px-5 pt-4">
-          <div className="bg-red-50 text-red-600 px-4 py-3 rounded-xl text-sm flex items-center gap-3">
+          <div className="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-4 py-3 rounded-xl text-sm flex items-center gap-3">
             <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
             </svg>
             <span className="flex-1">{error}</span>
-            <button onClick={() => setError(null)} className="p-1 hover:bg-red-100 rounded-full transition-colors">
+            <button onClick={() => setError(null)} className="p-1 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-full transition-colors">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
@@ -889,7 +889,7 @@ export default function ChatsPage() {
         <div className="max-w-2xl mx-auto pb-safe">
           {loading ? (
             // Skeleton loading
-            <div className="divide-y divide-stone-50">
+            <div className="divide-y divide-stone-50 dark:divide-stone-800">
               {[...Array(6)].map((_, i) => (
                 <SkeletonRow key={i} />
               ))}
@@ -900,7 +900,7 @@ export default function ChatsPage() {
               onNewGroup={() => setShowNewGroup(true)}
             />
           ) : (
-            <div className="divide-y divide-stone-100/50">
+            <div className="divide-y divide-stone-100/50 dark:divide-stone-800/50">
               {chats.map((chat) => (
                 <RoomListItem
                   key={chat.id}
@@ -919,7 +919,7 @@ export default function ChatsPage() {
         <div className="fixed bottom-6 right-6">
           <button
             onClick={() => setShowNewGroup(true)}
-            className="w-14 h-14 bg-stone-900 text-white rounded-full shadow-lg hover:bg-stone-800 active:scale-95 transition-all flex items-center justify-center"
+            className="w-14 h-14 bg-stone-900 dark:bg-stone-50 text-white dark:text-stone-900 rounded-full shadow-lg hover:bg-stone-800 dark:hover:bg-stone-200 active:scale-95 transition-all flex items-center justify-center"
             title="New group"
           >
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -932,7 +932,7 @@ export default function ChatsPage() {
       {/* New DM Modal */}
       <Modal isOpen={showNewDM} onClose={() => setShowNewDM(false)} title="New Chat">
         <div className="space-y-5">
-          <p className="text-sm text-stone-500">
+          <p className="text-sm text-stone-500 dark:text-stone-400">
             Enter an email address to start a conversation.
           </p>
           <input
@@ -941,7 +941,7 @@ export default function ChatsPage() {
             placeholder="friend@example.com"
             type="email"
             autoFocus
-            className="w-full bg-stone-50 border-0 rounded-xl px-4 py-3.5 text-[15px] placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-900/10"
+            className="w-full bg-stone-50 dark:bg-stone-800 border-0 rounded-xl px-4 py-3.5 text-[15px] text-stone-900 dark:text-stone-50 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:ring-2 focus:ring-stone-900/10 dark:focus:ring-stone-50/20"
             onKeyDown={(e) => {
               if (e.key === 'Enter') createDM()
             }}
@@ -949,7 +949,7 @@ export default function ChatsPage() {
           <button
             onClick={createDM}
             disabled={!dmEmail.trim() || submitting}
-            className="w-full bg-stone-900 text-white py-3.5 rounded-xl text-[15px] font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:bg-stone-800"
+            className="w-full bg-stone-900 dark:bg-stone-50 text-white dark:text-stone-900 py-3.5 rounded-xl text-[15px] font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:bg-stone-800 dark:hover:bg-stone-200"
           >
             {submitting ? 'Starting...' : 'Start Chat'}
           </button>
@@ -964,18 +964,18 @@ export default function ChatsPage() {
       >
         <div className="space-y-5">
           <div>
-            <label className="block text-sm font-medium text-stone-700 mb-2">Group Name</label>
+            <label className="block text-sm font-medium text-stone-700 dark:text-stone-200 mb-2">Group Name</label>
             <input
               value={groupName}
               onChange={(e) => setGroupName(e.target.value)}
               placeholder="e.g. Weekend Squad"
               autoFocus
-              className="w-full bg-stone-50 border-0 rounded-xl px-4 py-3.5 text-[15px] placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-900/10"
+              className="w-full bg-stone-50 dark:bg-stone-800 border-0 rounded-xl px-4 py-3.5 text-[15px] text-stone-900 dark:text-stone-50 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:ring-2 focus:ring-stone-900/10 dark:focus:ring-stone-50/20"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-stone-700 mb-2">Vibe</label>
+            <label className="block text-sm font-medium text-stone-700 dark:text-stone-200 mb-2">Vibe</label>
             <div className="grid grid-cols-2 gap-2">
               {PROMPT_MODES.map(mode => (
                 <button
@@ -984,12 +984,12 @@ export default function ChatsPage() {
                   onClick={() => setGroupPromptMode(mode.value)}
                   className={`px-4 py-3 rounded-xl text-sm text-left transition-all ${
                     groupPromptMode === mode.value
-                      ? 'bg-stone-900 text-white'
-                      : 'bg-stone-50 text-stone-700 hover:bg-stone-100'
+                      ? 'bg-stone-900 dark:bg-stone-50 text-white dark:text-stone-900'
+                      : 'bg-stone-50 dark:bg-stone-800 text-stone-700 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-700'
                   }`}
                 >
                   <div className="font-medium">{mode.label}</div>
-                  <div className={`text-xs mt-0.5 ${groupPromptMode === mode.value ? 'text-stone-300' : 'text-stone-400'}`}>
+                  <div className={`text-xs mt-0.5 ${groupPromptMode === mode.value ? 'text-stone-300 dark:text-stone-500' : 'text-stone-400 dark:text-stone-500'}`}>
                     {mode.description}
                   </div>
                 </button>
@@ -998,22 +998,22 @@ export default function ChatsPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-stone-700 mb-2">
-              Members <span className="text-stone-400 font-normal">(optional)</span>
+            <label className="block text-sm font-medium text-stone-700 dark:text-stone-200 mb-2">
+              Members <span className="text-stone-400 dark:text-stone-500 font-normal">(optional)</span>
             </label>
             <textarea
               value={groupEmails}
               onChange={(e) => setGroupEmails(e.target.value)}
               placeholder="friend1@email.com, friend2@email.com"
               rows={2}
-              className="w-full bg-stone-50 border-0 rounded-xl px-4 py-3.5 text-[15px] placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-900/10 resize-none"
+              className="w-full bg-stone-50 dark:bg-stone-800 border-0 rounded-xl px-4 py-3.5 text-[15px] text-stone-900 dark:text-stone-50 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:ring-2 focus:ring-stone-900/10 dark:focus:ring-stone-50/20 resize-none"
             />
           </div>
 
           <button
             onClick={createGroup}
             disabled={!groupName.trim() || !groupPromptMode || submitting}
-            className="w-full bg-stone-900 text-white py-3.5 rounded-xl text-[15px] font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:bg-stone-800"
+            className="w-full bg-stone-900 dark:bg-stone-50 text-white dark:text-stone-900 py-3.5 rounded-xl text-[15px] font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:bg-stone-800 dark:hover:bg-stone-200"
           >
             {submitting ? 'Creating...' : 'Create Group'}
           </button>

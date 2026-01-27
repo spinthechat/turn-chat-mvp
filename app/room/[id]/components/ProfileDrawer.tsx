@@ -41,15 +41,15 @@ export function ProfileDrawer({
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/40 z-40 transition-opacity"
+        className="fixed inset-0 bg-black/40 dark:bg-black/60 z-40 transition-opacity"
         onClick={onClose}
       />
 
       {/* Drawer */}
-      <div className="fixed inset-x-0 bottom-0 z-50 bg-white rounded-t-2xl shadow-xl max-h-[80vh] overflow-hidden animate-in slide-in-from-bottom duration-200">
+      <div className="fixed inset-x-0 bottom-0 z-50 bg-white dark:bg-stone-900 rounded-t-2xl shadow-xl max-h-[80vh] overflow-hidden animate-in slide-in-from-bottom duration-200">
         {/* Handle */}
         <div className="flex justify-center pt-3 pb-2">
-          <div className="w-10 h-1 bg-stone-300 rounded-full" />
+          <div className="w-10 h-1 bg-stone-300 dark:bg-stone-600 rounded-full" />
         </div>
 
         {/* Content */}
@@ -60,25 +60,25 @@ export function ProfileDrawer({
               <img
                 src={user.avatarUrl}
                 alt={user.displayName}
-                className="w-24 h-24 rounded-full object-cover ring-4 ring-stone-100 mb-4"
+                className="w-24 h-24 rounded-full object-cover ring-4 ring-stone-100 dark:ring-stone-700 mb-4"
               />
             ) : (
-              <div className={`w-24 h-24 rounded-full ${user.color} flex items-center justify-center text-white text-3xl font-semibold ring-4 ring-stone-100 mb-4`}>
+              <div className={`w-24 h-24 rounded-full ${user.color} flex items-center justify-center text-white text-3xl font-semibold ring-4 ring-stone-100 dark:ring-stone-700 mb-4`}>
                 {user.initials}
               </div>
             )}
-            <h2 className="text-xl font-semibold text-stone-900">{user.displayName}</h2>
-            <p className="text-sm text-stone-500">{user.email}</p>
+            <h2 className="text-xl font-semibold text-stone-900 dark:text-stone-50">{user.displayName}</h2>
+            <p className="text-sm text-stone-500 dark:text-stone-400">{user.email}</p>
             {isOwnProfile && (
-              <span className="mt-1 text-xs bg-stone-100 text-stone-500 px-2 py-0.5 rounded-full">This is you</span>
+              <span className="mt-1 text-xs bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400 px-2 py-0.5 rounded-full">This is you</span>
             )}
           </div>
 
           {/* Bio */}
           {user.bio && (
             <div className="mb-6">
-              <h3 className="text-xs font-medium text-stone-400 uppercase tracking-wide mb-2">About</h3>
-              <p className="text-sm text-stone-700 leading-relaxed">{user.bio}</p>
+              <h3 className="text-xs font-medium text-stone-400 dark:text-stone-500 uppercase tracking-wide mb-2">About</h3>
+              <p className="text-sm text-stone-700 dark:text-stone-300 leading-relaxed">{user.bio}</p>
             </div>
           )}
 
@@ -108,7 +108,7 @@ export function ProfileDrawer({
           {/* Close button */}
           <button
             onClick={onClose}
-            className="w-full mt-3 py-2.5 px-4 text-sm text-stone-500 hover:text-stone-700 hover:bg-stone-50 rounded-xl transition-colors"
+            className="w-full mt-3 py-2.5 px-4 text-sm text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-50 dark:hover:bg-stone-800 rounded-xl transition-colors"
           >
             Close
           </button>
