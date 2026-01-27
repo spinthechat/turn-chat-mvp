@@ -152,16 +152,18 @@
   bottom: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  overscroll-behavior-y: contain;
+  /* Prevent scroll chaining to parent - contains rubber-band within this element */
+  overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
-  /* CSS variable for extra bottom padding (set via inline style for input height) */
-  /* Safe area is added here to ensure last message is never behind home indicator */
-  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  /* Disable browser scroll anchoring - prevents content from shifting after layout changes */
+  overflow-anchor: none;
 }
 
 /* Messages content wrapper */
 .chat-messages {
   position: relative;
+  /* Disable scroll anchoring on content too */
+  overflow-anchor: none;
 }
 
 /* Input area - absolute at bottom of visual viewport container */
