@@ -128,6 +128,11 @@ body:has(.chat-container) {
   z-index: 30;
   /* Safe area for notched devices */
   padding-top: env(safe-area-inset-top, 0px);
+  /* Force GPU layer for better iOS behavior */
+  -webkit-transform: translate3d(0, 0, 0);
+  transform: translate3d(0, 0, 0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
 }
 
 /* Spacer to maintain flex layout where header would be */
@@ -185,8 +190,14 @@ body.keyboard-open .chat-input-area {
   body.keyboard-open .chat-container {
     /* Use calculated height when keyboard is open */
     height: var(--viewport-height, 100vh);
-    /* Prevent any transform or will-change that might cause issues */
-    transform: none;
+  }
+
+  /* iOS: Force header to use absolute positioning within the fixed container */
+  /* This prevents iOS from scrolling the header with the viewport */
+  .chat-header {
+    position: absolute;
+    -webkit-transform: translate3d(0, 0, 0);
+    transform: translate3d(0, 0, 0);
   }
 
   /* Prevent iOS from zooming on input focus */
