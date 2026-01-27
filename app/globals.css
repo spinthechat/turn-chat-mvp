@@ -113,17 +113,21 @@
 }
 
 /* ============================================
-   Chat Layout - Visual Viewport Fix for iOS
-   Uses visualViewport API to track actual visible area
+   Chat Layout - Mobile Keyboard Handling
+
+   iOS: Uses 100dvh and lets iOS handle keyboard natively.
+   The JS does NOT set --vv-* variables on iOS to avoid
+   double compensation (iOS already scrolls focused input into view).
+
+   Android/other: Uses visualViewport API via JS-set CSS variables.
    ============================================ */
 
-/* Page container - tracks the VISUAL viewport on iOS */
+/* Page container */
 .chat-page {
-  /* Position fixed to layout viewport, then offset to visual viewport */
   position: fixed;
   left: 0;
   right: 0;
-  /* Use visual viewport position and size when available (set by JS) */
+  /* Fallbacks used on iOS (no JS override), or when visualViewport unavailable */
   top: var(--vv-offset-top, 0px);
   height: var(--vv-height, 100vh);
   height: var(--vv-height, 100dvh);
