@@ -4346,11 +4346,14 @@ export default function RoomPage() {
               ? (isPhotoPrompt ? 'border-violet-100/60 bg-gradient-to-r from-violet-50/60 to-purple-50/60' : 'border-indigo-100/60 bg-gradient-to-r from-indigo-50/60 to-violet-50/60')
               : isFlirtyTheme
                 ? 'border-rose-500/20 bg-gradient-to-r from-rose-950/40 to-pink-950/30'
-                : `border-${theme.accentPrimary}/10 bg-gradient-to-r from-${theme.accentPrimary}/5 to-${theme.accentSecondary}/5`
-          }`} style={!isDM && !isFlirtyTheme ? {
-            borderColor: `rgb(var(--theme-accent-border, 99 102 241) / 0.1)`,
-            background: `linear-gradient(to right, var(--theme-accent-glow), transparent)`
-          } : undefined}>
+                : theme.mode === 'family'
+                  ? 'border-amber-200/60 bg-gradient-to-r from-amber-50/60 to-orange-50/60'
+                  : theme.mode === 'deep'
+                    ? 'border-blue-200/60 bg-gradient-to-r from-blue-50/60 to-indigo-50/60'
+                    : theme.mode === 'couple'
+                      ? 'border-pink-200/60 bg-gradient-to-r from-pink-50/60 to-rose-50/60'
+                      : 'border-indigo-100/60 bg-gradient-to-r from-indigo-50/60 to-violet-50/60'
+          }`}>
             <div className="max-w-3xl mx-auto px-safe py-3">
               <div className="flex items-center gap-2 mb-2.5">
                 {/* Live indicator dot - subtle opacity pulse, stays for entire turn */}
