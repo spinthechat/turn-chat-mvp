@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { useMemo } from 'react'
 
 export interface GroupMember {
@@ -14,6 +15,13 @@ interface GroupAvatarMosaicProps {
   members: GroupMember[]
   size?: 'sm' | 'md' | 'lg'
   className?: string
+}
+
+// Size in pixels for next/image
+const sizePixels = {
+  sm: 44,
+  md: 56,
+  lg: 64,
 }
 
 // Generate consistent colors from string (same as elsewhere in app)
@@ -47,17 +55,21 @@ export function GroupAvatarMosaic({
   const displayMembers = useMemo(() => members.slice(0, 4), [members])
   const count = displayMembers.length
 
+  const px = sizePixels[size]
+
   // Render a single tile (avatar or initials)
   const renderTile = (member: GroupMember, tileClass: string) => {
     if (member.avatarUrl) {
       return (
-        <img
-          key={member.id}
-          src={member.avatarUrl}
-          alt={member.displayName}
-          className={`${tileClass} object-cover`}
-          loading="lazy"
-        />
+        <div key={member.id} className={`${tileClass} relative`}>
+          <Image
+            src={member.avatarUrl}
+            alt={member.displayName}
+            fill
+            sizes={`${Math.ceil(px / 2)}px`}
+            className="object-cover"
+          />
+        </div>
       )
     }
     return (
@@ -86,11 +98,12 @@ export function GroupAvatarMosaic({
     const member = displayMembers[0]
     if (member.avatarUrl) {
       return (
-        <img
+        <Image
           src={member.avatarUrl}
           alt={member.displayName}
+          width={px}
+          height={px}
           className={`${config.container} rounded-full object-cover flex-shrink-0 ring-1 ring-stone-200/50 dark:ring-stone-600/50 ${className}`}
-          loading="lazy"
         />
       )
     }

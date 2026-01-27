@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import type { UserInfo } from '../types'
 
 interface AvatarProps {
@@ -9,6 +10,14 @@ interface AvatarProps {
   showRing?: boolean
   showHostBadge?: boolean
   onClick?: () => void
+}
+
+// Size in pixels for next/image
+const sizePixels = {
+  xs: 20,
+  sm: 24,
+  md: 32,
+  lg: 40,
 }
 
 export function Avatar({
@@ -36,13 +45,16 @@ export function Avatar({
 
   const Wrapper = onClick ? 'button' : 'div'
   const wrapperProps = onClick ? { onClick, type: 'button' as const } : {}
+  const px = sizePixels[size]
 
   return (
     <Wrapper {...wrapperProps} className={`relative flex-shrink-0 ${onClick ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''} ${className}`}>
       {user.avatarUrl ? (
-        <img
+        <Image
           src={user.avatarUrl}
           alt={user.displayName}
+          width={px}
+          height={px}
           className={`${sizeClasses[size]} rounded-full object-cover ${showRing ? 'ring-2 ring-white shadow-md' : ''}`}
           title={user.email}
         />

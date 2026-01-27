@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, useCallback, memo } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { GroupAvatarMosaic, type GroupMember } from '@/app/components/GroupAvatarMosaic'
 
 // Prompt mode options
@@ -157,13 +158,17 @@ function ChatAvatar({ chat, size = 'md' }: { chat: ChatItem; size?: 'sm' | 'md' 
     md: 'w-14 h-14 text-base',
     lg: 'w-16 h-16 text-lg'
   }
+  const sizePixels = { sm: 44, md: 56, lg: 64 }
+  const px = sizePixels[size]
 
   if (chat.type === 'dm' && chat.other_member) {
     if (chat.other_member.avatarUrl) {
       return (
-        <img
+        <Image
           src={chat.other_member.avatarUrl}
           alt={chat.other_member.displayName}
+          width={px}
+          height={px}
           className={`${sizeClasses[size]} rounded-full object-cover flex-shrink-0 ring-1 ring-stone-200/50 dark:ring-stone-600/50`}
         />
       )

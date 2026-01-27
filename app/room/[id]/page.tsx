@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, useCallback, useLayoutEffect, memo } from 'react'
 import { createPortal } from 'react-dom'
+import Image from 'next/image'
 import { supabase } from '@/lib/supabaseClient'
 import { usePushNotifications } from '@/lib/usePushNotifications'
 import { useThemePreference, type ThemePreference } from '@/lib/useThemePreference'
@@ -515,7 +516,7 @@ const MessageBubble = memo(function MessageBubble({
                             className="px-2 py-1.5 flex items-center gap-2 hover:bg-stone-50"
                           >
                             {reactor?.avatarUrl ? (
-                              <img src={reactor.avatarUrl} alt="" className="w-5 h-5 rounded-full object-cover" />
+                              <Image src={reactor.avatarUrl} alt="" width={20} height={20} className="w-5 h-5 rounded-full object-cover" />
                             ) : (
                               <div className={`w-5 h-5 rounded-full ${reactor?.color ?? 'bg-stone-300'} flex items-center justify-center text-white text-[9px] font-medium`}>
                                 {reactor?.initials ?? '??'}
@@ -1674,7 +1675,7 @@ function GroupDetailsDrawer({
                     className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-stone-50 transition-colors text-left"
                   >
                     {user?.avatarUrl ? (
-                      <img src={user.avatarUrl} alt="" className="w-9 h-9 rounded-full object-cover" />
+                      <Image src={user.avatarUrl} alt="" width={36} height={36} className="w-9 h-9 rounded-full object-cover" />
                     ) : (
                       <div className={`w-9 h-9 rounded-full ${user?.color ?? 'bg-stone-300'} flex items-center justify-center text-white text-sm font-medium`}>
                         {user?.initials ?? '??'}
