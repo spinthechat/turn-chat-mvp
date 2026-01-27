@@ -102,13 +102,12 @@ body:has(.chat-viewport-shell) {
   left: 0;
 }
 
-/* Viewport shell - sized exactly to visible viewport */
+/* Viewport shell - sized exactly to visible viewport, pinned to top */
 .chat-viewport-shell {
   position: fixed;
+  top: 0;
   left: 0;
   right: 0;
-  /* Top position accounts for iOS viewport offset */
-  top: calc(var(--vvo, 0) * 1px);
   /* Height from visualViewport */
   height: calc(var(--vvh, 100) * 1px);
   overflow: hidden;
