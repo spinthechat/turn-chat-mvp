@@ -117,10 +117,16 @@ function MessageBubble({
   // State for haptic fallback animation
   const [hapticPulse, setHapticPulse] = useState(false)
 
+  // Track if gesture resulted in action (to prevent tap-through to lightbox)
+  const [gestureTriggered, setGestureTriggered] = useState(false)
+
   // Handle pointer down - start long press detection
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
-    // Ignore if clicking on interactive elements
-    if ((e.target as HTMLElement).closest('button, a, img')) return
+    // Ignore if clicking on buttons or links (but allow images for gestures)
+    if ((e.target as HTMLElement).closest('button, a')) return
+
+    // Reset gesture triggered state
+    setGestureTriggered(false)
 
     gestureState.current.startX = e.clientX
     gestureState.current.startY = e.clientY
@@ -143,6 +149,8 @@ function MessageBubble({
         // Apply global no-select mode while overlay is open
         setGlobalNoSelect(true)
         setShowContextMenu(true)
+        // Mark gesture as triggered to prevent lightbox opening on release
+        setGestureTriggered(true)
         resetGesture()
       }
     }, LONG_PRESS_DURATION)
@@ -197,6 +205,8 @@ function MessageBubble({
       // Trigger reply with haptic feedback
       hapticTick('turn')
       onReply(message)
+      // Mark gesture as triggered to prevent lightbox opening
+      setGestureTriggered(true)
     }
     resetGesture()
   }, [swipeOffset, onReply, message, resetGesture])
@@ -374,17 +384,23 @@ function MessageBubble({
     )
   }
 
-  // Quoted reply preview component - refined design
+  // Quoted reply preview component - refined design with image thumbnails
   const QuotedReply = () => {
     if (!replyToMessage) return null
+
+    // Determine if reply is to an image
+    let imageUrl: string | null = null
     let previewText: string
+
     if (replyToMessage.type === 'image') {
-      previewText = '📷 Photo'
+      imageUrl = replyToMessage.content
+      previewText = 'Photo'
     } else if (replyToMessage.type === 'turn_response') {
       try {
         const parsed = JSON.parse(replyToMessage.content)
-        if (parsed.kind === 'photo_turn') {
-          previewText = '📷 Photo Turn'
+        if (parsed.kind === 'photo_turn' && parsed.image_url) {
+          imageUrl = parsed.image_url
+          previewText = 'Photo'
         } else {
           previewText = replyToMessage.content.slice(0, 60) + (replyToMessage.content.length > 60 ? '...' : '')
         }
@@ -398,14 +414,35 @@ function MessageBubble({
     return (
       <div
         onClick={(e) => { e.stopPropagation(); onScrollToMessage(replyToMessage.id) }}
-        className={`text-[11px] px-2.5 py-1.5 mb-2 rounded-lg border-l-[3px] cursor-pointer transition-colors ${
+        className={`text-[11px] px-2.5 py-1.5 mb-2 rounded-lg border-l-[3px] cursor-pointer transition-colors flex items-center gap-2 ${
           isMe
             ? 'bg-white/15 border-white/50 text-white/80 hover:bg-white/20'
             : 'bg-slate-100/80 border-slate-400 text-slate-600 hover:bg-slate-100'
         }`}
       >
-        <div className="font-semibold">{replyToUser?.displayName ?? 'Unknown'}</div>
-        <div className="truncate opacity-80">{previewText}</div>
+        {/* Image thumbnail */}
+        {imageUrl && (
+          <div className="flex-shrink-0 w-10 h-10 rounded overflow-hidden">
+            <img
+              src={imageUrl}
+              alt=""
+              className="w-full h-full object-cover"
+              loading="lazy"
+            />
+          </div>
+        )}
+        <div className="flex-1 min-w-0">
+          <div className="font-semibold">{replyToUser?.displayName ?? 'Unknown'}</div>
+          <div className="truncate opacity-80 flex items-center gap-1">
+            {imageUrl && (
+              <svg className="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            )}
+            {previewText}
+          </div>
+        </div>
       </div>
     )
   }
@@ -541,11 +578,16 @@ function MessageBubble({
     )
   }
 
-  // Handle image tap - open lightbox
-  const handleImageClick = (e: React.MouseEvent) => {
+  // Handle image tap - open lightbox (but not if gesture was triggered)
+  const handleImageClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
+    // Don't open lightbox if a gesture (swipe/long-press) just completed
+    if (gestureTriggered) {
+      setGestureTriggered(false)
+      return
+    }
     setShowLightbox(true)
-  }
+  }, [gestureTriggered])
 
   // Image messages - modern rounded design
   if (isImage) {
@@ -599,7 +641,14 @@ function MessageBubble({
               className={`rounded-2xl overflow-hidden cursor-pointer shadow-sm ${isMe ? '' : 'ring-1 ring-slate-200/80'} ${showContextMenu ? 'ring-0' : ''}`}
               onClick={handleImageClick}
             >
-              <img src={message.content} alt="Photo" className="max-w-full max-h-52 object-contain bg-slate-100" loading="lazy" />
+              <img
+                src={message.content}
+                alt="Photo"
+                className="max-w-full max-h-52 object-contain bg-slate-100 select-none pointer-events-none"
+                loading="lazy"
+                draggable={false}
+                style={{ WebkitTouchCallout: 'none', WebkitUserSelect: 'none' }}
+              />
             </div>
             <div className={`text-[10px] mt-1 ${isMe ? 'text-right text-slate-400' : 'text-slate-400'}`}>
               {formatTime(message.created_at)}
@@ -699,13 +748,15 @@ function MessageBubble({
               </div>
               <div
                 className="cursor-pointer"
-                onClick={(e) => { e.stopPropagation(); setShowLightbox(true) }}
+                onClick={handleImageClick}
               >
                 <img
                   src={photoTurnData.imageUrl}
                   alt="Photo turn response"
-                  className="w-full max-h-52 object-cover"
+                  className="w-full max-h-52 object-cover select-none pointer-events-none"
                   loading="lazy"
+                  draggable={false}
+                  style={{ WebkitTouchCallout: 'none', WebkitUserSelect: 'none' }}
                 />
               </div>
               <div className={`text-[10px] px-3.5 py-2 ${isMe ? 'text-white/50' : 'text-slate-400'}`}>
@@ -3585,62 +3636,95 @@ export default function RoomPage() {
           </div>
         )}
 
-        {/* Reply preview - refined */}
-        {replyingTo && (
-          <div className={`border-b ${
-            isDM
-              ? 'border-stone-200/50 bg-stone-50/80'
-              : isFlirtyTheme
-                ? 'border-slate-700/50 bg-slate-800/80'
-                : 'border-slate-200/50 bg-slate-50/80'
-          }`}>
-            <div className="max-w-3xl mx-auto px-safe py-2.5 flex items-center gap-3">
-              <div className={`w-1 h-10 rounded-full ${
-                isDM
-                  ? 'bg-gradient-to-b from-indigo-400 to-violet-400'
-                  : isFlirtyTheme
-                    ? 'bg-gradient-to-b from-rose-400 to-pink-400'
-                    : 'bg-gradient-to-b from-indigo-400 to-violet-400'
-              }`} />
-              <div className="flex-1 min-w-0">
-                <div className={`text-xs font-semibold ${isDM ? 'text-indigo-600' : theme.accentText}`}>
-                  Replying to {replyingTo.user_id ? getUserInfo(replyingTo.user_id)?.displayName : 'message'}
-                </div>
-                <div className={`text-xs truncate ${
+        {/* Reply preview - refined with image thumbnails */}
+        {replyingTo && (() => {
+          // Determine if replying to an image
+          let replyImageUrl: string | null = null
+          let replyPreviewText: string
+          if (replyingTo.type === 'image') {
+            replyImageUrl = replyingTo.content
+            replyPreviewText = 'Photo'
+          } else if (replyingTo.type === 'turn_response') {
+            try {
+              const parsed = JSON.parse(replyingTo.content)
+              if (parsed.kind === 'photo_turn' && parsed.image_url) {
+                replyImageUrl = parsed.image_url
+                replyPreviewText = 'Photo'
+              } else {
+                replyPreviewText = replyingTo.content.slice(0, 50)
+              }
+            } catch {
+              replyPreviewText = replyingTo.content.slice(0, 50)
+            }
+          } else {
+            replyPreviewText = replyingTo.content.slice(0, 50)
+          }
+
+          return (
+            <div className={`border-b ${
+              isDM
+                ? 'border-stone-200/50 bg-stone-50/80'
+                : isFlirtyTheme
+                  ? 'border-slate-700/50 bg-slate-800/80'
+                  : 'border-slate-200/50 bg-slate-50/80'
+            }`}>
+              <div className="max-w-3xl mx-auto px-safe py-2.5 flex items-center gap-3">
+                <div className={`w-1 ${replyImageUrl ? 'h-12' : 'h-10'} rounded-full ${
                   isDM
-                    ? 'text-stone-500'
+                    ? 'bg-gradient-to-b from-indigo-400 to-violet-400'
                     : isFlirtyTheme
-                      ? 'text-slate-400'
-                      : 'text-slate-500'
-                }`}>
-                  {replyingTo.type === 'image' ? '📷 Photo' : (() => {
-                    if (replyingTo.type === 'turn_response') {
-                      try {
-                        const parsed = JSON.parse(replyingTo.content)
-                        if (parsed.kind === 'photo_turn') return '📷 Photo Turn'
-                      } catch { /* not JSON */ }
-                    }
-                    return replyingTo.content.slice(0, 50)
-                  })()}
+                      ? 'bg-gradient-to-b from-rose-400 to-pink-400'
+                      : 'bg-gradient-to-b from-indigo-400 to-violet-400'
+                }`} />
+                {/* Image thumbnail */}
+                {replyImageUrl && (
+                  <div className="flex-shrink-0 w-10 h-10 rounded-lg overflow-hidden">
+                    <img
+                      src={replyImageUrl}
+                      alt=""
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                    />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className={`text-xs font-semibold ${isDM ? 'text-indigo-600' : theme.accentText}`}>
+                    Replying to {replyingTo.user_id ? getUserInfo(replyingTo.user_id)?.displayName : 'message'}
+                  </div>
+                  <div className={`text-xs truncate flex items-center gap-1 ${
+                    isDM
+                      ? 'text-stone-500'
+                      : isFlirtyTheme
+                        ? 'text-slate-400'
+                        : 'text-slate-500'
+                  }`}>
+                    {replyImageUrl && (
+                      <svg className="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                    )}
+                    {replyPreviewText}
+                  </div>
                 </div>
+                <button
+                  onClick={() => setReplyingTo(null)}
+                  className={`p-1.5 rounded-lg transition-colors ${
+                    isDM
+                      ? 'text-stone-400 hover:text-stone-600 hover:bg-stone-100'
+                      : isFlirtyTheme
+                        ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700'
+                        : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
+                  }`}
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
               </div>
-              <button
-                onClick={() => setReplyingTo(null)}
-                className={`p-1.5 rounded-lg transition-colors ${
-                  isDM
-                    ? 'text-stone-400 hover:text-stone-600 hover:bg-stone-100'
-                    : isFlirtyTheme
-                      ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700'
-                      : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
-                }`}
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
             </div>
-          </div>
-        )}
+          )
+        })()}
 
         {/* Photo Action Sheet */}
         <PhotoActionSheet
