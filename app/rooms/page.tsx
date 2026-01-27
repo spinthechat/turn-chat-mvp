@@ -4,13 +4,13 @@ import { useEffect, useMemo, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { useRouter } from 'next/navigation'
 
-// Prompt mode options - matches room page
+// Prompt mode options
 const PROMPT_MODES = [
-  { value: 'fun', label: 'Fun', description: 'Light, playful questions to keep things moving' },
-  { value: 'family', label: 'Family', description: 'Warm prompts for families and close relatives' },
-  { value: 'deep', label: 'Deep', description: 'Reflective questions for meaningful conversations' },
-  { value: 'flirty', label: 'Flirty', description: 'Bold, playful prompts with a bit of spice' },
-  { value: 'couple', label: 'Couple', description: 'Designed for partners to connect and reflect' },
+  { value: 'fun', label: 'Fun', description: 'Light, playful questions' },
+  { value: 'family', label: 'Family', description: 'Warm prompts for families' },
+  { value: 'deep', label: 'Deep', description: 'Reflective conversations' },
+  { value: 'flirty', label: 'Flirty', description: 'Bold, playful prompts' },
+  { value: 'couple', label: 'Couple', description: 'For partners to connect' },
 ] as const
 
 type PromptMode = typeof PROMPT_MODES[number]['value']
@@ -45,10 +45,9 @@ type Profile = {
 // Generate consistent colors from string
 const stringToColor = (str: string): string => {
   const colors = [
-    'bg-red-500', 'bg-orange-500', 'bg-amber-500', 'bg-yellow-500',
-    'bg-lime-500', 'bg-green-500', 'bg-emerald-500', 'bg-teal-500',
-    'bg-cyan-500', 'bg-sky-500', 'bg-blue-500', 'bg-indigo-500',
-    'bg-violet-500', 'bg-purple-500', 'bg-fuchsia-500', 'bg-pink-500',
+    'bg-rose-500', 'bg-orange-500', 'bg-amber-500', 'bg-emerald-500',
+    'bg-teal-500', 'bg-cyan-500', 'bg-sky-500', 'bg-blue-500',
+    'bg-indigo-500', 'bg-violet-500', 'bg-purple-500', 'bg-fuchsia-500',
   ]
   let hash = 0
   for (let i = 0; i < str.length; i++) {
@@ -82,17 +81,31 @@ const formatTime = (date: string | null): string => {
   if (!date) return ''
   const d = new Date(date)
   const now = new Date()
-  const diffDays = Math.floor((now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24))
+  const diffMs = now.getTime() - d.getTime()
+  const diffMins = Math.floor(diffMs / 60000)
+  const diffHours = Math.floor(diffMs / 3600000)
+  const diffDays = Math.floor(diffMs / 86400000)
 
-  if (diffDays === 0) {
-    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-  } else if (diffDays === 1) {
-    return 'Yesterday'
-  } else if (diffDays < 7) {
-    return d.toLocaleDateString([], { weekday: 'short' })
-  } else {
-    return d.toLocaleDateString([], { month: 'short', day: 'numeric' })
-  }
+  if (diffMins < 1) return 'now'
+  if (diffMins < 60) return `${diffMins}m`
+  if (diffHours < 24) return `${diffHours}h`
+  if (diffDays === 1) return 'Yesterday'
+  if (diffDays < 7) return d.toLocaleDateString([], { weekday: 'short' })
+  return d.toLocaleDateString([], { month: 'short', day: 'numeric' })
+}
+
+// Skeleton loading component
+function SkeletonRow() {
+  return (
+    <div className="flex items-center gap-4 px-5 py-4">
+      <div className="w-14 h-14 rounded-full bg-stone-100 animate-pulse" />
+      <div className="flex-1 space-y-2.5">
+        <div className="h-4 bg-stone-100 rounded-full w-32 animate-pulse" />
+        <div className="h-3.5 bg-stone-50 rounded-full w-48 animate-pulse" />
+      </div>
+      <div className="h-3 bg-stone-50 rounded-full w-10 animate-pulse" />
+    </div>
+  )
 }
 
 // Modal component
@@ -110,38 +123,35 @@ function Modal({
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-stone-100">
-          <h2 className="font-semibold text-stone-900">{title}</h2>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+      <div
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity"
+        onClick={onClose}
+      />
+      <div className="relative bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl shadow-2xl overflow-hidden transform transition-all">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-stone-100">
+          <h2 className="text-lg font-semibold text-stone-900">{title}</h2>
           <button
             onClick={onClose}
-            className="p-1 rounded-lg text-stone-400 hover:text-stone-600 hover:bg-stone-100"
+            className="p-2 -mr-2 rounded-full text-stone-400 hover:text-stone-600 hover:bg-stone-100 transition-colors"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
-        <div className="p-5">{children}</div>
+        <div className="p-6">{children}</div>
       </div>
     </div>
   )
 }
 
 // Chat avatar component
-function ChatAvatar({
-  chat,
-  size = 'md'
-}: {
-  chat: ChatItem
-  size?: 'sm' | 'md' | 'lg'
-}) {
+function ChatAvatar({ chat, size = 'md' }: { chat: ChatItem; size?: 'sm' | 'md' | 'lg' }) {
   const sizeClasses = {
-    sm: 'w-10 h-10 text-sm',
-    md: 'w-12 h-12 text-base',
-    lg: 'w-14 h-14 text-lg'
+    sm: 'w-11 h-11 text-sm',
+    md: 'w-14 h-14 text-base',
+    lg: 'w-16 h-16 text-lg'
   }
 
   if (chat.type === 'dm' && chat.other_member) {
@@ -155,23 +165,24 @@ function ChatAvatar({
       )
     }
     return (
-      <div className={`${sizeClasses[size]} rounded-full ${chat.other_member.color} flex items-center justify-center text-white font-semibold flex-shrink-0`}>
+      <div className={`${sizeClasses[size]} rounded-full ${chat.other_member.color} flex items-center justify-center text-white font-medium flex-shrink-0`}>
         {chat.other_member.initials}
       </div>
     )
   }
 
+  // Group avatar
   return (
-    <div className={`${sizeClasses[size]} rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center text-white font-semibold flex-shrink-0`}>
-      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+    <div className={`${sizeClasses[size]} rounded-full bg-gradient-to-br from-stone-100 to-stone-200 flex items-center justify-center flex-shrink-0`}>
+      <svg className="w-7 h-7 text-stone-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
       </svg>
     </div>
   )
 }
 
-// Chat list item
-function ChatListItem({
+// Room list item component
+function RoomListItem({
   chat,
   profiles,
   currentUserId,
@@ -201,10 +212,9 @@ function ChatListItem({
       try {
         const parsed = JSON.parse(preview)
         if (parsed.kind === 'photo_turn') {
-          preview = '📷 Photo'
+          preview = 'Sent a photo'
         }
       } catch {
-        // Not JSON, check for turn response format
         if (preview.startsWith('Reply to "')) {
           const parts = preview.split('\n\n')
           if (parts.length > 1) {
@@ -213,18 +223,18 @@ function ChatListItem({
         }
       }
     } else if (chat.last_message_type === 'image') {
-      preview = '📷 Photo'
+      preview = 'Sent a photo'
     }
 
-    // Truncate if too long
-    if (preview.length > 50) {
-      preview = preview.slice(0, 50) + '...'
+    // Truncate
+    if (preview.length > 45) {
+      preview = preview.slice(0, 45) + '...'
     }
 
-    // Add sender name if it's from someone else
+    // Add sender context
     if (chat.last_message_user_id && chat.last_message_user_id !== currentUserId) {
       const sender = profiles.get(chat.last_message_user_id)
-      if (sender) {
+      if (sender && chat.type === 'group') {
         const senderName = sender.display_name?.split(' ')[0] || getDisplayName(sender.email).split(' ')[0]
         preview = `${senderName}: ${preview}`
       }
@@ -236,40 +246,69 @@ function ChatListItem({
   }, [chat, currentUserId, profiles])
 
   return (
-    <div
+    <button
       onClick={onClick}
-      className="flex items-center gap-3 px-4 py-3 hover:bg-stone-50 cursor-pointer transition-colors"
+      className={`w-full flex items-center gap-4 px-5 py-4 text-left transition-colors duration-100
+        ${hasUnread ? 'bg-stone-50/50' : 'bg-white'}
+        hover:bg-stone-50 active:bg-stone-100`}
     >
-      <div className="relative">
-        <ChatAvatar chat={chat} />
-      </div>
+      <ChatAvatar chat={chat} />
 
       <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between gap-2">
-          <span className={`truncate ${hasUnread ? 'font-semibold text-stone-900' : 'font-medium text-stone-900'}`}>
+        <div className="flex items-baseline justify-between gap-3">
+          <span className={`truncate text-[15px] ${hasUnread ? 'font-semibold text-stone-900' : 'font-medium text-stone-800'}`}>
             {displayName}
           </span>
-          <span className={`text-xs flex-shrink-0 ${hasUnread ? 'text-indigo-500 font-medium' : 'text-stone-400'}`}>
+          <span className={`text-xs flex-shrink-0 tabular-nums ${hasUnread ? 'text-stone-900 font-medium' : 'text-stone-400'}`}>
             {formatTime(chat.last_message_at)}
           </span>
         </div>
-        <div className="flex items-center justify-between gap-2 mt-0.5">
-          <span className={`text-sm truncate ${hasUnread ? 'text-stone-700 font-medium' : 'text-stone-500'}`}>
+        <div className="flex items-center justify-between gap-3 mt-1">
+          <span className={`text-[14px] truncate ${hasUnread ? 'text-stone-600' : 'text-stone-400'}`}>
             {lastMessagePreview}
           </span>
-          <div className="flex items-center gap-1.5 flex-shrink-0">
-            {chat.type === 'group' && !hasUnread && (
-              <span className="text-[10px] text-stone-400 bg-stone-100 px-1.5 py-0.5 rounded">
-                {chat.member_count}
-              </span>
-            )}
-            {hasUnread && (
-              <span className="min-w-[20px] h-5 flex items-center justify-center bg-indigo-500 text-white text-[11px] font-semibold rounded-full px-1.5">
-                {chat.unread_count > 99 ? '99+' : chat.unread_count}
-              </span>
-            )}
-          </div>
+          {hasUnread && (
+            <span className="min-w-[22px] h-[22px] flex items-center justify-center bg-stone-900 text-white text-[11px] font-semibold rounded-full px-1.5 flex-shrink-0">
+              {chat.unread_count > 99 ? '99+' : chat.unread_count}
+            </span>
+          )}
+          {!hasUnread && chat.type === 'group' && (
+            <span className="text-[11px] text-stone-300 flex-shrink-0">
+              {chat.member_count}
+            </span>
+          )}
         </div>
+      </div>
+    </button>
+  )
+}
+
+// Empty state component
+function EmptyState({ onNewChat, onNewGroup }: { onNewChat: () => void; onNewGroup: () => void }) {
+  return (
+    <div className="flex-1 flex flex-col items-center justify-center px-8 py-16">
+      <div className="w-20 h-20 rounded-full bg-stone-100 flex items-center justify-center mb-6">
+        <svg className="w-10 h-10 text-stone-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
+        </svg>
+      </div>
+      <h3 className="text-lg font-semibold text-stone-900 mb-2">No conversations yet</h3>
+      <p className="text-stone-500 text-center mb-8 max-w-xs">
+        Start a chat with someone or create a group to get going.
+      </p>
+      <div className="flex gap-3">
+        <button
+          onClick={onNewChat}
+          className="px-5 py-2.5 bg-stone-900 text-white text-sm font-medium rounded-full hover:bg-stone-800 transition-colors"
+        >
+          New Chat
+        </button>
+        <button
+          onClick={onNewGroup}
+          className="px-5 py-2.5 bg-stone-100 text-stone-700 text-sm font-medium rounded-full hover:bg-stone-200 transition-colors"
+        >
+          New Group
+        </button>
       </div>
     </div>
   )
@@ -296,8 +335,6 @@ export default function ChatsPage() {
   const [submitting, setSubmitting] = useState(false)
 
   const loadChats = useCallback(async (uid: string) => {
-    console.log('[lobby] loadChats called with uid:', uid)
-    // Fetch all profiles first
     const { data: profilesData } = await supabase
       .from('profiles')
       .select('id, email, display_name, avatar_url')
@@ -310,10 +347,7 @@ export default function ChatsPage() {
     }
     setProfiles(profileMap)
 
-    // Fetch rooms with unread counts using efficient RPC
     const { data: roomsData, error: roomsErr } = await supabase.rpc('get_rooms_with_unread')
-
-    console.log('[lobby] RPC response:', { roomsData, roomsErr })
 
     if (roomsErr) {
       console.error('Error fetching rooms:', roomsErr)
@@ -321,14 +355,11 @@ export default function ChatsPage() {
       return
     }
 
-    // Get member info for DMs
     const chatItems: ChatItem[] = []
 
     for (const room of roomsData ?? []) {
-      // For DMs, find the other member
       let otherMember = undefined
       if (room.room_type === 'dm') {
-        // Get members of this room to find the other person
         const { data: members } = await supabase
           .from('room_members')
           .select('user_id')
@@ -369,7 +400,6 @@ export default function ChatsPage() {
       })
     }
 
-    console.log('[lobby] chatItems:', chatItems.map(c => ({ id: c.id, name: c.name, unread: c.unread_count })))
     setChats(chatItems)
   }, [])
 
@@ -377,7 +407,6 @@ export default function ChatsPage() {
     let channel: any = null
 
     const init = async () => {
-      console.log('[lobby] init started')
       setLoading(true)
       setError(null)
 
@@ -392,7 +421,6 @@ export default function ChatsPage() {
       setUserId(user.id)
       setUserEmail(user.email ?? null)
 
-      // Fetch user's own profile
       const { data: myProfile } = await supabase
         .from('profiles')
         .select('id, email, display_name, avatar_url')
@@ -403,19 +431,15 @@ export default function ChatsPage() {
         setUserProfile(myProfile as Profile)
       }
 
-      console.log('[lobby] calling loadChats for user:', user.id)
       await loadChats(user.id)
-      console.log('[lobby] loadChats completed')
       setLoading(false)
 
-      // Subscribe to new messages for realtime inbox updates
       channel = supabase
         .channel('inbox-updates')
         .on(
           'postgres_changes',
           { event: 'INSERT', schema: 'public', table: 'messages' },
           () => {
-            // Reload chats when any message is inserted
             if (user.id) loadChats(user.id)
           }
         )
@@ -482,84 +506,60 @@ export default function ChatsPage() {
     }
   }
 
-  const signOut = async () => {
-    await supabase.auth.signOut()
-    router.push('/login')
-  }
-
   return (
     <div className="min-h-screen bg-white flex flex-col">
       {/* Header */}
-      <header className="bg-gradient-to-r from-indigo-500 to-violet-500 text-white sticky top-0 z-10">
-        <div className="max-w-3xl mx-auto px-4 py-4">
+      <header className="sticky top-0 z-10 bg-white/80 backdrop-blur-xl border-b border-stone-100">
+        <div className="max-w-2xl mx-auto px-5 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-xl font-bold">Chats</h1>
-              <p className="text-white/70 text-sm">
-                {userProfile?.display_name || userEmail}
-              </p>
+              <h1 className="text-2xl font-bold text-stone-900 tracking-tight">Chats</h1>
             </div>
-            <button
-              onClick={() => router.push('/profile')}
-              className="relative group"
-              title="Edit profile"
-            >
-              {userProfile?.avatar_url ? (
-                <img
-                  src={userProfile.avatar_url}
-                  alt="Profile"
-                  className="w-10 h-10 rounded-full object-cover ring-2 ring-white/30 group-hover:ring-white/60 transition-all"
-                />
-              ) : (
-                <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white font-semibold ring-2 ring-white/30 group-hover:ring-white/60 transition-all">
-                  {userProfile?.display_name
-                    ? userProfile.display_name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
-                    : getInitials(userEmail || '')}
-                </div>
-              )}
-              <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-white rounded-full flex items-center justify-center shadow-sm">
-                <svg className="w-3 h-3 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+            <div className="flex items-center gap-1">
+              {/* New chat button */}
+              <button
+                onClick={() => setShowNewDM(true)}
+                className="p-2.5 rounded-full text-stone-500 hover:text-stone-900 hover:bg-stone-100 transition-colors"
+                title="New chat"
+              >
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
                 </svg>
-              </div>
-            </button>
+              </button>
+              {/* Profile button */}
+              <button
+                onClick={() => router.push('/profile')}
+                className="ml-1"
+                title="Profile"
+              >
+                {userProfile?.avatar_url ? (
+                  <img
+                    src={userProfile.avatar_url}
+                    alt="Profile"
+                    className="w-9 h-9 rounded-full object-cover ring-2 ring-stone-100 hover:ring-stone-200 transition-all"
+                  />
+                ) : (
+                  <div className="w-9 h-9 rounded-full bg-stone-100 flex items-center justify-center text-stone-600 text-sm font-medium hover:bg-stone-200 transition-colors">
+                    {userProfile?.display_name
+                      ? userProfile.display_name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
+                      : getInitials(userEmail || '')}
+                  </div>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </header>
 
-      {/* Action buttons */}
-      <div className="bg-stone-50 border-b border-stone-200">
-        <div className="max-w-3xl mx-auto px-4 py-3 flex gap-2">
-          <button
-            onClick={() => setShowNewDM(true)}
-            className="flex-1 flex items-center justify-center gap-2 bg-white rounded-xl px-4 py-3 text-sm font-medium text-stone-700 shadow-sm ring-1 ring-stone-200 hover:bg-stone-50 transition-colors"
-          >
-            <svg className="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-            </svg>
-            New Chat
-          </button>
-          <button
-            onClick={() => setShowNewGroup(true)}
-            className="flex-1 flex items-center justify-center gap-2 bg-white rounded-xl px-4 py-3 text-sm font-medium text-stone-700 shadow-sm ring-1 ring-stone-200 hover:bg-stone-50 transition-colors"
-          >
-            <svg className="w-5 h-5 text-violet-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-            </svg>
-            New Group
-          </button>
-        </div>
-      </div>
-
       {/* Error banner */}
       {error && (
-        <div className="max-w-3xl mx-auto px-4 pt-4">
-          <div className="bg-red-50 border border-red-100 text-red-600 px-4 py-3 rounded-xl text-sm flex items-center gap-2">
-            <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        <div className="max-w-2xl mx-auto w-full px-5 pt-4">
+          <div className="bg-red-50 text-red-600 px-4 py-3 rounded-xl text-sm flex items-center gap-3">
+            <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
             </svg>
-            {error}
-            <button onClick={() => setError(null)} className="ml-auto text-red-400 hover:text-red-600">
+            <span className="flex-1">{error}</span>
+            <button onClick={() => setError(null)} className="p-1 hover:bg-red-100 rounded-full transition-colors">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
@@ -568,28 +568,25 @@ export default function ChatsPage() {
         </div>
       )}
 
-      {/* Chat list */}
+      {/* Content */}
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-3xl mx-auto">
+        <div className="max-w-2xl mx-auto">
           {loading ? (
-            <div className="py-16 text-center">
-              <div className="w-8 h-8 border-2 border-stone-200 border-t-indigo-500 rounded-full animate-spin mx-auto" />
-              <p className="text-sm text-stone-400 mt-3">Loading chats...</p>
+            // Skeleton loading
+            <div className="divide-y divide-stone-50">
+              {[...Array(6)].map((_, i) => (
+                <SkeletonRow key={i} />
+              ))}
             </div>
           ) : chats.length === 0 ? (
-            <div className="py-16 text-center px-4">
-              <div className="w-16 h-16 rounded-full bg-stone-100 flex items-center justify-center mx-auto mb-4">
-                <svg className="w-8 h-8 text-stone-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                </svg>
-              </div>
-              <h3 className="font-medium text-stone-900 mb-1">No chats yet</h3>
-              <p className="text-sm text-stone-500">Start a new chat or create a group to get started</p>
-            </div>
+            <EmptyState
+              onNewChat={() => setShowNewDM(true)}
+              onNewGroup={() => setShowNewGroup(true)}
+            />
           ) : (
-            <div className="divide-y divide-stone-100">
+            <div className="divide-y divide-stone-100/50">
               {chats.map((chat) => (
-                <ChatListItem
+                <RoomListItem
                   key={chat.id}
                   chat={chat}
                   profiles={profiles}
@@ -602,18 +599,34 @@ export default function ChatsPage() {
         </div>
       </div>
 
+      {/* Floating action button for new group */}
+      {!loading && chats.length > 0 && (
+        <div className="fixed bottom-6 right-6">
+          <button
+            onClick={() => setShowNewGroup(true)}
+            className="w-14 h-14 bg-stone-900 text-white rounded-full shadow-lg hover:bg-stone-800 active:scale-95 transition-all flex items-center justify-center"
+            title="New group"
+          >
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+          </button>
+        </div>
+      )}
+
       {/* New DM Modal */}
       <Modal isOpen={showNewDM} onClose={() => setShowNewDM(false)} title="New Chat">
-        <div className="space-y-4">
+        <div className="space-y-5">
           <p className="text-sm text-stone-500">
-            Enter the email address of the person you want to chat with.
+            Enter an email address to start a conversation.
           </p>
           <input
             value={dmEmail}
             onChange={(e) => setDmEmail(e.target.value)}
             placeholder="friend@example.com"
             type="email"
-            className="w-full bg-stone-50 border-0 rounded-xl px-4 py-3 text-sm placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+            autoFocus
+            className="w-full bg-stone-50 border-0 rounded-xl px-4 py-3.5 text-[15px] placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-900/10"
             onKeyDown={(e) => {
               if (e.key === 'Enter') createDM()
             }}
@@ -621,80 +634,71 @@ export default function ChatsPage() {
           <button
             onClick={createDM}
             disabled={!dmEmail.trim() || submitting}
-            className="w-full bg-gradient-to-r from-indigo-500 to-violet-500 text-white py-3 rounded-xl text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:from-indigo-600 hover:to-violet-600"
+            className="w-full bg-stone-900 text-white py-3.5 rounded-xl text-[15px] font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:bg-stone-800"
           >
-            {submitting ? 'Creating...' : 'Start Chat'}
+            {submitting ? 'Starting...' : 'Start Chat'}
           </button>
         </div>
       </Modal>
 
       {/* New Group Modal */}
-      <Modal isOpen={showNewGroup} onClose={() => { setShowNewGroup(false); setGroupName(''); setGroupEmails(''); setGroupPromptMode(null) }} title="New Group">
-        <div className="space-y-4">
+      <Modal
+        isOpen={showNewGroup}
+        onClose={() => { setShowNewGroup(false); setGroupName(''); setGroupEmails(''); setGroupPromptMode(null) }}
+        title="New Group"
+      >
+        <div className="space-y-5">
           <div>
-            <label className="block text-sm font-medium text-stone-700 mb-1">Group Name</label>
+            <label className="block text-sm font-medium text-stone-700 mb-2">Group Name</label>
             <input
               value={groupName}
               onChange={(e) => setGroupName(e.target.value)}
-              placeholder="My Awesome Group"
-              className="w-full bg-stone-50 border-0 rounded-xl px-4 py-3 text-sm placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+              placeholder="e.g. Weekend Squad"
+              autoFocus
+              className="w-full bg-stone-50 border-0 rounded-xl px-4 py-3.5 text-[15px] placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-900/10"
             />
           </div>
 
-          {/* Prompt Mode Selector */}
           <div>
-            <label className="block text-sm font-medium text-stone-700 mb-1">Choose the vibe for this group</label>
-            <div className="space-y-1.5">
+            <label className="block text-sm font-medium text-stone-700 mb-2">Vibe</label>
+            <div className="grid grid-cols-2 gap-2">
               {PROMPT_MODES.map(mode => (
                 <button
                   key={mode.value}
                   type="button"
                   onClick={() => setGroupPromptMode(mode.value)}
-                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm transition-colors ${
+                  className={`px-4 py-3 rounded-xl text-sm text-left transition-all ${
                     groupPromptMode === mode.value
-                      ? 'bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200'
-                      : 'bg-stone-50 hover:bg-stone-100 text-stone-700'
+                      ? 'bg-stone-900 text-white'
+                      : 'bg-stone-50 text-stone-700 hover:bg-stone-100'
                   }`}
                 >
-                  <div className="text-left">
-                    <div className="font-medium">{mode.label}</div>
-                    <div className="text-xs text-stone-400">{mode.description}</div>
+                  <div className="font-medium">{mode.label}</div>
+                  <div className={`text-xs mt-0.5 ${groupPromptMode === mode.value ? 'text-stone-300' : 'text-stone-400'}`}>
+                    {mode.description}
                   </div>
-                  {groupPromptMode === mode.value && (
-                    <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
                 </button>
               ))}
             </div>
-            {/* Couple mode note for groups with >1 other member */}
-            {groupPromptMode === 'couple' && groupEmails.split(/[,\n]/).filter(e => e.trim().length > 0).length > 1 && (
-              <p className="text-xs text-amber-600 mt-2 px-1">
-                Couple mode works best in 1:1 chats.
-              </p>
-            )}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-stone-700 mb-1">
-              Add Members (optional)
+            <label className="block text-sm font-medium text-stone-700 mb-2">
+              Members <span className="text-stone-400 font-normal">(optional)</span>
             </label>
             <textarea
               value={groupEmails}
               onChange={(e) => setGroupEmails(e.target.value)}
-              placeholder="Enter emails, separated by commas or new lines"
-              rows={3}
-              className="w-full bg-stone-50 border-0 rounded-xl px-4 py-3 text-sm placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 resize-none"
+              placeholder="friend1@email.com, friend2@email.com"
+              rows={2}
+              className="w-full bg-stone-50 border-0 rounded-xl px-4 py-3.5 text-[15px] placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-900/10 resize-none"
             />
-            <p className="text-xs text-stone-400 mt-1">
-              You can also add members later from within the group.
-            </p>
           </div>
+
           <button
             onClick={createGroup}
             disabled={!groupName.trim() || !groupPromptMode || submitting}
-            className="w-full bg-gradient-to-r from-indigo-500 to-violet-500 text-white py-3 rounded-xl text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:from-indigo-600 hover:to-violet-600"
+            className="w-full bg-stone-900 text-white py-3.5 rounded-xl text-[15px] font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:bg-stone-800"
           >
             {submitting ? 'Creating...' : 'Create Group'}
           </button>
