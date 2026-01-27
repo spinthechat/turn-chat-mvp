@@ -80,20 +80,27 @@
 }
 
 /* ============================================
-   Chat Layout - Structural Fix
-   Header is FIXED at top, content scrolls below
+   Chat Layout - Visual Viewport Fix for iOS
+   Uses visualViewport API to track actual visible area
    ============================================ */
 
-/* Page container - fills viewport */
+/* Page container - tracks the VISUAL viewport on iOS */
 .chat-page {
-  position: relative;
-  min-height: 100vh;
-  min-height: 100dvh;
+  /* Position fixed to layout viewport, then offset to visual viewport */
+  position: fixed;
+  left: 0;
+  right: 0;
+  /* Use visual viewport position and size when available (set by JS) */
+  top: var(--vv-offset-top, 0px);
+  height: var(--vv-height, 100vh);
+  height: var(--vv-height, 100dvh);
+  /* Contain all children */
+  overflow: hidden;
 }
 
-/* FIXED TOP SHELL - header + turn panel always visible */
+/* Header - absolute within the visual viewport container */
 .chat-header {
-  position: fixed;
+  position: absolute;
   top: 0;
   left: 0;
   right: 0;
@@ -102,10 +109,10 @@
   padding-top: env(safe-area-inset-top, 0px);
 }
 
-/* Messages scroller - the ONLY scrollable element */
-/* padding-top is set dynamically via JS to match header height */
+/* Messages scroller - fills space between header and input */
+/* padding-top/bottom set dynamically via JS to match header/input heights */
 .chat-messages-scroller {
-  position: fixed;
+  position: absolute;
   top: 0;
   left: 0;
   right: 0;
@@ -114,7 +121,6 @@
   overflow-x: hidden;
   overscroll-behavior-y: contain;
   -webkit-overflow-scrolling: touch;
-  /* padding-top set by JS: var(--header-height) */
 }
 
 /* Messages content wrapper */
@@ -122,9 +128,9 @@
   position: relative;
 }
 
-/* Input area - fixed at bottom */
+/* Input area - absolute at bottom of visual viewport container */
 .chat-input-area {
-  position: fixed;
+  position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
