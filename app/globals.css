@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Configure dark mode to use class-based switching (not media query) */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   /* Color tokens - refined palette */
   --background: #fafaf9; /* stone-50 */
