@@ -1894,6 +1894,21 @@ export default function RoomPage() {
     }
   }, [gameActive, isMyTurn, isWaitingForCooldown])
 
+  // Debug assertion - header must always be at top (dev mode only)
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development' && headerRef.current) {
+      const checkHeader = () => {
+        const rect = headerRef.current?.getBoundingClientRect()
+        if (rect && rect.top !== 0) {
+          console.error('❌ HEADER MOVED — THIS IS A BUG. header.top =', rect.top)
+        }
+      }
+      checkHeader()
+      window.addEventListener('resize', checkHeader)
+      return () => window.removeEventListener('resize', checkHeader)
+    }
+  }, [])
+
   // Pre-compute message metadata (group positions, seen boundaries) to avoid recalculating in render loop
   const messageMetadata = useMemo(() => {
     const metadata = new Map<string, { groupPosition: MessageGroupPosition; isSeenBoundary: boolean; spacingClass: string }>()
@@ -3051,21 +3066,6 @@ export default function RoomPage() {
       </div>
     )
   }
-
-  // Debug assertion - header must always be at top
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'development' && headerRef.current) {
-      const checkHeader = () => {
-        const rect = headerRef.current?.getBoundingClientRect()
-        if (rect && rect.top !== 0) {
-          console.error('❌ HEADER MOVED — THIS IS A BUG. header.top =', rect.top)
-        }
-      }
-      checkHeader()
-      window.addEventListener('resize', checkHeader)
-      return () => window.removeEventListener('resize', checkHeader)
-    }
-  }, [])
 
   return (
     <div
