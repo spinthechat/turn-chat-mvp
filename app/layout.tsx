@@ -2,7 +2,12 @@ import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { Inter } from 'next/font/google'
 
-const inter = Inter({ subsets: ['latin'] })
+const inter = Inter({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-inter',
+  weight: ['400', '500', '600', '700'],
+})
 
 // Icon version for cache-busting (increment when icons change)
 const ICON_VERSION = 3
@@ -68,7 +73,7 @@ export default function RootLayout({
         {/* Explicit maskable icon hint for Android */}
         <link rel="icon" sizes="192x192" href={`/icons/maskable-192.png?v=${ICON_VERSION}`} />
       </head>
-      <body className={inter.className}>
+      <body className={`${inter.variable} ${inter.className} antialiased`}>
         {children}
       </body>
     </html>

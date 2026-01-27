@@ -263,32 +263,32 @@ const RoomListItem = memo(function RoomListItem({
     <Link
       href={`/room/${chat.id}`}
       prefetch={true}
-      className={`w-full flex items-center gap-4 px-5 py-4 text-left transition-colors duration-100
-        ${hasUnread ? 'bg-stone-50/50' : 'bg-white'}
-        hover:bg-stone-50 active:bg-stone-100`}
+      className={`w-full flex items-center gap-4 px-5 py-3.5 text-left transition-all duration-150 press-scale
+        ${hasUnread ? 'bg-stone-50/60 dark:bg-stone-800/40' : 'bg-white dark:bg-stone-900'}
+        hover:bg-stone-50 dark:hover:bg-stone-800/60 active:bg-stone-100 dark:active:bg-stone-800`}
     >
       <ChatAvatar chat={chat} />
 
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline justify-between gap-3">
-          <span className={`truncate text-[15px] ${hasUnread ? 'font-semibold text-stone-900 dark:text-stone-50' : 'font-medium text-stone-800 dark:text-stone-200'}`}>
+          <span className={`truncate text-[15px] tracking-tight ${hasUnread ? 'font-semibold text-stone-900 dark:text-stone-50' : 'font-medium text-stone-800 dark:text-stone-200'}`}>
             {displayName}
           </span>
-          <span className={`text-xs flex-shrink-0 tabular-nums ${hasUnread ? 'text-stone-900 dark:text-stone-100 font-medium' : 'text-stone-400 dark:text-stone-500'}`}>
+          <span className={`text-[11px] flex-shrink-0 tabular-nums font-medium ${hasUnread ? 'text-stone-700 dark:text-stone-200' : 'text-stone-400 dark:text-stone-500'}`}>
             {formatTime(chat.last_message_at)}
           </span>
         </div>
-        <div className="flex items-center justify-between gap-3 mt-1">
-          <span className={`text-[14px] truncate ${hasUnread ? 'text-stone-600 dark:text-stone-300' : 'text-stone-400 dark:text-stone-500'}`}>
+        <div className="flex items-center justify-between gap-3 mt-0.5">
+          <span className={`text-[13px] truncate leading-relaxed ${hasUnread ? 'text-stone-600 dark:text-stone-300' : 'text-stone-400 dark:text-stone-500'}`}>
             {lastMessagePreview}
           </span>
           {hasUnread && (
-            <span className="min-w-[22px] h-[22px] flex items-center justify-center bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-[11px] font-semibold rounded-full px-1.5 flex-shrink-0">
+            <span className="min-w-[20px] h-[20px] flex items-center justify-center bg-indigo-500 text-white text-[10px] font-semibold rounded-full px-1.5 flex-shrink-0 shadow-sm shadow-indigo-500/30">
               {chat.unread_count > 99 ? '99+' : chat.unread_count}
             </span>
           )}
           {!hasUnread && chat.type === 'group' && (
-            <span className="text-[11px] text-stone-300 flex-shrink-0">
+            <span className="text-[11px] text-stone-300 dark:text-stone-600 flex-shrink-0 font-medium">
               {chat.member_count}
             </span>
           )}
