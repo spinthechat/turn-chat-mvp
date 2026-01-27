@@ -54,7 +54,7 @@ const themes: Record<RoomMode, ChatTheme> = {
    */
   fun: {
     mode: 'fun',
-    bgGradient: 'bg-gradient-to-b from-slate-50 via-slate-50/95 to-slate-100/90',
+    bgGradient: 'bg-slate-50 dark:bg-stone-900',
     accentPrimary: 'indigo-500',
     accentSecondary: 'violet-500',
     accentGlow: 'rgba(99, 102, 241, 0.15)',
@@ -76,7 +76,7 @@ const themes: Record<RoomMode, ChatTheme> = {
    */
   family: {
     mode: 'family',
-    bgGradient: 'bg-gradient-to-b from-amber-50/80 via-orange-50/40 to-amber-100/60',
+    bgGradient: 'bg-amber-50 dark:bg-stone-900',
     bgOverlay: 'family-silhouette',
     accentPrimary: 'amber-600',
     accentSecondary: 'orange-500',
@@ -122,7 +122,7 @@ const themes: Record<RoomMode, ChatTheme> = {
    */
   deep: {
     mode: 'deep',
-    bgGradient: 'bg-gradient-to-b from-slate-100 via-slate-100/95 to-slate-200/80',
+    bgGradient: 'bg-slate-100 dark:bg-stone-900',
     accentPrimary: 'blue-500',
     accentSecondary: 'indigo-400',
     accentGlow: 'rgba(59, 130, 246, 0.12)',
@@ -144,7 +144,7 @@ const themes: Record<RoomMode, ChatTheme> = {
    */
   couple: {
     mode: 'couple',
-    bgGradient: 'bg-gradient-to-b from-rose-50/70 via-pink-50/40 to-rose-100/50',
+    bgGradient: 'bg-rose-50 dark:bg-stone-900',
     bgOverlay: 'couple-intertwine',
     accentPrimary: 'pink-500',
     accentSecondary: 'rose-400',

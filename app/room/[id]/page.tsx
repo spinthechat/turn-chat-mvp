@@ -3162,7 +3162,7 @@ export default function RoomPage() {
     <div
       className={`chat-page chat-theme-container ${
         isDM
-          ? 'bg-gradient-to-b from-stone-50 via-stone-50/95 to-stone-100/90'
+          ? 'bg-stone-50 dark:bg-stone-900'
           : theme.bgGradient
       } ${!isDM && theme.bgOverlay ? `theme-${theme.mode}` : ''}`}
       style={!isDM ? getThemeCSSVars(theme) : undefined}
