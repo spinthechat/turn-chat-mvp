@@ -3030,7 +3030,7 @@ export default function RoomPage() {
 
   return (
     <div
-      className={`chat-theme-container h-screen-safe flex flex-col overflow-hidden max-w-full ${
+      className={`chat-theme-container chat-container max-w-full ${
         isDM
           ? 'bg-gradient-to-b from-stone-50 via-stone-50/95 to-stone-100/90'
           : theme.bgGradient
@@ -3074,8 +3074,8 @@ export default function RoomPage() {
         aria-hidden="true"
       />
 
-      {/* Header - glassy, floating feel */}
-      <header className={`flex-shrink-0 sticky top-0 z-30 ${
+      {/* Header - fixed at top, glassy, floating feel */}
+      <header className={`chat-header ${
         isDM
           ? 'bg-white/80 backdrop-blur-xl border-b border-stone-200/40'
           : isFlirtyTheme
@@ -3294,8 +3294,8 @@ export default function RoomPage() {
 
       </header>
 
-      {/* Messages */}
-      <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain relative">
+      {/* Messages - scrollable area */}
+      <div ref={scrollContainerRef} onScroll={handleScroll} className="chat-messages">
         <div className={`max-w-3xl mx-auto py-4 ${isDM ? 'px-3' : 'px-4'}`}>
           {/* Error banner */}
           {error && (
@@ -3415,8 +3415,8 @@ export default function RoomPage() {
         )}
       </div>
 
-      {/* Bottom panel: Chat input - floating, modern design */}
-      <div className={`flex-shrink-0 pb-safe ${
+      {/* Bottom panel: Chat input - docked at bottom */}
+      <div className={`chat-input-area ${
         isDM
           ? 'bg-white/80 backdrop-blur-xl border-t border-stone-200/40'
           : isFlirtyTheme

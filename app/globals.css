@@ -12,6 +12,10 @@
   --ring: #6366f1; /* indigo-500 */
   /* Dynamic viewport height fallback for iOS Safari */
   --vh: 1vh;
+  --viewport-height: 100vh;
+  --keyboard-height: 0px;
+  --chat-header-height: 0px;
+  --chat-input-height: 0px;
 }
 
 /* Dark mode colors */
@@ -73,6 +77,114 @@
 .px-safe {
   padding-left: max(1rem, env(safe-area-inset-left, 1rem));
   padding-right: max(1rem, env(safe-area-inset-right, 1rem));
+}
+
+/* ============================================
+   Chat Layout - Fixed Header/Input Pattern
+   WhatsApp-style: header stays fixed, keyboard
+   pushes only input, messages scroll in middle
+   ============================================ */
+
+/* Prevent body scroll when chat is active */
+body:has(.chat-container) {
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  overscroll-behavior: none;
+}
+
+/* Main chat container - fills viewport */
+.chat-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  /* Use JS-calculated viewport height for keyboard handling */
+  height: var(--viewport-height, 100vh);
+}
+
+/* Modern browsers with dvh support */
+@supports (height: 100dvh) {
+  .chat-container {
+    height: 100dvh;
+  }
+  /* When keyboard is detected, switch to calculated height */
+  body.keyboard-open .chat-container {
+    height: var(--viewport-height, 100dvh);
+  }
+}
+
+/* Chat header - stays at top, never moves */
+.chat-header {
+  flex-shrink: 0;
+  z-index: 30;
+  /* Sticky within the flex container */
+  position: relative;
+}
+
+/* Scrollable messages area - fills remaining space */
+.chat-messages {
+  flex: 1 1 0%;
+  min-height: 0; /* Critical for flex child scrolling */
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+  position: relative;
+  /* Prevent momentum scrolling from affecting fixed elements */
+  will-change: scroll-position;
+}
+
+/* Chat input area - stays at bottom of flex container */
+.chat-input-area {
+  flex-shrink: 0;
+  z-index: 20;
+  position: relative;
+  /* Safe area padding for notched devices */
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Additional keyboard-open state styles */
+body.keyboard-open {
+  /* Extra safety: lock everything */
+  touch-action: none;
+}
+
+body.keyboard-open .chat-messages {
+  /* Allow scrolling in messages when keyboard is open */
+  touch-action: pan-y;
+}
+
+body.keyboard-open .chat-input-area {
+  /* Input area should handle touches normally */
+  touch-action: auto;
+}
+
+/* iOS Safari specific fixes */
+@supports (-webkit-touch-callout: none) {
+  .chat-container {
+    /* Fallback for iOS before keyboard opens */
+    height: -webkit-fill-available;
+  }
+
+  body.keyboard-open .chat-container {
+    /* Use calculated height when keyboard is open */
+    height: var(--viewport-height, 100vh);
+    /* Prevent any transform or will-change that might cause issues */
+    transform: none;
+  }
+
+  /* Prevent iOS from zooming on input focus */
+  .chat-input-area input,
+  .chat-input-area textarea {
+    font-size: 16px !important;
+    transform: translateZ(0);
+  }
 }
 
 /* ============================================
