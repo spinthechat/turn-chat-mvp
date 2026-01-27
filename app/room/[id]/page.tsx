@@ -3410,8 +3410,10 @@ export default function RoomPage() {
           paddingTop: headerHeight,
           // CRITICAL: Input height + safe-area-inset-bottom + buffer
           // getBoundingClientRect doesn't include the CSS env() padding on the input area,
-          // so we must add safe-area-inset-bottom explicitly here
-          paddingBottom: `calc(${inputHeight}px + env(safe-area-inset-bottom, 0px) + 20px)`
+          // DMs need more padding (20px buffer), groups need less (4px buffer)
+          paddingBottom: isDM
+            ? `calc(${inputHeight}px + env(safe-area-inset-bottom, 0px) + 20px)`
+            : `calc(${inputHeight}px + env(safe-area-inset-bottom, 0px) + 4px)`
         }}
       >
         <div className="chat-messages">
