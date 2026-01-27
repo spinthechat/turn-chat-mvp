@@ -2756,6 +2756,17 @@ export default function RoomPage() {
     return null
   }, [turnSession, users])
 
+  // Determine chat mode for visual styling (must be before any early returns)
+  const isDM = roomInfo?.type === 'dm'
+
+  // Get theme based on room mode (only for group chats)
+  const theme = useMemo(() => {
+    if (isDM) return getThemeForMode('fun') // DMs use default theme
+    return getThemeForMode(roomInfo?.prompt_mode)
+  }, [isDM, roomInfo?.prompt_mode])
+
+  const isFlirtyTheme = theme.mode === 'flirty'
+
   // Room-wide prompt frequency setting
   const roomFrequency = useMemo(() => {
     return roomInfo?.prompt_interval_minutes ?? 0
@@ -3928,17 +3939,6 @@ export default function RoomPage() {
       </div>
     )
   }
-
-  // Determine chat mode for visual styling
-  const isDM = roomInfo?.type === 'dm'
-
-  // Get theme based on room mode (only for group chats)
-  const theme = useMemo(() => {
-    if (isDM) return getThemeForMode('fun') // DMs use default theme
-    return getThemeForMode(roomInfo?.prompt_mode)
-  }, [isDM, roomInfo?.prompt_mode])
-
-  const isFlirtyTheme = theme.mode === 'flirty'
 
   return (
     <div
