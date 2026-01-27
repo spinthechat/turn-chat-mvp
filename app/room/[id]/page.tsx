@@ -3424,9 +3424,9 @@ export default function RoomPage() {
         className="chat-messages-scroller"
         style={{
           paddingTop: headerHeight,
-          // Input height + safe-area-inset-bottom + small buffer
-          // Same padding for DM and Group to ensure consistent scroll behavior
-          paddingBottom: `calc(${inputHeight}px + env(safe-area-inset-bottom, 0px) + 12px)`
+          // Input height already includes safe-area-inset-bottom (from .chat-input-area CSS)
+          // Just add a small buffer for visual spacing
+          paddingBottom: inputHeight + 8
         }}
       >
         <div className="chat-messages">
