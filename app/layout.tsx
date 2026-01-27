@@ -4,6 +4,9 @@ import { Inter } from 'next/font/google'
 
 const inter = Inter({ subsets: ['latin'] })
 
+// Icon version for cache-busting (increment when icons change)
+const ICON_VERSION = 3
+
 export const metadata: Metadata = {
   title: 'Spin the Chat',
   description: 'A group chat with turn-based prompts',
@@ -15,11 +18,15 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
-      { url: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
+      { url: `/icons/icon-192.png?v=${ICON_VERSION}`, sizes: '192x192', type: 'image/png' },
+      { url: `/icons/icon-512.png?v=${ICON_VERSION}`, sizes: '512x512', type: 'image/png' },
     ],
     apple: [
-      { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: `/icons/icon-192.png?v=${ICON_VERSION}`, sizes: '192x192', type: 'image/png' },
+    ],
+    other: [
+      // Maskable icon for Android adaptive icons
+      { rel: 'icon', url: `/icons/maskable-192.png?v=${ICON_VERSION}`, sizes: '192x192', type: 'image/png' },
     ],
   },
 }
@@ -56,6 +63,10 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        {/* Explicit apple-touch-icon for iOS Safari (some versions ignore metadata) */}
+        <link rel="apple-touch-icon" sizes="192x192" href={`/icons/icon-192.png?v=${ICON_VERSION}`} />
+        {/* Explicit maskable icon hint for Android */}
+        <link rel="icon" sizes="192x192" href={`/icons/maskable-192.png?v=${ICON_VERSION}`} />
       </head>
       <body className={inter.className}>
         {children}
