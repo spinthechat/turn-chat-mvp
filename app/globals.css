@@ -80,41 +80,30 @@
 }
 
 /* ============================================
-   Chat Layout - iOS Safari Keyboard Compatible
-   Uses visualViewport API for accurate sizing
+   Chat Layout - Conservative iOS-safe approach
    ============================================ */
 
-/* CSS Variables (set by JS via useVisualViewport hook):
-   --vvh: visualViewport.height in pixels (e.g., 600)
-   --vvo: visualViewport.offsetTop in pixels (e.g., 0)
-   Fallback to window.innerHeight if visualViewport unavailable
+/*
+   CSS Variable (set by JS):
+   --app-height: visualViewport.height in px (e.g., "600px")
+   Falls back to 100dvh if not set
 */
 
-/* Lock html/body when chat is active - NO page scroll */
-html:has(.chat-viewport-shell),
-body:has(.chat-viewport-shell) {
-  height: 100%;
-  overflow: hidden;
-  overscroll-behavior: none;
-  position: fixed;
-  width: 100%;
-  top: 0;
-  left: 0;
-}
-
-/* Viewport shell - sized exactly to visible viewport, pinned to top */
+/* Outer shell - uses JS-calculated height with safe fallback */
 .chat-viewport-shell {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
-  /* Height from visualViewport */
-  height: calc(var(--vvh, 100) * 1px);
+  /* Safe fallback that works without JS */
+  height: 100vh;
+  height: 100dvh;
+  /* When JS sets --app-height, use it */
+  height: var(--app-height, 100dvh);
   overflow: hidden;
-  /* DO NOT add transform, filter, perspective - breaks sticky/fixed */
 }
 
-/* Inner flex layout container */
+/* Inner layout container - flex column */
 .chat-layout {
   display: flex;
   flex-direction: column;
@@ -122,18 +111,19 @@ body:has(.chat-viewport-shell) {
   overflow: hidden;
 }
 
-/* Header - flex item at top, never scrolls */
+/* Header - flex-shrink-0, stays at top */
 .chat-header {
   flex-shrink: 0;
   z-index: 30;
+  position: relative;
   /* Safe area for notched devices */
   padding-top: env(safe-area-inset-top, 0px);
 }
 
-/* Messages scroller - the ONLY scrollable element */
+/* Messages scroller - takes remaining space, ONLY scrollable element */
 .chat-messages-scroller {
   flex: 1 1 0%;
-  min-height: 0; /* Critical for flex child scrolling */
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
   overscroll-behavior-y: contain;
@@ -145,21 +135,13 @@ body:has(.chat-viewport-shell) {
   position: relative;
 }
 
-/* Input area - flex item at bottom */
+/* Input area - flex-shrink-0, stays at bottom */
 .chat-input-area {
   flex-shrink: 0;
   z-index: 20;
+  position: relative;
   /* Safe area padding for notched devices */
   padding-bottom: env(safe-area-inset-bottom, 0px);
-}
-
-/* Keyboard open state - proper touch handling */
-body.keyboard-open .chat-messages-scroller {
-  touch-action: pan-y;
-}
-
-body.keyboard-open .chat-input-area {
-  touch-action: auto;
 }
 
 /* iOS Safari specific - prevent zoom on input focus */

@@ -5,18 +5,22 @@ import { useEffect, useRef } from 'react'
 /**
  * Hook to handle iOS Safari keyboard layout using visualViewport API
  *
- * Sets CSS variables on document.documentElement:
- * - --vvh: visualViewport.height (or window.innerHeight fallback)
- * - --vvo: visualViewport.offsetTop (or 0 fallback)
+ * Sets CSS variable on document.documentElement:
+ * - --app-height: visualViewport.height with "px" suffix (e.g., "600px")
  *
- * These variables drive the chat-viewport-shell sizing.
+ * Also locks body scroll while mounted (only messages container scrolls)
  */
 export function useMobileViewport() {
   const rafId = useRef<number | null>(null)
-  const lastVvh = useRef<number>(0)
-  const lastVvo = useRef<number>(0)
+  const lastHeight = useRef<number>(0)
 
   useEffect(() => {
+    // Lock body scroll on mount
+    const originalHtmlOverflow = document.documentElement.style.overflow
+    const originalBodyOverflow = document.body.style.overflow
+    document.documentElement.style.overflow = 'hidden'
+    document.body.style.overflow = 'hidden'
+
     const updateViewport = () => {
       // Cancel any pending rAF to avoid stacking
       if (rafId.current !== null) {
@@ -25,27 +29,14 @@ export function useMobileViewport() {
 
       rafId.current = requestAnimationFrame(() => {
         const vv = window.visualViewport
+        // Get height from visualViewport or fallback to innerHeight
+        const height = vv ? vv.height : window.innerHeight
 
-        // Get values from visualViewport or fallback
-        const vvh = vv ? vv.height : window.innerHeight
-        const vvo = vv ? vv.offsetTop : 0
-
-        // Only update DOM if values actually changed (avoid layout thrash)
-        if (vvh !== lastVvh.current || vvo !== lastVvo.current) {
-          lastVvh.current = vvh
-          lastVvo.current = vvo
-
-          // Write CSS variables directly - no React state to avoid re-renders
-          document.documentElement.style.setProperty('--vvh', String(vvh))
-          document.documentElement.style.setProperty('--vvo', String(vvo))
-
-          // Toggle keyboard-open class for touch-action styles
-          const keyboardOpen = vv ? (window.innerHeight - vvh > 100) : false
-          if (keyboardOpen) {
-            document.body.classList.add('keyboard-open')
-          } else {
-            document.body.classList.remove('keyboard-open')
-          }
+        // Only update DOM if value actually changed (avoid layout thrash)
+        if (height !== lastHeight.current) {
+          lastHeight.current = height
+          // Set with px units so CSS can use it directly
+          document.documentElement.style.setProperty('--app-height', `${height}px`)
         }
 
         rafId.current = null
@@ -62,13 +53,12 @@ export function useMobileViewport() {
       vv.addEventListener('scroll', updateViewport)
     }
 
-    // Fallback listeners for browsers without visualViewport
+    // Fallback listeners
     window.addEventListener('resize', updateViewport)
     window.addEventListener('orientationchange', updateViewport)
 
     // Also update on focus events (keyboard open/close)
     const handleFocus = () => {
-      // Delay to allow keyboard animation to start
       setTimeout(updateViewport, 100)
       setTimeout(updateViewport, 300)
     }
@@ -77,6 +67,10 @@ export function useMobileViewport() {
     document.addEventListener('focusout', handleFocus)
 
     return () => {
+      // Restore body scroll on unmount
+      document.documentElement.style.overflow = originalHtmlOverflow
+      document.body.style.overflow = originalBodyOverflow
+
       if (rafId.current !== null) {
         cancelAnimationFrame(rafId.current)
       }
