@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, useCallback, memo } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { GroupAvatarMosaic, type GroupMember } from '@/app/components/GroupAvatarMosaic'
 
 // Prompt mode options
 const PROMPT_MODES = [
@@ -34,6 +35,8 @@ type ChatItem = {
     color: string
     avatarUrl: string | null
   }
+  // For group chats - up to 4 members for mosaic avatar
+  group_members?: GroupMember[]
 }
 
 type Profile = {
@@ -161,21 +164,26 @@ function ChatAvatar({ chat, size = 'md' }: { chat: ChatItem; size?: 'sm' | 'md' 
         <img
           src={chat.other_member.avatarUrl}
           alt={chat.other_member.displayName}
-          className={`${sizeClasses[size]} rounded-full object-cover flex-shrink-0`}
+          className={`${sizeClasses[size]} rounded-full object-cover flex-shrink-0 ring-1 ring-stone-200/50 dark:ring-stone-600/50`}
         />
       )
     }
     return (
-      <div className={`${sizeClasses[size]} rounded-full ${chat.other_member.color} flex items-center justify-center text-white font-medium flex-shrink-0`}>
+      <div className={`${sizeClasses[size]} rounded-full ${chat.other_member.color} flex items-center justify-center text-white font-medium flex-shrink-0 ring-1 ring-stone-200/50 dark:ring-stone-600/50`}>
         {chat.other_member.initials}
       </div>
     )
   }
 
-  // Group avatar
+  // Group avatar - use mosaic if we have members
+  if (chat.group_members && chat.group_members.length > 0) {
+    return <GroupAvatarMosaic members={chat.group_members} size={size} />
+  }
+
+  // Fallback group avatar
   return (
-    <div className={`${sizeClasses[size]} rounded-full bg-gradient-to-br from-stone-100 to-stone-200 flex items-center justify-center flex-shrink-0`}>
-      <svg className="w-7 h-7 text-stone-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <div className={`${sizeClasses[size]} rounded-full bg-gradient-to-br from-stone-100 to-stone-200 dark:from-stone-700 dark:to-stone-800 flex items-center justify-center flex-shrink-0 ring-1 ring-stone-200/50 dark:ring-stone-600/50`}>
+      <svg className="w-7 h-7 text-stone-400 dark:text-stone-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
       </svg>
     </div>
@@ -359,12 +367,16 @@ export default function ChatsPage() {
 
     for (const room of roomsData ?? []) {
       let otherMember = undefined
-      if (room.room_type === 'dm') {
-        const { data: members } = await supabase
-          .from('room_members')
-          .select('user_id')
-          .eq('room_id', room.room_id)
+      let groupMembers: GroupMember[] | undefined = undefined
 
+      // Fetch members for this room
+      const { data: members } = await supabase
+        .from('room_members')
+        .select('user_id')
+        .eq('room_id', room.room_id)
+        .limit(5) // Fetch up to 5 to have 4 after excluding current user
+
+      if (room.room_type === 'dm') {
         if (members) {
           const otherUserId = members.find((m: any) => m.user_id !== uid)?.user_id
           if (otherUserId) {
@@ -384,6 +396,42 @@ export default function ChatsPage() {
             }
           }
         }
+      } else {
+        // Group chat - build mosaic members (exclude current user, take up to 4)
+        if (members) {
+          groupMembers = members
+            .filter((m: any) => m.user_id !== uid)
+            .slice(0, 4)
+            .map((m: any) => {
+              const profile = profileMap.get(m.user_id)
+              const displayName = profile?.display_name || (profile?.email ? getDisplayName(profile.email) : 'Unknown')
+              return {
+                id: m.user_id,
+                displayName,
+                initials: profile?.display_name
+                  ? profile.display_name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()
+                  : (profile?.email ? getInitials(profile.email) : '??'),
+                color: stringToColor(m.user_id),
+                avatarUrl: profile?.avatar_url || null
+              }
+            })
+
+          // If we filtered out everyone (user is alone), show their own avatar
+          if (groupMembers.length === 0 && members.length > 0) {
+            const myProfile = profileMap.get(uid)
+            if (myProfile) {
+              groupMembers = [{
+                id: uid,
+                displayName: myProfile.display_name || getDisplayName(myProfile.email),
+                initials: myProfile.display_name
+                  ? myProfile.display_name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()
+                  : getInitials(myProfile.email),
+                color: stringToColor(uid),
+                avatarUrl: myProfile.avatar_url || null
+              }]
+            }
+          }
+        }
       }
 
       chatItems.push({
@@ -396,7 +444,8 @@ export default function ChatsPage() {
         last_message_user_id: room.last_message_user_id,
         member_count: Number(room.member_count),
         unread_count: Number(room.unread_count),
-        other_member: otherMember
+        other_member: otherMember,
+        group_members: groupMembers
       })
     }
 

@@ -8,6 +8,7 @@ import { useThemePreference, type ThemePreference } from '@/lib/useThemePreferen
 import { hapticTick, clearTextSelection, clearTextSelectionAggressive, setGlobalNoSelect } from '@/lib/haptics'
 import { getThemeForMode, isDarkTheme, getThemeCSSVars, type ChatTheme } from '@/lib/themes'
 import { useParams, useRouter } from 'next/navigation'
+import { GroupAvatarMosaic, type GroupMember } from '@/app/components/GroupAvatarMosaic'
 
 // Local imports from extracted modules
 import { useMobileViewport } from './hooks'
@@ -1800,6 +1801,42 @@ export default function RoomPage() {
     }
   }, [roomInfo?.type, userId, roomMembers, users, onlineUsers])
 
+  // For group rooms, compute members for the avatar mosaic (up to 4, excluding current user)
+  const groupMosaicMembers = useMemo((): GroupMember[] => {
+    if (roomInfo?.type === 'dm' || !userId) return []
+
+    // Get up to 4 members excluding current user
+    const otherMembers = roomMembers
+      .filter(m => m.user_id !== userId)
+      .slice(0, 4)
+      .map(m => {
+        const user = users.get(m.user_id)
+        return {
+          id: m.user_id,
+          displayName: user?.displayName ?? 'Unknown',
+          initials: user?.initials ?? '??',
+          color: user?.color ?? 'bg-stone-400',
+          avatarUrl: user?.avatarUrl ?? null
+        }
+      })
+
+    // If alone in group, show own avatar
+    if (otherMembers.length === 0) {
+      const myUser = users.get(userId)
+      if (myUser) {
+        return [{
+          id: userId,
+          displayName: myUser.displayName,
+          initials: myUser.initials,
+          color: myUser.color,
+          avatarUrl: myUser.avatarUrl
+        }]
+      }
+    }
+
+    return otherMembers
+  }, [roomInfo?.type, userId, roomMembers, users])
+
   const bottomRef = useRef<HTMLDivElement | null>(null)
   const scrollContainerRef = useRef<HTMLDivElement | null>(null)
   const turnInputRef = useRef<HTMLInputElement | null>(null)
@@ -3189,11 +3226,7 @@ export default function RoomPage() {
                   )}
                 </div>
               ) : (
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 via-violet-500 to-purple-500 flex items-center justify-center shadow-sm shadow-indigo-500/20">
-                  <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
-                  </svg>
-                </div>
+                <GroupAvatarMosaic members={groupMosaicMembers} size="sm" />
               )}
               <div className="text-left">
                 <h1 className={`text-[15px] font-semibold leading-tight flex items-center gap-1.5 ${
