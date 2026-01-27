@@ -3474,158 +3474,213 @@ export default function RoomPage() {
             ? 'bg-slate-900/90 backdrop-blur-xl border-t border-slate-700/50'
             : 'bg-white/85 backdrop-blur-xl border-t border-slate-200/50'
       }`}>
-        {/* Turn response input - only when it's your turn AND cooldown passed */}
+        {/* TURN PROMPT CARD - Visually distinct from chat input */}
         {gameActive && isMyTurn && !isWaitingForCooldown && (
-          <div className={`border-b transition-all duration-500 ${
-            isDM
-              ? (isPhotoPrompt ? 'border-violet-100/60 bg-gradient-to-r from-violet-50/60 to-purple-50/60' : 'border-indigo-100/60 bg-gradient-to-r from-indigo-50/60 to-violet-50/60')
-              : isFlirtyTheme
-                ? 'border-rose-500/20 bg-gradient-to-r from-rose-950/40 to-pink-950/30'
-                : theme.mode === 'family'
-                  ? 'border-amber-200/60 bg-gradient-to-r from-amber-50/60 to-orange-50/60'
-                  : theme.mode === 'deep'
-                    ? 'border-blue-200/60 bg-gradient-to-r from-blue-50/60 to-indigo-50/60'
-                    : theme.mode === 'couple'
-                      ? 'border-pink-200/60 bg-gradient-to-r from-pink-50/60 to-rose-50/60'
-                      : 'border-indigo-100/60 bg-gradient-to-r from-indigo-50/60 to-violet-50/60'
-          }`}>
-            <div className="max-w-3xl mx-auto px-safe py-3">
-              <div className="flex items-center gap-2 mb-2.5">
-                {/* Live indicator dot - subtle opacity pulse, stays for entire turn */}
-                <span className="relative flex h-2 w-2 shrink-0">
-                  <span className={`absolute inline-flex h-full w-full rounded-full ${isDM ? 'bg-red-500/40' : theme.liveDotPulse} animate-[pulse-opacity_2s_ease-in-out_infinite]`}></span>
-                  <span className={`relative inline-flex rounded-full h-2 w-2 ${isDM ? 'bg-red-500' : theme.liveDotColor}`}></span>
+          <div className="px-3 pt-3 pb-2">
+            <div className={`rounded-2xl shadow-lg transition-all duration-300 overflow-hidden ${
+              isDM
+                ? (isPhotoPrompt
+                    ? 'bg-gradient-to-br from-violet-50 to-purple-50 dark:from-violet-950/50 dark:to-purple-950/50 ring-1 ring-violet-200/80 dark:ring-violet-700/50 shadow-violet-200/50 dark:shadow-violet-900/30'
+                    : 'bg-gradient-to-br from-indigo-50 to-violet-50 dark:from-indigo-950/50 dark:to-violet-950/50 ring-1 ring-indigo-200/80 dark:ring-indigo-700/50 shadow-indigo-200/50 dark:shadow-indigo-900/30')
+                : isFlirtyTheme
+                  ? 'bg-gradient-to-br from-rose-950/60 to-pink-950/50 ring-1 ring-rose-500/40 shadow-rose-500/20'
+                  : theme.mode === 'family'
+                    ? 'bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/50 dark:to-orange-950/50 ring-1 ring-amber-200/80 dark:ring-amber-700/50 shadow-amber-200/50'
+                    : theme.mode === 'deep'
+                      ? 'bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/50 dark:to-indigo-950/50 ring-1 ring-blue-200/80 dark:ring-blue-700/50 shadow-blue-200/50'
+                      : theme.mode === 'couple'
+                        ? 'bg-gradient-to-br from-pink-50 to-rose-50 dark:from-pink-950/50 dark:to-rose-950/50 ring-1 ring-pink-200/80 dark:ring-pink-700/50 shadow-pink-200/50'
+                        : 'bg-gradient-to-br from-indigo-50 to-violet-50 dark:from-indigo-950/50 dark:to-violet-950/50 ring-1 ring-indigo-200/80 dark:ring-indigo-700/50 shadow-indigo-200/50'
+            }`}>
+              {/* Card Header */}
+              <div className={`px-4 py-2.5 flex items-center gap-2 border-b ${
+                isDM
+                  ? (isPhotoPrompt ? 'border-violet-200/60 dark:border-violet-700/40' : 'border-indigo-200/60 dark:border-indigo-700/40')
+                  : isFlirtyTheme
+                    ? 'border-rose-500/30'
+                    : theme.mode === 'family'
+                      ? 'border-amber-200/60 dark:border-amber-700/40'
+                      : theme.mode === 'deep'
+                        ? 'border-blue-200/60 dark:border-blue-700/40'
+                        : theme.mode === 'couple'
+                          ? 'border-pink-200/60 dark:border-pink-700/40'
+                          : 'border-indigo-200/60 dark:border-indigo-700/40'
+              }`}>
+                {/* Live indicator */}
+                <span className="relative flex h-2.5 w-2.5 shrink-0">
+                  <span className={`absolute inline-flex h-full w-full rounded-full ${isDM ? 'bg-emerald-500/40' : theme.liveDotPulse} animate-[pulse-opacity_2s_ease-in-out_infinite]`}></span>
+                  <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${isDM ? 'bg-emerald-500' : theme.liveDotColor}`}></span>
                 </span>
-                <span className={`text-xs font-semibold ${isDM ? (isPhotoPrompt ? 'text-violet-600 dark:text-violet-400' : 'text-indigo-600 dark:text-indigo-400') : theme.accentText}`}>
-                  Your turn {isPhotoPrompt && '— upload a photo'}
+                <span className={`text-sm font-bold tracking-tight ${
+                  isDM
+                    ? (isPhotoPrompt ? 'text-violet-700 dark:text-violet-300' : 'text-indigo-700 dark:text-indigo-300')
+                    : isFlirtyTheme
+                      ? 'text-rose-300'
+                      : theme.mode === 'family'
+                        ? 'text-amber-700 dark:text-amber-300'
+                        : theme.mode === 'deep'
+                          ? 'text-blue-700 dark:text-blue-300'
+                          : theme.mode === 'couple'
+                            ? 'text-pink-700 dark:text-pink-300'
+                            : 'text-indigo-700 dark:text-indigo-300'
+                }`}>
+                  Your turn to answer
                 </span>
-                <span className={`text-xs ${isDM ? (isPhotoPrompt ? 'text-violet-400 dark:text-violet-300' : 'text-indigo-400 dark:text-indigo-300') : theme.mutedText}`}>
-                  · &ldquo;{turnSession?.prompt_text}&rdquo;
-                </span>
+                {isPhotoPrompt && (
+                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                    isDM
+                      ? 'bg-violet-200/60 text-violet-700 dark:bg-violet-800/50 dark:text-violet-300'
+                      : isFlirtyTheme
+                        ? 'bg-rose-500/30 text-rose-300'
+                        : 'bg-violet-200/60 text-violet-700 dark:bg-violet-800/50 dark:text-violet-300'
+                  }`}>
+                    Photo
+                  </span>
+                )}
               </div>
 
-              {isPhotoPrompt ? (
-                <div className="flex gap-2">
-                  <input
-                    ref={turnCameraInputRef}
-                    type="file"
-                    accept="image/*"
-                    capture="environment"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0]
-                      if (file) submitPhotoTurn(file)
-                      e.target.value = ''
-                    }}
-                  />
-                  <input
-                    ref={turnLibraryInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0]
-                      if (file) submitPhotoTurn(file)
-                      e.target.value = ''
-                    }}
-                  />
-                  <PhotoActionSheet
-                    isOpen={showTurnPhotoSheet}
-                    onClose={() => setShowTurnPhotoSheet(false)}
-                    onTakePhoto={() => turnCameraInputRef.current?.click()}
-                    onChooseLibrary={() => turnLibraryInputRef.current?.click()}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowTurnPhotoSheet(true)}
-                    disabled={uploadingImage}
-                    className={`flex-1 flex items-center justify-center gap-2.5 py-3.5 backdrop-blur-sm rounded-xl ring-1 shadow-sm cursor-pointer transition-all duration-500 active:scale-[0.98] ${
-                      isDM
-                        ? `bg-white/90 hover:bg-violet-50/50 ${turnPulseActive ? 'ring-violet-400/80 shadow-violet-500/20 shadow-lg' : 'ring-violet-200/60'}`
-                        : isFlirtyTheme
-                          ? `bg-slate-800/80 hover:bg-slate-700/80 ${turnPulseActive ? 'ring-rose-400/60 shadow-rose-500/20 shadow-lg' : 'ring-rose-500/30'}`
-                          : theme.mode === 'family'
-                            ? `bg-white/90 hover:bg-white ${turnPulseActive ? 'ring-amber-400/70 shadow-amber-500/15 shadow-lg' : 'ring-amber-200/60'}`
-                            : theme.mode === 'deep'
-                              ? `bg-white/90 hover:bg-white ${turnPulseActive ? 'ring-blue-400/60 shadow-blue-500/15 shadow-lg' : 'ring-blue-200/50'}`
-                              : theme.mode === 'couple'
-                                ? `bg-white/90 hover:bg-white ${turnPulseActive ? 'ring-pink-400/60 shadow-pink-500/15 shadow-lg' : 'ring-pink-200/60'}`
-                                : `bg-white/90 hover:bg-white ${turnPulseActive ? 'ring-indigo-400/80 shadow-indigo-500/20 shadow-lg' : 'ring-indigo-200/60'}`
-                    } ${uploadingImage ? 'opacity-50 pointer-events-none' : ''}`}
-                  >
-                    {uploadingImage ? (
-                      <>
-                        <div className={`w-5 h-5 border-2 rounded-full animate-spin ${
-                          isDM ? 'border-violet-200 border-t-violet-600' : isFlirtyTheme ? 'border-rose-300/40 border-t-rose-400' : 'border-slate-200 border-t-slate-600'
-                        }`} />
-                        <span className={`text-sm font-semibold ${isDM ? 'text-violet-600' : theme.accentText}`}>Uploading...</span>
-                      </>
-                    ) : (
-                      <>
-                        <svg className={`w-5 h-5 ${isDM ? 'text-violet-500' : isFlirtyTheme ? 'text-rose-400' : `text-${theme.accentPrimary}`}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                        <span className={`text-sm font-semibold ${isDM ? 'text-violet-600' : theme.accentText}`}>Take or Choose Photo</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              ) : (
-                <div className={`flex gap-2 backdrop-blur-sm rounded-xl p-1.5 ring-1 shadow-sm transition-all duration-500 ${
+              {/* Prompt Question - displayed prominently */}
+              <div className={`px-4 py-3 ${
+                isDM
+                  ? (isPhotoPrompt ? 'bg-violet-100/40 dark:bg-violet-900/30' : 'bg-indigo-100/40 dark:bg-indigo-900/30')
+                  : isFlirtyTheme
+                    ? 'bg-rose-900/30'
+                    : theme.mode === 'family'
+                      ? 'bg-amber-100/40 dark:bg-amber-900/30'
+                      : theme.mode === 'deep'
+                        ? 'bg-blue-100/40 dark:bg-blue-900/30'
+                        : theme.mode === 'couple'
+                          ? 'bg-pink-100/40 dark:bg-pink-900/30'
+                          : 'bg-indigo-100/40 dark:bg-indigo-900/30'
+              }`}>
+                <p className={`text-base font-medium leading-relaxed ${
                   isDM
-                    ? `bg-white/90 ${turnPulseActive ? 'ring-indigo-400/80 shadow-indigo-500/20 shadow-lg' : 'ring-indigo-200/60'}`
+                    ? 'text-stone-800 dark:text-stone-100'
                     : isFlirtyTheme
-                      ? `bg-slate-800/80 ${turnPulseActive ? 'ring-rose-400/60 shadow-rose-500/20 shadow-lg' : 'ring-rose-500/30'}`
-                      : theme.mode === 'family'
-                        ? `bg-white/90 ${turnPulseActive ? 'ring-amber-400/70 shadow-amber-500/15 shadow-lg' : 'ring-amber-200/60'}`
-                        : theme.mode === 'deep'
-                          ? `bg-white/90 ${turnPulseActive ? 'ring-blue-400/60 shadow-blue-500/15 shadow-lg' : 'ring-blue-200/50'}`
-                          : theme.mode === 'couple'
-                            ? `bg-white/90 ${turnPulseActive ? 'ring-pink-400/60 shadow-pink-500/15 shadow-lg' : 'ring-pink-200/60'}`
-                            : `bg-white/90 ${turnPulseActive ? 'ring-indigo-400/80 shadow-indigo-500/20 shadow-lg' : 'ring-indigo-200/60'}`
+                      ? 'text-slate-100'
+                      : 'text-stone-800 dark:text-stone-100'
                 }`}>
-                  <input
-                    ref={turnInputRef}
-                    value={turnText}
-                    onChange={(e) => setTurnText(e.target.value)}
-                    placeholder="Type your response..."
-                    className={`flex-1 bg-transparent px-3 py-2.5 text-base focus:outline-none ${
-                      isDM
-                        ? 'placeholder:text-indigo-300'
-                        : isFlirtyTheme
-                          ? 'placeholder:text-rose-300/60 text-slate-100'
-                          : 'placeholder:text-slate-400'
-                    }`}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault()
-                        submitTurn()
-                      }
-                    }}
-                    onFocus={handleInputFocus}
-                  />
-                  <button
-                    onClick={submitTurn}
-                    disabled={!turnText.trim()}
-                    className={`px-4 py-2 text-sm font-semibold rounded-lg text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95 shadow-sm ${
-                      isDM
-                        ? 'bg-gradient-to-r from-indigo-500 to-violet-500 hover:from-indigo-600 hover:to-violet-600'
-                        : isFlirtyTheme
-                          ? 'bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600'
-                          : theme.mode === 'family'
-                            ? 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600'
-                            : theme.mode === 'deep'
-                              ? 'bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600'
-                              : theme.mode === 'couple'
-                                ? 'bg-gradient-to-r from-pink-500 to-rose-400 hover:from-pink-600 hover:to-rose-500'
-                                : 'bg-gradient-to-r from-indigo-500 to-violet-500 hover:from-indigo-600 hover:to-violet-600'
-                    }`}
-                  >
-                    Submit
-                  </button>
-                </div>
-              )}
+                  &ldquo;{turnSession?.prompt_text}&rdquo;
+                </p>
+              </div>
+
+              {/* Input Area */}
+              <div className="p-3">
+                {isPhotoPrompt ? (
+                  <>
+                    <input
+                      ref={turnCameraInputRef}
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (file) submitPhotoTurn(file)
+                        e.target.value = ''
+                      }}
+                    />
+                    <input
+                      ref={turnLibraryInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (file) submitPhotoTurn(file)
+                        e.target.value = ''
+                      }}
+                    />
+                    <PhotoActionSheet
+                      isOpen={showTurnPhotoSheet}
+                      onClose={() => setShowTurnPhotoSheet(false)}
+                      onTakePhoto={() => turnCameraInputRef.current?.click()}
+                      onChooseLibrary={() => turnLibraryInputRef.current?.click()}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowTurnPhotoSheet(true)}
+                      disabled={uploadingImage}
+                      className={`w-full flex items-center justify-center gap-3 py-4 rounded-xl font-semibold text-white transition-all active:scale-[0.98] shadow-md ${
+                        isDM
+                          ? 'bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600 shadow-violet-500/25'
+                          : isFlirtyTheme
+                            ? 'bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 shadow-rose-500/25'
+                            : theme.mode === 'family'
+                              ? 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 shadow-amber-500/25'
+                              : theme.mode === 'deep'
+                                ? 'bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 shadow-blue-500/25'
+                                : theme.mode === 'couple'
+                                  ? 'bg-gradient-to-r from-pink-500 to-rose-400 hover:from-pink-600 hover:to-rose-500 shadow-pink-500/25'
+                                  : 'bg-gradient-to-r from-indigo-500 to-violet-500 hover:from-indigo-600 hover:to-violet-600 shadow-indigo-500/25'
+                      } ${uploadingImage ? 'opacity-60 pointer-events-none' : ''}`}
+                    >
+                      {uploadingImage ? (
+                        <>
+                          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          <span>Uploading Photo...</span>
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                          <span>Upload Your Photo</span>
+                        </>
+                      )}
+                    </button>
+                  </>
+                ) : (
+                  <div className="space-y-2.5">
+                    <input
+                      ref={turnInputRef}
+                      value={turnText}
+                      onChange={(e) => setTurnText(e.target.value)}
+                      placeholder="Type your answer here..."
+                      className={`w-full px-4 py-3.5 text-base rounded-xl focus:outline-none transition-all ${
+                        isDM
+                          ? 'bg-white dark:bg-stone-900 ring-1 ring-indigo-200 dark:ring-indigo-700 focus:ring-2 focus:ring-indigo-400 dark:focus:ring-indigo-500 placeholder:text-stone-400 dark:placeholder:text-stone-500'
+                          : isFlirtyTheme
+                            ? 'bg-slate-800/80 ring-1 ring-rose-500/40 focus:ring-2 focus:ring-rose-400 placeholder:text-slate-500 text-slate-100'
+                            : theme.mode === 'family'
+                              ? 'bg-white dark:bg-stone-900 ring-1 ring-amber-200 dark:ring-amber-700 focus:ring-2 focus:ring-amber-400 placeholder:text-stone-400'
+                              : theme.mode === 'deep'
+                                ? 'bg-white dark:bg-stone-900 ring-1 ring-blue-200 dark:ring-blue-700 focus:ring-2 focus:ring-blue-400 placeholder:text-stone-400'
+                                : theme.mode === 'couple'
+                                  ? 'bg-white dark:bg-stone-900 ring-1 ring-pink-200 dark:ring-pink-700 focus:ring-2 focus:ring-pink-400 placeholder:text-stone-400'
+                                  : 'bg-white dark:bg-stone-900 ring-1 ring-indigo-200 dark:ring-indigo-700 focus:ring-2 focus:ring-indigo-400 placeholder:text-stone-400'
+                      }`}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault()
+                          submitTurn()
+                        }
+                      }}
+                      onFocus={handleInputFocus}
+                    />
+                    <button
+                      onClick={submitTurn}
+                      disabled={!turnText.trim()}
+                      className={`w-full py-3.5 font-semibold rounded-xl text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-[0.98] shadow-md ${
+                        isDM
+                          ? 'bg-gradient-to-r from-indigo-500 to-violet-500 hover:from-indigo-600 hover:to-violet-600 shadow-indigo-500/25'
+                          : isFlirtyTheme
+                            ? 'bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 shadow-rose-500/25'
+                            : theme.mode === 'family'
+                              ? 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 shadow-amber-500/25'
+                              : theme.mode === 'deep'
+                                ? 'bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 shadow-blue-500/25'
+                                : theme.mode === 'couple'
+                                  ? 'bg-gradient-to-r from-pink-500 to-rose-400 hover:from-pink-600 hover:to-rose-500 shadow-pink-500/25'
+                                  : 'bg-gradient-to-r from-indigo-500 to-violet-500 hover:from-indigo-600 hover:to-violet-600 shadow-indigo-500/25'
+                      }`}
+                    >
+                      Submit Answer
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
@@ -3728,24 +3783,41 @@ export default function RoomPage() {
           onChooseLibrary={() => imageInputRef.current?.click()}
         />
 
-        {/* Chat input - modern pill design */}
-        <div className="max-w-3xl mx-auto px-4 py-2.5">
-          <div className={`flex gap-2 p-1.5 chat-input-pill ${
+        {/* CHAT INPUT - Secondary to turn prompt */}
+        <div className={`max-w-3xl mx-auto px-4 transition-all duration-200 ${
+          gameActive && isMyTurn && !isWaitingForCooldown ? 'py-1.5 opacity-70' : 'py-2.5'
+        }`}>
+          {/* Chat label - shown when turn prompt is active to distinguish */}
+          {gameActive && isMyTurn && !isWaitingForCooldown && (
+            <div className={`flex items-center gap-1.5 mb-1.5 px-1 ${
+              isDM
+                ? 'text-stone-400 dark:text-stone-500'
+                : isFlirtyTheme
+                  ? 'text-slate-500'
+                  : 'text-stone-400 dark:text-stone-500'
+            }`}>
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+              <span className="text-[11px] font-medium uppercase tracking-wide">Chat</span>
+            </div>
+          )}
+          <div className={`flex gap-2 p-1.5 chat-input-pill transition-all duration-200 ${
             isDM
-              ? 'bg-stone-100/90'
+              ? 'bg-stone-100/90 dark:bg-stone-800/90'
               : isFlirtyTheme
                 ? 'bg-slate-800/90 border-slate-600/30'
-                : 'bg-slate-50/90'
-          }`}>
+                : 'bg-slate-50/90 dark:bg-stone-800/90'
+          } ${gameActive && isMyTurn && !isWaitingForCooldown ? 'scale-[0.98] origin-bottom' : ''}`}>
             <button
               onClick={() => setShowPhotoSheet(true)}
               disabled={uploadingImage}
               className={`p-2.5 rounded-xl transition-all duration-200 disabled:opacity-50 ${
                 isDM
-                  ? 'text-stone-400 hover:text-stone-600 hover:bg-white/80 active:scale-95'
+                  ? 'text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 hover:bg-white/80 dark:hover:bg-stone-700/80 active:scale-95'
                   : isFlirtyTheme
                     ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/80 active:scale-95'
-                    : 'text-slate-400 hover:text-slate-600 hover:bg-white/80 active:scale-95'
+                    : 'text-slate-400 hover:text-slate-600 dark:hover:text-stone-300 hover:bg-white/80 dark:hover:bg-stone-700/80 active:scale-95'
               }`}
               title="Attach photo"
               aria-label="Attach photo"
@@ -3782,13 +3854,13 @@ export default function RoomPage() {
               ref={chatInputRef}
               value={chatText}
               onChange={(e) => setChatText(e.target.value)}
-              placeholder="Type a message..."
+              placeholder={gameActive && isMyTurn && !isWaitingForCooldown ? "Send a chat message..." : "Type a message..."}
               className={`flex-1 min-w-0 bg-transparent px-3 py-2.5 text-base focus:outline-none ${
                 isDM
-                  ? 'placeholder:text-stone-400'
+                  ? 'placeholder:text-stone-400 dark:placeholder:text-stone-500'
                   : isFlirtyTheme
                     ? 'placeholder:text-slate-500 text-slate-100'
-                    : 'placeholder:text-slate-400'
+                    : 'placeholder:text-slate-400 dark:placeholder:text-stone-500'
               }`}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
@@ -3808,7 +3880,7 @@ export default function RoomPage() {
               className={`shrink-0 w-10 h-10 flex items-center justify-center text-white ${
                 chatText.trim()
                   ? isDM
-                    ? 'send-button !bg-gradient-to-br !from-stone-700 !to-stone-900'
+                    ? 'send-button !bg-gradient-to-br !from-stone-700 !to-stone-900 dark:!from-stone-600 dark:!to-stone-800'
                     : isFlirtyTheme
                       ? 'send-button !bg-gradient-to-br !from-rose-500 !via-pink-500 !to-rose-600 !shadow-rose-500/25'
                       : 'send-button'
