@@ -1672,6 +1672,9 @@ export default function RoomPage() {
   const [selectedProfileUserId, setSelectedProfileUserId] = useState<string | null>(null)
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set())
 
+  // Derived state: any drawer/modal is open (hides chat input to prevent layering issues)
+  const isAnyDrawerOpen = showGroupDetails || selectedProfileUserId !== null
+
   // For DM rooms, compute the "other member" display info
   const dmDisplayInfo = useMemo(() => {
     if (roomInfo?.type !== 'dm' || !userId) return null
@@ -3462,7 +3465,8 @@ export default function RoomPage() {
         </div>
         </div>
 
-      {/* Bottom panel: Chat input - docked at bottom */}
+      {/* Bottom panel: Chat input - docked at bottom, hidden when drawers are open */}
+      {!isAnyDrawerOpen && (
       <div ref={inputAreaRef} className={`chat-input-area ${
         isDM
           ? 'bg-white/80 backdrop-blur-xl border-t border-stone-200/40'
@@ -3818,6 +3822,7 @@ export default function RoomPage() {
           </div>
         </div>
       </div>
+      )}
     </div>
   )
 }
