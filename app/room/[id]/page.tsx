@@ -3647,6 +3647,8 @@ export default function RoomPage() {
                       accept="image/*"
                       capture="environment"
                       className="hidden"
+                      tabIndex={-1}
+                      aria-hidden="true"
                       onChange={(e) => {
                         const file = e.target.files?.[0]
                         if (file) submitPhotoTurn(file)
@@ -3658,6 +3660,8 @@ export default function RoomPage() {
                       type="file"
                       accept="image/*"
                       className="hidden"
+                      tabIndex={-1}
+                      aria-hidden="true"
                       onChange={(e) => {
                         const file = e.target.files?.[0]
                         if (file) submitPhotoTurn(file)
@@ -3711,6 +3715,11 @@ export default function RoomPage() {
                       value={turnText}
                       onChange={(e) => setTurnText(e.target.value)}
                       placeholder="Type your answer here..."
+                      inputMode="text"
+                      enterKeyHint="send"
+                      autoCorrect="on"
+                      autoCapitalize="sentences"
+                      spellCheck={true}
                       className={`w-full px-4 py-3.5 text-base rounded-xl focus:outline-none transition-all ${
                         isDM
                           ? 'bg-white dark:bg-stone-900 ring-1 ring-indigo-200 dark:ring-indigo-700 focus:ring-2 focus:ring-indigo-400 dark:focus:ring-indigo-500 placeholder:text-stone-400 dark:placeholder:text-stone-500'
@@ -3912,6 +3921,7 @@ export default function RoomPage() {
               capture="environment"
               onChange={sendImage}
               className="hidden"
+              tabIndex={-1}
               aria-hidden="true"
             />
             <input
@@ -3920,6 +3930,7 @@ export default function RoomPage() {
               accept="image/*"
               onChange={sendImage}
               className="hidden"
+              tabIndex={-1}
               aria-hidden="true"
             />
 
@@ -3928,6 +3939,14 @@ export default function RoomPage() {
               value={chatText}
               onChange={(e) => setChatText(e.target.value)}
               placeholder={gameActive && isMyTurn && !isWaitingForCooldown ? "Send a chat message..." : "Type a message..."}
+              inputMode="text"
+              enterKeyHint="send"
+              autoCorrect="on"
+              autoCapitalize="sentences"
+              spellCheck={true}
+              // When turn prompt is active, make chat input non-focusable to prevent iOS keyboard
+              // from showing prev/next arrows (only one focusable text input at a time)
+              tabIndex={gameActive && isMyTurn && !isWaitingForCooldown ? -1 : 0}
               className={`flex-1 min-w-0 bg-transparent px-3 py-2.5 text-base focus:outline-none ${
                 isDM
                   ? 'placeholder:text-stone-400 dark:placeholder:text-stone-500'
