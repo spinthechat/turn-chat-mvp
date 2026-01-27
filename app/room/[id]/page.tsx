@@ -1738,6 +1738,8 @@ export default function RoomPage() {
 
   const bottomRef = useRef<HTMLDivElement | null>(null)
   const scrollContainerRef = useRef<HTMLDivElement | null>(null)
+  const headerRef = useRef<HTMLElement | null>(null)
+  const [headerHeight, setHeaderHeight] = useState(64) // Default header height
   const turnInputRef = useRef<HTMLInputElement | null>(null)
   const imageInputRef = useRef<HTMLInputElement | null>(null)
   const cameraInputRef = useRef<HTMLInputElement | null>(null)
@@ -1868,6 +1870,19 @@ export default function RoomPage() {
     const interval = setInterval(() => setTick(t => t + 1), 60000)
     return () => clearInterval(interval)
   }, [isWaitingForCooldown])
+
+  // Measure header height for the spacer (header is now position: fixed)
+  useLayoutEffect(() => {
+    if (!headerRef.current) return
+    const updateHeight = () => {
+      const height = headerRef.current?.getBoundingClientRect().height ?? 64
+      setHeaderHeight(height)
+    }
+    updateHeight()
+    // Re-measure on resize
+    window.addEventListener('resize', updateHeight)
+    return () => window.removeEventListener('resize', updateHeight)
+  }, [gameActive, isMyTurn, isWaitingForCooldown])
 
   // Pre-compute message metadata (group positions, seen boundaries) to avoid recalculating in render loop
   const messageMetadata = useMemo(() => {
@@ -3074,7 +3089,7 @@ export default function RoomPage() {
       />
 
       {/* Header - fixed at top, glassy, floating feel */}
-      <header className={`chat-header ${
+      <header ref={headerRef} className={`chat-header ${
         isDM
           ? 'bg-white/80 backdrop-blur-xl border-b border-stone-200/40'
           : isFlirtyTheme
@@ -3292,6 +3307,9 @@ export default function RoomPage() {
         )}
 
       </header>
+
+      {/* Spacer to account for fixed header height */}
+      <div style={{ height: headerHeight }} className="flex-shrink-0" />
 
       {/* Messages - scrollable area */}
       <div ref={scrollContainerRef} onScroll={handleScroll} className="chat-messages">

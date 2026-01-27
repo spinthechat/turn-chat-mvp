@@ -119,12 +119,22 @@ body:has(.chat-container) {
   }
 }
 
-/* Chat header - stays at top, never moves */
+/* Chat header - truly fixed at top, never moves regardless of keyboard */
 .chat-header {
-  flex-shrink: 0;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
   z-index: 30;
-  /* Sticky within the flex container */
-  position: relative;
+  /* Safe area for notched devices */
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* Spacer to maintain flex layout where header would be */
+.chat-header-spacer {
+  flex-shrink: 0;
+  /* Height set dynamically via JS or estimated */
+  min-height: 64px; /* Base header height */
 }
 
 /* Scrollable messages area - fills remaining space */
