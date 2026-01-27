@@ -3088,8 +3088,10 @@ export default function RoomPage() {
         aria-hidden="true"
       />
 
-      {/* Header - fixed at top, glassy, floating feel */}
-      <header ref={headerRef} className={`chat-header ${
+      {/* Scrollable area containing header + messages */}
+      <div ref={scrollContainerRef} onScroll={handleScroll} className="chat-scroll-wrapper">
+        {/* Header - sticky at top */}
+        <header ref={headerRef} className={`chat-header ${
         isDM
           ? 'bg-white/80 backdrop-blur-xl border-b border-stone-200/40'
           : isFlirtyTheme
@@ -3306,13 +3308,10 @@ export default function RoomPage() {
           </div>
         )}
 
-      </header>
+        </header>
 
-      {/* Spacer to account for fixed header height */}
-      <div style={{ height: headerHeight }} className="flex-shrink-0" />
-
-      {/* Messages - scrollable area */}
-      <div ref={scrollContainerRef} onScroll={handleScroll} className="chat-messages">
+        {/* Messages content */}
+        <div className="chat-messages">
         <div className={`max-w-3xl mx-auto py-4 ${isDM ? 'px-3' : 'px-4'}`}>
           {/* Error banner */}
           {error && (
@@ -3430,6 +3429,7 @@ export default function RoomPage() {
             </svg>
           </button>
         )}
+        </div>
       </div>
 
       {/* Bottom panel: Chat input - docked at bottom */}

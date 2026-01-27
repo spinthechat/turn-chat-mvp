@@ -44,15 +44,6 @@ export function useMobileViewport() {
     // Add/remove class to body for keyboard state
     if (keyboardOpen) {
       document.body.classList.add('keyboard-open')
-      // iOS fix: Reset any window scroll that iOS might have applied
-      // This prevents the fixed header from being scrolled out of view
-      if (window.scrollY !== 0) {
-        window.scrollTo(0, 0)
-      }
-      // Also reset visualViewport scroll offset on iOS
-      if (window.visualViewport && window.visualViewport.offsetTop !== 0) {
-        window.scrollTo(0, 0)
-      }
     } else {
       document.body.classList.remove('keyboard-open')
     }
@@ -83,19 +74,10 @@ export function useMobileViewport() {
     window.addEventListener('resize', throttledUpdate)
     window.addEventListener('orientationchange', throttledUpdate)
 
-    // iOS fix: Prevent visualViewport scroll from moving the page
-    const handleViewportScroll = () => {
-      if (window.visualViewport && window.visualViewport.offsetTop > 0) {
-        window.scrollTo(0, 0)
-      }
-    }
-
     // VisualViewport API for keyboard detection (iOS Safari + modern browsers)
     if (window.visualViewport) {
       window.visualViewport.addEventListener('resize', throttledUpdate)
       window.visualViewport.addEventListener('scroll', throttledUpdate)
-      // iOS: Also listen for scroll to reset any viewport offset
-      window.visualViewport.addEventListener('scroll', handleViewportScroll)
     }
 
     // Also listen to focus/blur on inputs for keyboard detection
@@ -104,13 +86,6 @@ export function useMobileViewport() {
         // Small delay to let keyboard animation start
         setTimeout(throttledUpdate, 100)
         setTimeout(throttledUpdate, 300)
-        // iOS fix: Aggressively reset scroll after focus
-        setTimeout(() => {
-          if (window.scrollY !== 0) window.scrollTo(0, 0)
-        }, 350)
-        setTimeout(() => {
-          if (window.scrollY !== 0) window.scrollTo(0, 0)
-        }, 500)
       }
     }
     const handleFocusOut = () => {
@@ -127,7 +102,6 @@ export function useMobileViewport() {
       if (window.visualViewport) {
         window.visualViewport.removeEventListener('resize', throttledUpdate)
         window.visualViewport.removeEventListener('scroll', throttledUpdate)
-        window.visualViewport.removeEventListener('scroll', handleViewportScroll)
       }
       document.removeEventListener('focusin', handleFocusIn)
       document.removeEventListener('focusout', handleFocusOut)

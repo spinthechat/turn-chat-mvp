@@ -119,31 +119,17 @@ body:has(.chat-container) {
   }
 }
 
-/* Chat header - truly fixed at top, never moves regardless of keyboard */
+/* Chat header - sticky at top of scroll container */
 .chat-header {
-  position: fixed;
+  position: sticky;
   top: 0;
-  left: 0;
-  right: 0;
   z-index: 30;
   /* Safe area for notched devices */
   padding-top: env(safe-area-inset-top, 0px);
-  /* Force GPU layer for better iOS behavior */
-  -webkit-transform: translate3d(0, 0, 0);
-  transform: translate3d(0, 0, 0);
-  -webkit-backface-visibility: hidden;
-  backface-visibility: hidden;
 }
 
-/* Spacer to maintain flex layout where header would be */
-.chat-header-spacer {
-  flex-shrink: 0;
-  /* Height set dynamically via JS or estimated */
-  min-height: 64px; /* Base header height */
-}
-
-/* Scrollable messages area - fills remaining space */
-.chat-messages {
+/* Scrollable area containing header + messages */
+.chat-scroll-wrapper {
   flex: 1 1 0%;
   min-height: 0; /* Critical for flex child scrolling */
   overflow-y: auto;
@@ -151,8 +137,11 @@ body:has(.chat-container) {
   overscroll-behavior-y: contain;
   -webkit-overflow-scrolling: touch;
   position: relative;
-  /* Prevent momentum scrolling from affecting fixed elements */
-  will-change: scroll-position;
+}
+
+/* Messages content inside the scroll wrapper */
+.chat-messages {
+  position: relative;
 }
 
 /* Chat input area - stays at bottom of flex container */
@@ -190,14 +179,6 @@ body.keyboard-open .chat-input-area {
   body.keyboard-open .chat-container {
     /* Use calculated height when keyboard is open */
     height: var(--viewport-height, 100vh);
-  }
-
-  /* iOS: Force header to use absolute positioning within the fixed container */
-  /* This prevents iOS from scrolling the header with the viewport */
-  .chat-header {
-    position: absolute;
-    -webkit-transform: translate3d(0, 0, 0);
-    transform: translate3d(0, 0, 0);
   }
 
   /* Prevent iOS from zooming on input focus */
