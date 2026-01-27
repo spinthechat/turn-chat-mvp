@@ -174,13 +174,13 @@ function MessageSelectionOverlay({
     <>
       {/* Backdrop overlay with blur */}
       <div
-        className="fixed inset-0 bg-black/40 backdrop-blur-[2px] animate-in fade-in duration-150"
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm animate-in fade-in duration-150"
         style={{ zIndex: 9998 }}
         onClick={onClose}
         onTouchEnd={(e) => { e.preventDefault(); onClose() }}
       />
 
-      {/* Context menu */}
+      {/* Context menu - modern design */}
       <div
         ref={menuRef}
         style={{
@@ -189,17 +189,17 @@ function MessageSelectionOverlay({
           left: position.left,
           zIndex: 10000,
         }}
-        className="bg-white rounded-2xl shadow-2xl ring-1 ring-stone-200 overflow-hidden min-w-[220px] animate-in zoom-in-95 fade-in duration-150"
+        className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl ring-1 ring-slate-200/50 overflow-hidden min-w-[240px] animate-in zoom-in-95 fade-in duration-150"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Emoji reaction bar */}
-        <div className="flex justify-center gap-1 p-2.5 border-b border-stone-100 bg-stone-50/50">
+        <div className="flex justify-center gap-1.5 p-3 border-b border-slate-100/80 bg-slate-50/50">
           {emojis.map(emoji => (
             <button
               key={emoji}
               onClick={() => { onReact(emoji); onClose() }}
               aria-label={`React with ${emoji}`}
-              className="w-11 h-11 flex items-center justify-center hover:bg-white rounded-xl text-2xl active:scale-125 transition-transform shadow-sm bg-white ring-1 ring-stone-100"
+              className="w-12 h-12 flex items-center justify-center hover:bg-white rounded-xl text-2xl active:scale-110 transition-all shadow-sm bg-white/80 ring-1 ring-slate-100"
             >
               {emoji}
             </button>
@@ -207,13 +207,13 @@ function MessageSelectionOverlay({
         </div>
 
         {/* Action menu */}
-        <div className="py-1">
+        <div className="py-1.5">
           <button
             onClick={() => { onReply(); onClose() }}
             aria-label="Reply"
-            className="w-full flex items-center gap-3 px-4 py-3 text-sm text-stone-700 hover:bg-stone-50 active:bg-stone-100 transition-colors"
+            className="w-full flex items-center gap-3 px-4 py-3.5 text-sm font-medium text-slate-700 hover:bg-slate-50 active:bg-slate-100 transition-colors"
           >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
             </svg>
             Reply
@@ -223,9 +223,9 @@ function MessageSelectionOverlay({
             <button
               onClick={() => { onCopy?.(); onClose() }}
               aria-label="Copy text"
-              className="w-full flex items-center gap-3 px-4 py-3 text-sm text-stone-700 hover:bg-stone-50 active:bg-stone-100 transition-colors"
+              className="w-full flex items-center gap-3 px-4 py-3.5 text-sm font-medium text-slate-700 hover:bg-slate-50 active:bg-slate-100 transition-colors"
             >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
               </svg>
               Copy text
@@ -235,7 +235,7 @@ function MessageSelectionOverlay({
           <button
             onClick={onClose}
             aria-label="Cancel"
-            className="w-full flex items-center gap-3 px-4 py-3 text-sm text-stone-400 hover:bg-stone-50 active:bg-stone-100 transition-colors"
+            className="w-full flex items-center gap-3 px-4 py-3.5 text-sm font-medium text-slate-400 hover:bg-slate-50 active:bg-slate-100 transition-colors"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -683,7 +683,7 @@ function Avatar({
   )
 }
 
-// Compact members button for header
+// Compact members button for header - modern design
 function MembersButton({
   memberCount,
   onlineCount,
@@ -698,22 +698,22 @@ function MembersButton({
   return (
     <button
       onClick={onClick}
-      className="relative flex items-center justify-center w-10 h-10 rounded-full bg-stone-100 hover:bg-stone-200 transition-colors"
+      className="relative flex items-center justify-center w-11 h-11 rounded-xl bg-slate-100/80 hover:bg-slate-200/80 transition-all duration-200 active:scale-95"
       title={`${memberCount} members${hasOnline ? `, ${onlineCount} online` : ''}`}
     >
       {/* Users icon */}
-      <svg className="w-5 h-5 text-stone-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <svg className="w-5 h-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
       </svg>
 
       {/* Member count badge */}
-      <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center bg-stone-700 text-white text-[10px] font-medium rounded-full px-1">
+      <span className="absolute -top-1 -right-1 min-w-[20px] h-[20px] flex items-center justify-center bg-slate-700 text-white text-[10px] font-semibold rounded-full px-1.5 shadow-sm">
         {memberCount}
       </span>
 
       {/* Online indicator dot */}
       {hasOnline && (
-        <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full ring-2 ring-white" />
+        <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-400 rounded-full ring-2 ring-white shadow-sm" />
       )}
     </button>
   )
@@ -1046,18 +1046,18 @@ function MessageBubble({
   const seenDisplayCount = isMe ? seenCount - 1 : seenCount
   const shouldShowSeen = showSeenIndicator && seenDisplayCount > 0 && isSeenBoundary
 
-  // System messages - compact
+  // System messages - subtle, refined
   if (isSystem) {
     return (
-      <div className="flex justify-center py-1">
-        <div className="bg-stone-100 text-stone-500 text-[11px] px-3 py-1 rounded-full">
+      <div className="flex justify-center py-2">
+        <div className="bg-slate-100/80 backdrop-blur-sm text-slate-500 text-[11px] px-4 py-1.5 rounded-full font-medium tracking-wide">
           {message.content}
         </div>
       </div>
     )
   }
 
-  // Quoted reply preview component
+  // Quoted reply preview component - refined design
   const QuotedReply = () => {
     if (!replyToMessage) return null
     let previewText: string
@@ -1081,14 +1081,14 @@ function MessageBubble({
     return (
       <div
         onClick={(e) => { e.stopPropagation(); onScrollToMessage(replyToMessage.id) }}
-        className={`text-[11px] px-2 py-1 mb-1 rounded border-l-2 cursor-pointer ${
+        className={`text-[11px] px-2.5 py-1.5 mb-2 rounded-lg border-l-[3px] cursor-pointer transition-colors ${
           isMe
-            ? 'bg-white/10 border-white/40 text-white/70'
-            : 'bg-stone-100 border-stone-300 text-stone-500'
+            ? 'bg-white/15 border-white/50 text-white/80 hover:bg-white/20'
+            : 'bg-slate-100/80 border-slate-400 text-slate-600 hover:bg-slate-100'
         }`}
       >
-        <div className="font-medium">{replyToUser?.displayName ?? 'Unknown'}</div>
-        <div className="truncate">{previewText}</div>
+        <div className="font-semibold">{replyToUser?.displayName ?? 'Unknown'}</div>
+        <div className="truncate opacity-80">{previewText}</div>
       </div>
     )
   }
@@ -1230,7 +1230,7 @@ function MessageBubble({
     setShowLightbox(true)
   }
 
-  // Image messages - compact (with grouping support)
+  // Image messages - modern rounded design
   if (isImage) {
     return (
       <div
@@ -1251,15 +1251,15 @@ function MessageBubble({
         {/* Swipe reply indicator */}
         {swipeOffset > 0 && (
           <div className={`absolute ${isMe ? 'right-full mr-2' : 'left-0 -ml-8'} top-1/2 -translate-y-1/2 transition-opacity ${swipeOffset >= SWIPE_THRESHOLD ? 'opacity-100' : 'opacity-50'}`}>
-            <div className={`p-1.5 rounded-full ${swipeOffset >= SWIPE_THRESHOLD ? 'bg-indigo-500 text-white' : 'bg-stone-200 text-stone-500'}`}>
+            <div className={`p-1.5 rounded-full transition-all ${swipeOffset >= SWIPE_THRESHOLD ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/30' : 'bg-slate-200 text-slate-500'}`}>
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
               </svg>
             </div>
           </div>
         )}
-        {/* Avatar: visible only on last message in group, invisible spacer otherwise */}
-        <div className={`flex-shrink-0 ${isMe ? 'ml-1.5' : 'mr-1.5'}`}>
+        {/* Avatar: visible only on last message in group */}
+        <div className={`flex-shrink-0 ${isMe ? 'ml-2' : 'mr-2'}`}>
           {isLastInGroup ? (
             <Avatar user={user} size="xs" className="mt-0.5" onClick={user ? () => onProfileClick(user.id) : undefined} />
           ) : (
@@ -1271,20 +1271,20 @@ function MessageBubble({
           {showMeta && !isMe && isFirstInGroup && (
             <button
               onClick={(e) => { e.stopPropagation(); user && onProfileClick(user.id) }}
-              className={`text-[10px] font-medium mb-0.5 ${user?.textColor ?? 'text-stone-500'} hover:underline cursor-pointer text-left`}
+              className={`text-[11px] font-semibold mb-1 ${user?.textColor ?? 'text-slate-500'} hover:underline cursor-pointer text-left`}
             >
               {user?.displayName ?? 'Unknown'}
             </button>
           )}
-          <div ref={bubbleRef} className={`relative transition-transform duration-150 ${selectedBubbleClass}`} onClick={handleClick}>
+          <div ref={bubbleRef} className={`relative transition-all duration-150 ${selectedBubbleClass}`} onClick={handleClick}>
             <QuotedReply />
             <div
-              className={`rounded-lg overflow-hidden cursor-pointer ${isMe ? '' : 'ring-1 ring-stone-200'} ${showContextMenu ? 'ring-0' : ''}`}
+              className={`rounded-2xl overflow-hidden cursor-pointer shadow-sm ${isMe ? '' : 'ring-1 ring-slate-200/80'} ${showContextMenu ? 'ring-0' : ''}`}
               onClick={handleImageClick}
             >
-              <img src={message.content} alt="Photo" className="max-w-full max-h-48 object-contain bg-stone-100" loading="lazy" />
+              <img src={message.content} alt="Photo" className="max-w-full max-h-52 object-contain bg-slate-100" loading="lazy" />
             </div>
-            <div className={`text-[10px] mt-0.5 ${isMe ? 'text-right text-stone-400' : 'text-stone-400'}`}>
+            <div className={`text-[10px] mt-1 ${isMe ? 'text-right text-slate-400' : 'text-slate-400'}`}>
               {formatTime(message.created_at)}
             </div>
             <HoverMenuButton />
@@ -1311,7 +1311,7 @@ function MessageBubble({
     )
   }
 
-  // Photo turn response - turn with image (distinct from regular image)
+  // Photo turn response - modern, visually distinct design
   if (isPhotoTurn && photoTurnData) {
     return (
       <div
@@ -1332,16 +1332,17 @@ function MessageBubble({
         {/* Swipe reply indicator */}
         {swipeOffset > 0 && (
           <div className={`absolute ${isMe ? 'right-full mr-2' : 'left-0 -ml-8'} top-1/2 -translate-y-1/2 transition-opacity ${swipeOffset >= SWIPE_THRESHOLD ? 'opacity-100' : 'opacity-50'}`}>
-            <div className={`p-1.5 rounded-full ${swipeOffset >= SWIPE_THRESHOLD ? 'bg-indigo-500 text-white' : 'bg-stone-200 text-stone-500'}`}>
+            <div className={`p-1.5 rounded-full transition-all ${swipeOffset >= SWIPE_THRESHOLD ? 'bg-violet-500 text-white shadow-lg shadow-violet-500/30' : 'bg-slate-200 text-slate-500'}`}>
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
               </svg>
             </div>
           </div>
         )}
-        <div className={`w-0.5 rounded-full self-stretch ${isMe ? 'bg-indigo-500' : 'bg-indigo-300'} ${isMe ? 'ml-1.5' : 'mr-1.5'}`} />
-        {/* Avatar: visible only on last message in group, invisible spacer otherwise */}
-        <div className={`flex-shrink-0 ${isMe ? 'ml-1.5' : 'mr-1.5'}`}>
+        {/* Accent bar - photo gradient */}
+        <div className={`w-1 rounded-full self-stretch ${isMe ? 'bg-gradient-to-b from-violet-500 to-purple-500' : 'bg-gradient-to-b from-violet-400 to-purple-400'} ${isMe ? 'ml-2' : 'mr-2'}`} />
+        {/* Avatar: visible only on last message in group */}
+        <div className={`flex-shrink-0 ${isMe ? 'ml-2' : 'mr-2'}`}>
           {isLastInGroup ? (
             <Avatar user={user} size="xs" className="mt-0.5" onClick={user ? () => onProfileClick(user.id) : undefined} />
           ) : (
@@ -1353,28 +1354,28 @@ function MessageBubble({
           {showMeta && !isMe && isFirstInGroup && (
             <button
               onClick={(e) => { e.stopPropagation(); user && onProfileClick(user.id) }}
-              className={`text-[10px] font-medium mb-0.5 ${user?.textColor ?? 'text-stone-500'} hover:underline cursor-pointer text-left`}
+              className={`text-[11px] font-semibold mb-1 ${user?.textColor ?? 'text-slate-500'} hover:underline cursor-pointer text-left`}
             >
               {user?.displayName ?? 'Unknown'}
             </button>
           )}
-          <div ref={bubbleRef} className={`relative transition-transform duration-150 ${selectedBubbleClass}`} onClick={handleClick}>
+          <div ref={bubbleRef} className={`relative transition-all duration-150 ${selectedBubbleClass}`} onClick={handleClick}>
             <QuotedReply />
-            <div className={`rounded-lg overflow-hidden ${
+            <div className={`rounded-2xl overflow-hidden ${
               isMe
-                ? 'bg-gradient-to-br from-indigo-500 to-violet-500 text-white'
-                : `bg-white ${showContextMenu ? '' : 'ring-1 ring-indigo-200'} text-stone-900`
+                ? 'bg-gradient-to-br from-violet-500 via-purple-500 to-fuchsia-500 text-white shadow-lg shadow-violet-500/20'
+                : `bg-white ${showContextMenu ? '' : 'ring-1 ring-violet-200/60'} text-slate-900 shadow-sm`
             }`}>
-              <div className="px-2.5 pt-1.5 pb-1">
-                <div className={`text-[9px] font-semibold uppercase tracking-wide mb-1 flex items-center gap-1 ${isMe ? 'text-white/70' : 'text-indigo-500'}`}>
-                  <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <div className="px-3.5 pt-2.5 pb-2">
+                <div className={`text-[10px] font-bold uppercase tracking-wider mb-1.5 flex items-center gap-1.5 ${isMe ? 'text-white/80' : 'text-violet-500'}`}>
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                     <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
                   </svg>
                   Photo Turn
                 </div>
                 {photoTurnData.prompt && (
-                  <div className={`text-[11px] italic leading-snug ${isMe ? 'text-white/80' : 'text-indigo-600'}`}>
+                  <div className={`text-[12px] italic leading-snug ${isMe ? 'text-white/80' : 'text-violet-600'}`}>
                     &ldquo;{photoTurnData.prompt}&rdquo;
                   </div>
                 )}
@@ -1386,11 +1387,11 @@ function MessageBubble({
                 <img
                   src={photoTurnData.imageUrl}
                   alt="Photo turn response"
-                  className="w-full max-h-48 object-cover"
+                  className="w-full max-h-52 object-cover"
                   loading="lazy"
                 />
               </div>
-              <div className={`text-[10px] px-2.5 py-1 ${isMe ? 'text-white/50' : 'text-stone-400'}`}>
+              <div className={`text-[10px] px-3.5 py-2 ${isMe ? 'text-white/50' : 'text-slate-400'}`}>
                 {formatTime(message.created_at)}
               </div>
             </div>
@@ -1418,7 +1419,7 @@ function MessageBubble({
     )
   }
 
-  // Turn response - compact but distinct (with grouping support)
+  // Turn response - modern, visually distinct design
   if (isTurnResponse) {
     return (
       <div
@@ -1439,16 +1440,17 @@ function MessageBubble({
         {/* Swipe reply indicator */}
         {swipeOffset > 0 && (
           <div className={`absolute ${isMe ? 'right-full mr-2' : 'left-0 -ml-8'} top-1/2 -translate-y-1/2 transition-opacity ${swipeOffset >= SWIPE_THRESHOLD ? 'opacity-100' : 'opacity-50'}`}>
-            <div className={`p-1.5 rounded-full ${swipeOffset >= SWIPE_THRESHOLD ? 'bg-indigo-500 text-white' : 'bg-stone-200 text-stone-500'}`}>
+            <div className={`p-1.5 rounded-full transition-all ${swipeOffset >= SWIPE_THRESHOLD ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/30' : 'bg-slate-200 text-slate-500'}`}>
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
               </svg>
             </div>
           </div>
         )}
-        <div className={`w-0.5 rounded-full self-stretch ${isMe ? 'bg-indigo-500' : 'bg-indigo-300'} ${isMe ? 'ml-1.5' : 'mr-1.5'}`} />
-        {/* Avatar: visible only on last message in group, invisible spacer otherwise */}
-        <div className={`flex-shrink-0 ${isMe ? 'ml-1.5' : 'mr-1.5'}`}>
+        {/* Accent bar - refined gradient */}
+        <div className={`w-1 rounded-full self-stretch ${isMe ? 'bg-gradient-to-b from-indigo-500 to-violet-500' : 'bg-gradient-to-b from-indigo-400 to-violet-400'} ${isMe ? 'ml-2' : 'mr-2'}`} />
+        {/* Avatar: visible only on last message in group */}
+        <div className={`flex-shrink-0 ${isMe ? 'ml-2' : 'mr-2'}`}>
           {isLastInGroup ? (
             <Avatar user={user} size="xs" className="mt-0.5" onClick={user ? () => onProfileClick(user.id) : undefined} />
           ) : (
@@ -1460,31 +1462,31 @@ function MessageBubble({
           {showMeta && !isMe && isFirstInGroup && (
             <button
               onClick={(e) => { e.stopPropagation(); user && onProfileClick(user.id) }}
-              className={`text-[10px] font-medium mb-0.5 ${user?.textColor ?? 'text-stone-500'} hover:underline cursor-pointer text-left`}
+              className={`text-[11px] font-semibold mb-1 ${user?.textColor ?? 'text-slate-500'} hover:underline cursor-pointer text-left`}
             >
               {user?.displayName ?? 'Unknown'}
             </button>
           )}
-          <div ref={bubbleRef} className={`relative transition-transform duration-150 ${selectedBubbleClass}`} onClick={handleClick}>
+          <div ref={bubbleRef} className={`relative transition-all duration-150 ${selectedBubbleClass}`} onClick={handleClick}>
             <QuotedReply />
-            <div className={`rounded-lg px-2.5 py-1.5 cursor-pointer ${
+            <div className={`rounded-2xl px-3.5 py-2.5 cursor-pointer ${
               isMe
-                ? 'bg-gradient-to-br from-indigo-500 to-violet-500 text-white'
-                : `bg-white ${showContextMenu ? '' : 'ring-1 ring-indigo-200'} text-stone-900`
+                ? 'bg-gradient-to-br from-indigo-500 via-violet-500 to-purple-500 text-white shadow-lg shadow-indigo-500/20'
+                : `bg-white ${showContextMenu ? '' : 'ring-1 ring-indigo-200/60'} text-slate-900 shadow-sm`
             }`}>
-              <div className={`text-[9px] font-semibold uppercase tracking-wide mb-1 flex items-center gap-1 ${isMe ? 'text-white/70' : 'text-indigo-500'}`}>
-                <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <div className={`text-[10px] font-bold uppercase tracking-wider mb-1.5 flex items-center gap-1.5 ${isMe ? 'text-white/80' : 'text-indigo-500'}`}>
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
-                Turn
+                Turn Response
               </div>
               {hasTurnPrompt && (
-                <div className={`text-[10px] mb-1 italic ${isMe ? 'text-white/60' : 'text-indigo-400'}`}>
+                <div className={`text-[11px] mb-2 italic ${isMe ? 'text-white/70' : 'text-indigo-400'}`}>
                   {promptLine}
                 </div>
               )}
-              <span className="msg-text text-[13px] leading-snug whitespace-pre-wrap block">{responseContent}</span>
-              <div className={`text-[10px] mt-1 ${isMe ? 'text-white/50' : 'text-stone-400'}`}>
+              <span className="msg-text text-[14px] leading-relaxed whitespace-pre-wrap block">{responseContent}</span>
+              <div className={`text-[10px] mt-1.5 ${isMe ? 'text-white/50' : 'text-slate-400'}`}>
                 {formatTime(message.created_at)}
               </div>
             </div>
@@ -1507,22 +1509,20 @@ function MessageBubble({
     )
   }
 
-  // Regular chat message - compact WhatsApp style (with grouping support)
+  // Regular chat message - modern, clean design with grouping support
   // Border radius adjustments for stacked bubbles
   const getBubbleRadius = () => {
-    if (!isGrouped) return 'rounded-lg'
+    if (!isGrouped) return 'rounded-2xl'
     if (isMe) {
-      // Right-aligned bubbles: adjust bottom-right corner
-      if (groupPosition === 'first') return 'rounded-lg rounded-br-sm'
-      if (groupPosition === 'middle') return 'rounded-lg rounded-r-sm'
-      if (groupPosition === 'last') return 'rounded-lg rounded-tr-sm'
+      if (groupPosition === 'first') return 'rounded-2xl rounded-br-md'
+      if (groupPosition === 'middle') return 'rounded-2xl rounded-r-md'
+      if (groupPosition === 'last') return 'rounded-2xl rounded-tr-md'
     } else {
-      // Left-aligned bubbles: adjust bottom-left corner
-      if (groupPosition === 'first') return 'rounded-lg rounded-bl-sm'
-      if (groupPosition === 'middle') return 'rounded-lg rounded-l-sm'
-      if (groupPosition === 'last') return 'rounded-lg rounded-tl-sm'
+      if (groupPosition === 'first') return 'rounded-2xl rounded-bl-md'
+      if (groupPosition === 'middle') return 'rounded-2xl rounded-l-md'
+      if (groupPosition === 'last') return 'rounded-2xl rounded-tl-md'
     }
-    return 'rounded-lg'
+    return 'rounded-2xl'
   }
 
   return (
@@ -1544,15 +1544,15 @@ function MessageBubble({
       {/* Swipe reply indicator */}
       {swipeOffset > 0 && (
         <div className={`absolute ${isMe ? 'right-full mr-2' : 'left-0 -ml-8'} top-1/2 -translate-y-1/2 transition-opacity ${swipeOffset >= SWIPE_THRESHOLD ? 'opacity-100' : 'opacity-50'}`}>
-          <div className={`p-1.5 rounded-full ${swipeOffset >= SWIPE_THRESHOLD ? 'bg-indigo-500 text-white' : 'bg-stone-200 text-stone-500'}`}>
+          <div className={`p-1.5 rounded-full transition-all ${swipeOffset >= SWIPE_THRESHOLD ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/30' : 'bg-slate-200 text-slate-500'}`}>
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
             </svg>
           </div>
         </div>
       )}
-      {/* Avatar: visible only on last message in group, invisible spacer otherwise */}
-      <div className={`flex-shrink-0 ${isMe ? 'ml-1.5' : 'mr-1.5'}`}>
+      {/* Avatar: visible only on last message in group */}
+      <div className={`flex-shrink-0 ${isMe ? 'ml-2' : 'mr-2'}`}>
         {isLastInGroup ? (
           <Avatar user={user} size="xs" className="mt-0.5" onClick={user ? () => onProfileClick(user.id) : undefined} />
         ) : (
@@ -1562,19 +1562,19 @@ function MessageBubble({
       <div className="flex flex-col max-w-[75%] min-w-0">
         {/* Name: visible only on first message in group */}
         {showMeta && !isMe && isFirstInGroup && (
-          <span className={`text-[10px] font-medium mb-0.5 ${user?.textColor ?? 'text-stone-500'}`}>
+          <span className={`text-[11px] font-semibold mb-1 ${user?.textColor ?? 'text-slate-500'}`}>
             {user?.displayName ?? 'Unknown'}
           </span>
         )}
-        <div ref={bubbleRef} className={`relative transition-transform duration-150 ${selectedBubbleClass}`} onClick={handleClick}>
-          <div className={`${getBubbleRadius()} px-2.5 py-1.5 cursor-pointer ${
+        <div ref={bubbleRef} className={`relative transition-all duration-150 ${selectedBubbleClass}`} onClick={handleClick}>
+          <div className={`${getBubbleRadius()} px-3.5 py-2 cursor-pointer ${
             isMe
-              ? 'bg-stone-800 text-white'
-              : `bg-white ${showContextMenu ? '' : 'ring-1 ring-stone-200'} text-stone-900`
+              ? 'bg-slate-800 text-white shadow-sm'
+              : `bg-white ${showContextMenu ? '' : 'ring-1 ring-slate-200/80'} text-slate-900 shadow-sm`
           }`}>
             <QuotedReply />
-            <span className="msg-text text-[13px] leading-snug whitespace-pre-wrap block">{message.content}</span>
-            <div className={`text-[10px] mt-0.5 ${isMe ? 'text-white/50 text-right' : 'text-stone-400'}`}>
+            <span className="msg-text text-[14px] leading-relaxed whitespace-pre-wrap block">{message.content}</span>
+            <div className={`text-[10px] mt-1 ${isMe ? 'text-white/50 text-right' : 'text-slate-400'}`}>
               {formatTime(message.created_at)}
             </div>
           </div>
@@ -1597,17 +1597,17 @@ function MessageBubble({
   )
 }
 
-// Empty state
+// Empty state - modern, welcoming design
 function EmptyState({ gameActive, isHost }: { gameActive: boolean, isHost: boolean }) {
   return (
-    <div className="text-center py-16 px-4">
-      <div className="w-16 h-16 rounded-2xl bg-stone-100 flex items-center justify-center mx-auto mb-4">
-        <svg className="w-8 h-8 text-stone-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+    <div className="text-center py-20 px-6">
+      <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-slate-100 to-slate-50 flex items-center justify-center mx-auto mb-5 shadow-sm">
+        <svg className="w-10 h-10 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
         </svg>
       </div>
-      <h3 className="text-stone-900 font-medium mb-1">No messages yet</h3>
-      <p className="text-stone-500 text-sm max-w-xs mx-auto">
+      <h3 className="text-slate-900 font-semibold text-lg mb-2">No messages yet</h3>
+      <p className="text-slate-500 text-sm max-w-xs mx-auto leading-relaxed">
         {gameActive
           ? "The game is on! Wait for your turn or send a chat message."
           : isHost
@@ -3882,8 +3882,15 @@ export default function RoomPage() {
     )
   }
 
+  // Determine chat mode for visual styling
+  const isDM = roomInfo?.type === 'dm'
+
   return (
-    <div className="h-screen-safe bg-stone-50 flex flex-col overflow-hidden max-w-full">
+    <div className={`h-screen-safe flex flex-col overflow-hidden max-w-full ${
+      isDM
+        ? 'bg-gradient-to-b from-stone-50 via-stone-50/95 to-stone-100/90'
+        : 'bg-gradient-to-b from-slate-50 via-slate-50/95 to-slate-100/90'
+    }`}>
       {/* Group Details Drawer */}
       <GroupDetailsDrawer
         isOpen={showGroupDetails}
@@ -3912,13 +3919,21 @@ export default function RoomPage() {
         onStartDM={handleStartDM}
       />
 
-      {/* Header - fixed at top */}
-      <header className="bg-white flex-shrink-0">
-        <div className="max-w-3xl mx-auto px-4 h-14 flex items-center justify-between border-b border-stone-200/50">
+      {/* Header - glassy, floating feel */}
+      <header className={`flex-shrink-0 sticky top-0 z-30 ${
+        isDM
+          ? 'bg-white/80 backdrop-blur-xl border-b border-stone-200/40'
+          : 'bg-white/85 backdrop-blur-xl border-b border-slate-200/50'
+      }`}>
+        <div className="max-w-3xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
               onClick={() => router.push('/rooms')}
-              className="p-2 -ml-2 rounded-lg text-stone-500 hover:text-stone-900 hover:bg-stone-100 transition-colors"
+              className={`p-2.5 -ml-2 rounded-xl transition-all duration-200 ${
+                isDM
+                  ? 'text-stone-400 hover:text-stone-700 hover:bg-stone-100/80 active:scale-95'
+                  : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100/80 active:scale-95'
+              }`}
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
@@ -3927,89 +3942,111 @@ export default function RoomPage() {
 
             <button
               onClick={() => setShowGroupDetails(true)}
-              className="flex items-center gap-3 hover:bg-stone-50 rounded-lg px-2 py-1 -mx-2 transition-colors"
+              className={`flex items-center gap-3 rounded-xl px-3 py-2 -mx-2 transition-all duration-200 ${
+                isDM
+                  ? 'hover:bg-stone-100/60 active:bg-stone-100'
+                  : 'hover:bg-slate-100/60 active:bg-slate-100'
+              }`}
             >
-              {/* Avatar: DM shows other person, group shows chat icon */}
-              {roomInfo?.type === 'dm' && dmDisplayInfo ? (
+              {/* Avatar: DM shows larger avatar, group shows styled icon */}
+              {isDM && dmDisplayInfo ? (
                 <div className="relative">
                   {dmDisplayInfo.avatarUrl ? (
                     <img
                       src={dmDisplayInfo.avatarUrl}
                       alt={dmDisplayInfo.displayName}
-                      className="w-8 h-8 rounded-full object-cover"
+                      className="w-10 h-10 rounded-full object-cover ring-2 ring-white/80 shadow-sm"
                     />
                   ) : (
-                    <div className={`w-8 h-8 rounded-full ${dmDisplayInfo.color} flex items-center justify-center`}>
-                      <span className="text-xs font-medium text-white">{dmDisplayInfo.initials}</span>
+                    <div className={`w-10 h-10 rounded-full ${dmDisplayInfo.color} flex items-center justify-center ring-2 ring-white/80 shadow-sm`}>
+                      <span className="text-sm font-semibold text-white">{dmDisplayInfo.initials}</span>
                     </div>
                   )}
-                  {/* Online indicator */}
+                  {/* Online indicator - refined */}
                   {dmDisplayInfo.isOnline && (
-                    <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white" />
+                    <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-400 rounded-full border-[2.5px] border-white shadow-sm" />
                   )}
                 </div>
               ) : (
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center">
-                  <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" />
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 via-violet-500 to-purple-500 flex items-center justify-center shadow-sm shadow-indigo-500/20">
+                  <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
                   </svg>
                 </div>
               )}
               <div className="text-left">
-                <h1 className="text-sm font-semibold text-stone-900 leading-tight flex items-center gap-1">
-                  {roomInfo?.type === 'dm' && dmDisplayInfo ? dmDisplayInfo.displayName : (roomInfo?.name ?? 'Room')}
-                  <svg className="w-3 h-3 text-stone-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                <h1 className={`text-[15px] font-semibold leading-tight flex items-center gap-1.5 ${
+                  isDM ? 'text-stone-900' : 'text-slate-900'
+                }`}>
+                  {isDM && dmDisplayInfo ? dmDisplayInfo.displayName : (roomInfo?.name ?? 'Room')}
+                  <svg className={`w-3.5 h-3.5 ${isDM ? 'text-stone-300' : 'text-slate-300'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                   </svg>
                 </h1>
-                <span className="text-[11px] text-stone-400">
-                  {roomInfo?.type === 'dm' && dmDisplayInfo
-                    ? (dmDisplayInfo.isOnline ? 'Online' : 'Offline')
-                    : `${roomMembers.length} members`}
+                <span className={`text-[12px] ${
+                  isDM
+                    ? dmDisplayInfo?.isOnline ? 'text-emerald-500 font-medium' : 'text-stone-400'
+                    : 'text-slate-400'
+                }`}>
+                  {isDM && dmDisplayInfo
+                    ? (dmDisplayInfo.isOnline ? 'Online now' : 'Offline')
+                    : `${roomMembers.length} members${onlineUsers.size > 0 ? ` \u00b7 ${onlineUsers.size} online` : ''}`}
                 </span>
               </div>
             </button>
           </div>
 
-          <MembersButton
-            memberCount={roomMembers.length}
-            onlineCount={onlineUsers.size}
-            onClick={() => setShowGroupDetails(true)}
-          />
+          {/* Only show members button for groups */}
+          {!isDM && (
+            <MembersButton
+              memberCount={roomMembers.length}
+              onlineCount={onlineUsers.size}
+              onClick={() => setShowGroupDetails(true)}
+            />
+          )}
         </div>
 
-        {/* Turn status bar - shows whose turn + the prompt for everyone */}
+        {/* Turn status bar - refined, glassy design */}
         {gameActive && (
-          <div className="bg-stone-50 border-b border-stone-200/50">
-            <div className="max-w-3xl mx-auto px-4 py-2">
+          <div className={`${
+            isMyTurn && !isWaitingForCooldown
+              ? 'bg-gradient-to-r from-indigo-50/90 via-violet-50/80 to-purple-50/90 border-b border-indigo-200/40'
+              : isDM
+                ? 'bg-stone-50/80 border-b border-stone-200/40'
+                : 'bg-slate-50/80 border-b border-slate-200/40'
+          }`}>
+            <div className="max-w-3xl mx-auto px-4 py-2.5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-sm">
                   {isMyTurn ? (
                     isWaitingForCooldown ? (
                       <>
-                        <span className="w-2 h-2 rounded-full bg-amber-400" />
+                        <span className="w-2 h-2 rounded-full bg-amber-400 shadow-sm shadow-amber-400/50" />
                         <span className="text-amber-600 font-medium">Your turn</span>
-                        <span className="text-stone-300">·</span>
-                        <span className="text-stone-400 text-xs">
+                        <span className={isDM ? 'text-stone-300' : 'text-slate-300'}>\u00b7</span>
+                        <span className={`text-xs ${isDM ? 'text-stone-400' : 'text-slate-400'}`}>
                           available in {waitingUntil ? formatTimeRemaining(waitingUntil) : '...'}
                         </span>
                       </>
                     ) : (
                       <>
-                        <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
-                        <span className="text-indigo-600 font-medium">
-                          Your turn {isPhotoPrompt ? '— photo required' : '— ready now'}
+                        <span className="relative flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75 motion-reduce:animate-none"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500 shadow-sm shadow-indigo-500/50"></span>
+                        </span>
+                        <span className="text-indigo-600 font-semibold">
+                          Your turn {isPhotoPrompt ? '\u2014 photo required' : '\u2014 ready now'}
                         </span>
                       </>
                     )
                   ) : (
                     <>
-                      <span className={`w-2 h-2 rounded-full ${isWaitingForCooldown ? 'bg-stone-300' : 'bg-amber-400 animate-pulse'}`} />
-                      <span className="text-stone-600">
+                      <span className={`w-2 h-2 rounded-full ${isWaitingForCooldown ? (isDM ? 'bg-stone-300' : 'bg-slate-300') : 'bg-amber-400 animate-pulse shadow-sm shadow-amber-400/50'}`} />
+                      <span className={isDM ? 'text-stone-600' : 'text-slate-600'}>
                         {isWaitingForCooldown ? (
                           <>
-                            <span className="font-medium">{currentPlayerInfo?.displayName ?? 'Someone'}</span>'s turn
-                            <span className="text-stone-400"> · in {waitingUntil ? formatTimeRemaining(waitingUntil) : '...'}</span>
+                            <span className="font-medium">{currentPlayerInfo?.displayName ?? 'Someone'}</span>&apos;s turn
+                            <span className={isDM ? 'text-stone-400' : 'text-slate-400'}> \u00b7 in {waitingUntil ? formatTimeRemaining(waitingUntil) : '...'}</span>
                           </>
                         ) : (
                           <>
@@ -4019,26 +4056,26 @@ export default function RoomPage() {
                       </span>
                       {!isWaitingForCooldown && myTurnPosition && myTurnPosition.position > 0 && (
                         <>
-                          <span className="text-stone-300">·</span>
-                          <span className="text-stone-400 text-xs">{myTurnPosition.label}</span>
+                          <span className={isDM ? 'text-stone-300' : 'text-slate-300'}>\u00b7</span>
+                          <span className={`text-xs ${isDM ? 'text-stone-400' : 'text-slate-400'}`}>{myTurnPosition.label}</span>
                         </>
                       )}
                     </>
                   )}
                 </div>
-                {/* Nudge button - only show when it's not my turn */}
+                {/* Nudge button - refined */}
                 {!isMyTurn && currentTurnUserId && (
                   <button
                     onClick={handleNudge}
                     disabled={hasNudgedThisTurn || nudgeLoading || isMyTurn}
-                    className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-colors ${
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${
                       hasNudgedThisTurn || nudgeLoading
-                        ? 'bg-stone-100 text-stone-400 cursor-not-allowed'
-                        : 'bg-amber-100 text-amber-700 hover:bg-amber-200 active:bg-amber-300'
+                        ? (isDM ? 'bg-stone-100 text-stone-400' : 'bg-slate-100 text-slate-400') + ' cursor-not-allowed'
+                        : 'bg-amber-100/80 text-amber-700 hover:bg-amber-200 active:scale-95 shadow-sm'
                     }`}
                   >
                     {nudgeLoading ? (
-                      <div className="w-3 h-3 border-2 border-stone-300 border-t-stone-500 rounded-full animate-spin" />
+                      <div className="w-3 h-3 border-2 border-amber-300 border-t-amber-600 rounded-full animate-spin" />
                     ) : (
                       <span>👀</span>
                     )}
@@ -4048,36 +4085,36 @@ export default function RoomPage() {
               </div>
               {/* Nudge toast notification */}
               {nudgeToast && (
-                <div className={`mt-1 text-xs px-2 py-1 rounded ${
-                  nudgeToast.type === 'success' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
+                <div className={`mt-2 text-xs px-3 py-1.5 rounded-lg ${
+                  nudgeToast.type === 'success' ? 'bg-emerald-100/80 text-emerald-700' : 'bg-red-100/80 text-red-700'
                 }`}>
                   {nudgeToast.message}
                 </div>
               )}
-              {/* Nudge status - show when waiting for someone else */}
+              {/* Nudge status */}
               {!isMyTurn && nudgeStatus && nudgeStatus.eligible_count > 0 && (
-                <div className="mt-1 text-xs text-stone-400">
+                <div className={`mt-1.5 text-xs ${isDM ? 'text-stone-400' : 'text-slate-400'}`}>
                   {nudgeStatus.all_nudged ? (
-                    <span className="text-amber-600">All nudged — auto-skip in 24h if not completed</span>
+                    <span className="text-amber-600">All nudged \u2014 auto-skip in 24h if not completed</span>
                   ) : nudgeStatus.nudge_count > 0 ? (
                     <span>{nudgeStatus.nudge_count}/{nudgeStatus.eligible_count} nudged</span>
                   ) : null}
                 </div>
               )}
-              {/* Show the prompt to all participants */}
-              <div className="mt-1 text-sm text-stone-500 truncate flex items-center gap-2">
+              {/* Prompt display - refined */}
+              <div className={`mt-2 text-sm truncate flex items-center gap-2 ${isDM ? 'text-stone-500' : 'text-slate-500'}`}>
                 <span className="flex items-center gap-1.5">
-                  {/* Red "live" indicator - only shows when it's my turn and ready */}
                   {isMyTurn && !isWaitingForCooldown && (
                     <span className="relative flex h-2 w-2 shrink-0">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75 motion-reduce:animate-none"></span>
                       <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
                     </span>
                   )}
-                  <span className="text-stone-400">Prompt:</span> "{turnSession?.prompt_text}"
+                  <span className={isDM ? 'text-stone-400' : 'text-slate-400'}>Prompt:</span>
+                  <span className="font-medium">&ldquo;{turnSession?.prompt_text}&rdquo;</span>
                 </span>
                 {isPhotoPrompt && (
-                  <span className="inline-flex items-center gap-1 text-xs bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded">
+                  <span className="inline-flex items-center gap-1 text-xs bg-violet-100/80 text-violet-700 px-2 py-0.5 rounded-md font-medium">
                     <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                     </svg>
@@ -4093,7 +4130,7 @@ export default function RoomPage() {
 
       {/* Messages */}
       <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain relative">
-        <div className="max-w-3xl mx-auto px-3 py-3">
+        <div className={`max-w-3xl mx-auto py-4 ${isDM ? 'px-3' : 'px-4'}`}>
           {/* Error banner */}
           {error && (
             <div className="bg-red-50 border border-red-100 text-red-600 px-4 py-3 rounded-xl text-sm flex items-center gap-2">
@@ -4186,41 +4223,49 @@ export default function RoomPage() {
           <div ref={bottomRef} />
         </div>
 
-        {/* New messages pill */}
+        {/* New messages pill - modern floating design */}
         {hasNewMessages && (
           <button
             onClick={() => scrollToBottom(true)}
-            className="absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 bg-indigo-500 text-white text-sm font-medium rounded-full shadow-lg hover:bg-indigo-600 transition-colors animate-in slide-in-from-bottom-2 duration-200"
+            className={`absolute bottom-4 left-1/2 -translate-x-1/2 px-5 py-2.5 text-white text-sm font-semibold rounded-full shadow-lg hover:shadow-xl transition-all active:scale-95 animate-in slide-in-from-bottom-2 duration-200 ${
+              isDM
+                ? 'bg-slate-800 hover:bg-slate-900'
+                : 'bg-gradient-to-r from-indigo-500 to-violet-500 hover:from-indigo-600 hover:to-violet-600 shadow-indigo-500/25'
+            }`}
           >
-            New messages ↓
+            New messages
+            <svg className="w-4 h-4 inline ml-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+            </svg>
           </button>
         )}
       </div>
 
-      {/* Bottom panel: Chat input (always primary) */}
-      <div className="bg-white border-t border-stone-200/50 flex-shrink-0 pb-safe">
+      {/* Bottom panel: Chat input - floating, modern design */}
+      <div className={`flex-shrink-0 pb-safe ${
+        isDM
+          ? 'bg-white/80 backdrop-blur-xl border-t border-stone-200/40'
+          : 'bg-white/85 backdrop-blur-xl border-t border-slate-200/50'
+      }`}>
         {/* Turn response input - only when it's your turn AND cooldown passed */}
         {gameActive && isMyTurn && !isWaitingForCooldown && (
-          <div className={`border-b ${isPhotoPrompt ? 'border-violet-100 bg-violet-50/50' : 'border-indigo-100 bg-indigo-50/50'}`}>
-            <div className="max-w-3xl mx-auto px-safe py-2">
-              <div className="flex items-center gap-2 mb-2">
-                {/* Red "live" indicator */}
+          <div className={`border-b ${isPhotoPrompt ? 'border-violet-100/60 bg-gradient-to-r from-violet-50/60 to-purple-50/60' : 'border-indigo-100/60 bg-gradient-to-r from-indigo-50/60 to-violet-50/60'}`}>
+            <div className="max-w-3xl mx-auto px-safe py-3">
+              <div className="flex items-center gap-2 mb-2.5">
                 <span className="relative flex h-2 w-2 shrink-0">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75 motion-reduce:animate-none"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
                 </span>
-                <span className={`text-xs font-medium ${isPhotoPrompt ? 'text-violet-600' : 'text-indigo-600'}`}>
-                  Your turn {isPhotoPrompt && '— upload a photo'}
+                <span className={`text-xs font-semibold ${isPhotoPrompt ? 'text-violet-600' : 'text-indigo-600'}`}>
+                  Your turn {isPhotoPrompt && '\u2014 upload a photo'}
                 </span>
                 <span className={`text-xs ${isPhotoPrompt ? 'text-violet-400' : 'text-indigo-400'}`}>
-                  · "{turnSession?.prompt_text}"
+                  \u00b7 &ldquo;{turnSession?.prompt_text}&rdquo;
                 </span>
               </div>
 
               {isPhotoPrompt ? (
-                /* Photo prompt UI */
                 <div className="flex gap-2">
-                  {/* Hidden inputs for camera vs library */}
                   <input
                     ref={turnCameraInputRef}
                     type="file"
@@ -4254,12 +4299,12 @@ export default function RoomPage() {
                     type="button"
                     onClick={() => setShowTurnPhotoSheet(true)}
                     disabled={uploadingImage}
-                    className={`flex-1 flex items-center justify-center gap-2 py-3 bg-white rounded-lg ring-1 ring-violet-200 cursor-pointer hover:bg-violet-50 transition-colors ${uploadingImage ? 'opacity-50 pointer-events-none' : ''}`}
+                    className={`flex-1 flex items-center justify-center gap-2.5 py-3.5 bg-white/90 backdrop-blur-sm rounded-xl ring-1 ring-violet-200/60 shadow-sm cursor-pointer hover:bg-violet-50/50 transition-all active:scale-[0.98] ${uploadingImage ? 'opacity-50 pointer-events-none' : ''}`}
                   >
                     {uploadingImage ? (
                       <>
                         <div className="w-5 h-5 border-2 border-violet-200 border-t-violet-600 rounded-full animate-spin" />
-                        <span className="text-sm font-medium text-violet-600">Uploading...</span>
+                        <span className="text-sm font-semibold text-violet-600">Uploading...</span>
                       </>
                     ) : (
                       <>
@@ -4267,20 +4312,19 @@ export default function RoomPage() {
                           <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                           <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>
-                        <span className="text-sm font-medium text-violet-600">Take or Choose Photo</span>
+                        <span className="text-sm font-semibold text-violet-600">Take or Choose Photo</span>
                       </>
                     )}
                   </button>
                 </div>
               ) : (
-                /* Text prompt UI */
-                <div className="flex gap-2 bg-white rounded-lg p-1 ring-1 ring-indigo-200">
+                <div className="flex gap-2 bg-white/90 backdrop-blur-sm rounded-xl p-1.5 ring-1 ring-indigo-200/60 shadow-sm">
                   <input
                     ref={turnInputRef}
                     value={turnText}
                     onChange={(e) => setTurnText(e.target.value)}
                     placeholder="Type your response..."
-                    className="flex-1 bg-transparent px-3 py-2 text-base placeholder:text-stone-400 focus:outline-none"
+                    className="flex-1 bg-transparent px-3 py-2.5 text-base placeholder:text-indigo-300 focus:outline-none"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault()
@@ -4292,7 +4336,7 @@ export default function RoomPage() {
                   <button
                     onClick={submitTurn}
                     disabled={!turnText.trim()}
-                    className="px-3 py-1.5 text-sm font-medium rounded-md bg-indigo-500 text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-indigo-600 transition-colors"
+                    className="px-4 py-2 text-sm font-semibold rounded-lg bg-gradient-to-r from-indigo-500 to-violet-500 text-white disabled:opacity-40 disabled:cursor-not-allowed hover:from-indigo-600 hover:to-violet-600 transition-all active:scale-95 shadow-sm"
                   >
                     Submit
                   </button>
@@ -4302,16 +4346,16 @@ export default function RoomPage() {
           </div>
         )}
 
-        {/* Reply preview */}
+        {/* Reply preview - refined */}
         {replyingTo && (
-          <div className="border-b border-stone-200 bg-stone-50">
-            <div className="max-w-3xl mx-auto px-safe py-2 flex items-center gap-2">
-              <div className="w-1 h-8 bg-indigo-400 rounded-full" />
+          <div className={`border-b ${isDM ? 'border-stone-200/50 bg-stone-50/80' : 'border-slate-200/50 bg-slate-50/80'}`}>
+            <div className="max-w-3xl mx-auto px-safe py-2.5 flex items-center gap-3">
+              <div className="w-1 h-10 bg-gradient-to-b from-indigo-400 to-violet-400 rounded-full" />
               <div className="flex-1 min-w-0">
-                <div className="text-xs font-medium text-indigo-600">
+                <div className="text-xs font-semibold text-indigo-600">
                   Replying to {replyingTo.user_id ? getUserInfo(replyingTo.user_id)?.displayName : 'message'}
                 </div>
-                <div className="text-xs text-stone-500 truncate">
+                <div className={`text-xs truncate ${isDM ? 'text-stone-500' : 'text-slate-500'}`}>
                   {replyingTo.type === 'image' ? '📷 Photo' : (() => {
                     if (replyingTo.type === 'turn_response') {
                       try {
@@ -4325,7 +4369,7 @@ export default function RoomPage() {
               </div>
               <button
                 onClick={() => setReplyingTo(null)}
-                className="p-1 text-stone-400 hover:text-stone-600"
+                className={`p-1.5 rounded-lg transition-colors ${isDM ? 'text-stone-400 hover:text-stone-600 hover:bg-stone-100' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -4343,26 +4387,32 @@ export default function RoomPage() {
           onChooseLibrary={() => imageInputRef.current?.click()}
         />
 
-        {/* Chat input (always available, always primary) */}
-        <div className="max-w-3xl mx-auto px-safe py-3">
-          <div className="flex gap-2 bg-stone-100 rounded-xl p-1.5">
-            {/* Attachment button - opens action sheet */}
+        {/* Chat input - floating pill design */}
+        <div className="max-w-3xl mx-auto px-4 py-3">
+          <div className={`flex gap-2 rounded-2xl p-1.5 shadow-sm ${
+            isDM
+              ? 'bg-stone-100/80 ring-1 ring-stone-200/50'
+              : 'bg-slate-100/80 ring-1 ring-slate-200/50'
+          }`}>
             <button
               onClick={() => setShowPhotoSheet(true)}
               disabled={uploadingImage}
-              className="p-2.5 rounded-lg text-stone-500 hover:text-stone-700 hover:bg-stone-200 transition-colors disabled:opacity-50"
+              className={`p-2.5 rounded-xl transition-all duration-200 disabled:opacity-50 ${
+                isDM
+                  ? 'text-stone-400 hover:text-stone-600 hover:bg-white/80 active:scale-95'
+                  : 'text-slate-400 hover:text-slate-600 hover:bg-white/80 active:scale-95'
+              }`}
               title="Attach photo"
               aria-label="Attach photo"
             >
               {uploadingImage ? (
-                <div className="w-5 h-5 border-2 border-stone-300 border-t-stone-600 rounded-full animate-spin" />
+                <div className={`w-5 h-5 border-2 rounded-full animate-spin ${isDM ? 'border-stone-300 border-t-stone-600' : 'border-slate-300 border-t-slate-600'}`} />
               ) : (
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
                 </svg>
               )}
             </button>
-            {/* Hidden file inputs */}
             <input
               ref={cameraInputRef}
               type="file"
@@ -4386,7 +4436,11 @@ export default function RoomPage() {
               value={chatText}
               onChange={(e) => setChatText(e.target.value)}
               placeholder="Type a message..."
-              className="flex-1 min-w-0 bg-transparent px-3 py-2.5 text-base placeholder:text-stone-400 focus:outline-none"
+              className={`flex-1 min-w-0 bg-transparent px-3 py-2.5 text-base focus:outline-none ${
+                isDM
+                  ? 'placeholder:text-stone-400'
+                  : 'placeholder:text-slate-400'
+              }`}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault()
@@ -4402,7 +4456,15 @@ export default function RoomPage() {
               }}
               disabled={!chatText.trim()}
               aria-label="Send message"
-              className="shrink-0 w-10 h-10 flex items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 text-white disabled:from-stone-300 disabled:to-stone-300 disabled:cursor-not-allowed hover:from-indigo-600 hover:to-violet-600 active:scale-95 transition-all"
+              className={`shrink-0 w-10 h-10 flex items-center justify-center rounded-xl text-white transition-all duration-200 active:scale-90 ${
+                chatText.trim()
+                  ? isDM
+                    ? 'bg-gradient-to-br from-stone-700 to-stone-900 shadow-sm hover:shadow-md'
+                    : 'bg-gradient-to-br from-indigo-500 via-violet-500 to-purple-500 shadow-sm shadow-indigo-500/25 hover:shadow-md hover:shadow-indigo-500/30'
+                  : isDM
+                    ? 'bg-stone-300 cursor-not-allowed'
+                    : 'bg-slate-300 cursor-not-allowed'
+              }`}
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
