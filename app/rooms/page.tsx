@@ -581,93 +581,111 @@ export default function ChatsPage() {
   const [submitting, setSubmitting] = useState(false)
 
   const loadChats = useCallback(async (uid: string) => {
-    const { data: profilesData } = await supabase
-      .from('profiles')
-      .select('id, email, display_name, avatar_url')
+    const loadStart = performance.now()
 
-    const profileMap = new Map<string, Profile>()
-    if (profilesData) {
-      for (const p of profilesData) {
-        profileMap.set(p.id, p)
-      }
-    }
-    setProfiles(profileMap)
+    // PARALLEL FETCH: Rooms and all members in ONE batch
+    const [roomsResult, membersResult] = await Promise.all([
+      supabase.rpc('get_rooms_with_unread'),
+      supabase.from('room_members').select('room_id, user_id')
+    ])
 
-    const { data: roomsData, error: roomsErr } = await supabase.rpc('get_rooms_with_unread')
-
-    if (roomsErr) {
-      console.error('Error fetching rooms:', roomsErr)
-      setError(roomsErr.message)
+    if (roomsResult.error) {
+      console.error('Error fetching rooms:', roomsResult.error)
+      setError(roomsResult.error.message)
       return
     }
 
-    const chatItems: ChatItem[] = []
+    const roomsData = roomsResult.data ?? []
+    const allMembers = membersResult.data ?? []
 
-    for (const room of roomsData ?? []) {
+    // Build room -> members map (O(n) instead of N queries)
+    const roomMembersMap = new Map<string, string[]>()
+    for (const m of allMembers) {
+      const existing = roomMembersMap.get(m.room_id) ?? []
+      existing.push(m.user_id)
+      roomMembersMap.set(m.room_id, existing)
+    }
+
+    // Collect unique user IDs we need profiles for
+    const neededUserIds = new Set<string>()
+    for (const room of roomsData) {
+      const members = roomMembersMap.get(room.room_id) ?? []
+      for (const memberId of members.slice(0, 5)) {
+        if (memberId !== uid) neededUserIds.add(memberId)
+      }
+      if (room.last_message_user_id) neededUserIds.add(room.last_message_user_id)
+    }
+    neededUserIds.add(uid) // Always need current user
+
+    // Fetch ONLY needed profiles (not all)
+    const { data: profilesData } = neededUserIds.size > 0
+      ? await supabase
+          .from('profiles')
+          .select('id, email, display_name, avatar_url')
+          .in('id', Array.from(neededUserIds))
+      : { data: [] }
+
+    const profileMap = new Map<string, Profile>()
+    for (const p of profilesData ?? []) {
+      profileMap.set(p.id, p)
+    }
+    setProfiles(profileMap)
+
+    // Build chat items (no more N+1 queries!)
+    const chatItems: ChatItem[] = []
+    for (const room of roomsData) {
+      const members = roomMembersMap.get(room.room_id) ?? []
       let otherMember = undefined
       let groupMembers: GroupMember[] | undefined = undefined
 
-      // Fetch members for this room
-      const { data: members } = await supabase
-        .from('room_members')
-        .select('user_id')
-        .eq('room_id', room.room_id)
-        .limit(5) // Fetch up to 5 to have 4 after excluding current user
-
       if (room.room_type === 'dm') {
-        if (members) {
-          const otherUserId = members.find((m: any) => m.user_id !== uid)?.user_id
-          if (otherUserId) {
-            const otherProfile = profileMap.get(otherUserId)
-            if (otherProfile) {
-              const name = otherProfile.display_name || getDisplayName(otherProfile.email)
-              otherMember = {
-                id: otherUserId,
-                email: otherProfile.email,
-                displayName: name,
-                initials: otherProfile.display_name
-                  ? otherProfile.display_name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()
-                  : getInitials(otherProfile.email),
-                color: stringToColor(otherUserId),
-                avatarUrl: otherProfile.avatar_url
-              }
+        const otherUserId = members.find(m => m !== uid)
+        if (otherUserId) {
+          const otherProfile = profileMap.get(otherUserId)
+          if (otherProfile) {
+            const name = otherProfile.display_name || getDisplayName(otherProfile.email)
+            otherMember = {
+              id: otherUserId,
+              email: otherProfile.email,
+              displayName: name,
+              initials: otherProfile.display_name
+                ? otherProfile.display_name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()
+                : getInitials(otherProfile.email),
+              color: stringToColor(otherUserId),
+              avatarUrl: otherProfile.avatar_url
             }
           }
         }
       } else {
-        // Group chat - build mosaic members (exclude current user, take up to 4)
-        if (members) {
-          groupMembers = members
-            .filter((m: any) => m.user_id !== uid)
-            .slice(0, 4)
-            .map((m: any) => {
-              const profile = profileMap.get(m.user_id)
-              const displayName = profile?.display_name || (profile?.email ? getDisplayName(profile.email) : 'Unknown')
-              return {
-                id: m.user_id,
-                displayName,
-                initials: profile?.display_name
-                  ? profile.display_name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()
-                  : (profile?.email ? getInitials(profile.email) : '??'),
-                color: stringToColor(m.user_id),
-                avatarUrl: profile?.avatar_url || null
-              }
-            })
-
-          // If we filtered out everyone (user is alone), show their own avatar
-          if (groupMembers.length === 0 && members.length > 0) {
-            const myProfile = profileMap.get(uid)
-            if (myProfile) {
-              groupMembers = [{
-                id: uid,
-                displayName: myProfile.display_name || getDisplayName(myProfile.email),
-                initials: myProfile.display_name
-                  ? myProfile.display_name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()
-                  : getInitials(myProfile.email),
-                color: stringToColor(uid),
-                avatarUrl: myProfile.avatar_url || null
-              }]
+        // Group chat - build mosaic members
+        const otherMembers = members.filter(m => m !== uid).slice(0, 4)
+        if (otherMembers.length > 0) {
+          groupMembers = otherMembers.map(memberId => {
+            const profile = profileMap.get(memberId)
+            const displayName = profile?.display_name || (profile?.email ? getDisplayName(profile.email) : 'Unknown')
+            return {
+              id: memberId,
+              displayName,
+              initials: profile?.display_name
+                ? profile.display_name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()
+                : (profile?.email ? getInitials(profile.email) : '??'),
+              color: stringToColor(memberId),
+              avatarUrl: profile?.avatar_url || null
             }
+          })
+        } else if (members.length > 0) {
+          // User is alone in group
+          const myProfile = profileMap.get(uid)
+          if (myProfile) {
+            groupMembers = [{
+              id: uid,
+              displayName: myProfile.display_name || getDisplayName(myProfile.email),
+              initials: myProfile.display_name
+                ? myProfile.display_name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()
+                : getInitials(myProfile.email),
+              color: stringToColor(uid),
+              avatarUrl: myProfile.avatar_url || null
+            }]
           }
         }
       }
@@ -688,6 +706,10 @@ export default function ChatsPage() {
     }
 
     setChats(chatItems)
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[lobby] load complete in', Math.round(performance.now() - loadStart), 'ms')
+    }
   }, [])
 
   useEffect(() => {

@@ -2248,14 +2248,43 @@ export default function RoomPage() {
         }
       }
 
-      // Fetch profiles ONLY for room members (not all profiles!)
+      // Set messages FIRST so UI renders immediately (before profiles/reactions load)
+      const sortedMsgs = (msgs ?? []).reverse() as Msg[]
+      if (msgsResult.error) {
+        setError(msgsResult.error.message)
+      } else {
+        setMessages(sortedMsgs)
+        setHasMoreMessages((msgs?.length ?? 0) >= INITIAL_MESSAGES)
+      }
+
+      // Set session
+      if (sess && (sess as any).is_active) {
+        setTurnSession(sess as TurnSession)
+      } else {
+        setTurnSession(null)
+      }
+
+      // RENDER NOW - show messages immediately with skeleton avatars
+      setIsLoading(false)
+
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[room] first render in', Math.round(performance.now() - bootStart), 'ms, msgs:', sortedMsgs.length)
+      }
+
+      // HYDRATE: Fetch profiles and reactions in parallel (non-blocking)
       const memberIds = members?.map(m => m.user_id) ?? []
-      const { data: profiles } = memberIds.length > 0
-        ? await supabase
-            .from('profiles')
-            .select('id, email, display_name, avatar_url, bio')
-            .in('id', memberIds)
-        : { data: [] }
+      const msgIds = sortedMsgs.map(m => m.id)
+
+      const [profilesResult, reactionsResult] = await Promise.all([
+        memberIds.length > 0
+          ? supabase.from('profiles').select('id, email, display_name, avatar_url, bio').in('id', memberIds)
+          : Promise.resolve({ data: [] }),
+        msgIds.length > 0
+          ? supabase.from('message_reactions').select('*').in('message_id', msgIds)
+          : Promise.resolve({ data: [] })
+      ])
+
+      const profiles = profilesResult.data
 
       setUsers(prev => {
         const next = new Map(prev)
@@ -2324,42 +2353,12 @@ export default function RoomPage() {
         return next
       })
 
-      // Set session
-      if (sess && (sess as any).is_active) {
-        setTurnSession(sess as TurnSession)
-      } else {
-        setTurnSession(null)
+      // Update reactions after hydration
+      if (reactionsResult.data) {
+        setReactions(reactionsResult.data as Reaction[])
       }
 
-      // Set messages (reverse to ascending order for display)
-      if (msgsErr) {
-        setError(msgsErr.message)
-      } else {
-        const sortedMsgs = (msgs ?? []).reverse() as Msg[]
-        setMessages(sortedMsgs)
-        setHasMoreMessages((msgs?.length ?? 0) >= INITIAL_MESSAGES)
-
-        if (process.env.NODE_ENV === 'development') {
-          console.log('[room] render messages count', sortedMsgs.length)
-        }
-
-        // Fetch reactions for these messages (parallel with seen counts would require messages first)
-        const msgIds = sortedMsgs.map(m => m.id)
-        if (msgIds.length > 0) {
-          const { data: reactionsData } = await supabase
-            .from('message_reactions')
-            .select('*')
-            .in('message_id', msgIds)
-
-          if (reactionsData) {
-            setReactions(reactionsData as Reaction[])
-          }
-        }
-      }
-
-      setIsLoading(false)
-
-      // Mark room as read now that we've loaded it
+      // Mark room as read (fire and forget)
       supabase.rpc('mark_room_read', { p_room_id: roomId }).then(({ error }) => {
         if (error) console.warn('[room] Failed to mark room as read:', error)
       })
