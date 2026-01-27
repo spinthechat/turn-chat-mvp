@@ -3429,7 +3429,7 @@ export default function RoomPage() {
           // DMs need more padding (20px buffer), groups need less (4px buffer)
           paddingBottom: isDM
             ? `calc(${inputHeight}px + env(safe-area-inset-bottom, 0px) + 20px)`
-            : `calc(${inputHeight}px + env(safe-area-inset-bottom, 0px) + 4px)`
+            : `calc(${inputHeight}px + env(safe-area-inset-bottom, 0px))`
         }}
       >
         <div className="chat-messages">
