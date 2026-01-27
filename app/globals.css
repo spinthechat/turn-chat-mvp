@@ -154,6 +154,9 @@
   overflow-x: hidden;
   overscroll-behavior-y: contain;
   -webkit-overflow-scrolling: touch;
+  /* CSS variable for extra bottom padding (set via inline style for input height) */
+  /* Safe area is added here to ensure last message is never behind home indicator */
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 /* Messages content wrapper */

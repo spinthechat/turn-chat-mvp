@@ -3408,9 +3408,10 @@ export default function RoomPage() {
         className="chat-messages-scroller"
         style={{
           paddingTop: headerHeight,
-          // CRITICAL: Add buffer (16px) to prevent last message from being clipped
-          // The inputHeight already includes the input area's safe-area padding via getBoundingClientRect
-          paddingBottom: inputHeight + 16
+          // CRITICAL: Input height + safe-area-inset-bottom + buffer
+          // getBoundingClientRect doesn't include the CSS env() padding on the input area,
+          // so we must add safe-area-inset-bottom explicitly here
+          paddingBottom: `calc(${inputHeight}px + env(safe-area-inset-bottom, 0px) + 20px)`
         }}
       >
         <div className="chat-messages">
