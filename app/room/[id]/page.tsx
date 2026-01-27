@@ -7,7 +7,13 @@ import { usePushNotifications } from '@/lib/usePushNotifications'
 import { useThemePreference, type ThemePreference } from '@/lib/useThemePreference'
 import { hapticTick, clearTextSelection, clearTextSelectionAggressive, setGlobalNoSelect } from '@/lib/haptics'
 import { getThemeForMode, isDarkTheme, getThemeCSSVars, type ChatTheme } from '@/lib/themes'
+import { validatePromptCounts } from '@/lib/prompts'
 import { useParams, useRouter } from 'next/navigation'
+
+// Dev sanity check for prompt counts
+if (process.env.NODE_ENV === 'development') {
+  validatePromptCounts()
+}
 
 // Hook to handle mobile viewport height and keyboard
 function useMobileViewport() {
