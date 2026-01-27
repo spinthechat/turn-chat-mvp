@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useMemo, useState, useCallback } from 'react'
+import { useEffect, useMemo, useState, useCallback, memo } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
 // Prompt mode options
 const PROMPT_MODES = [
@@ -181,17 +182,15 @@ function ChatAvatar({ chat, size = 'md' }: { chat: ChatItem; size?: 'sm' | 'md' 
   )
 }
 
-// Room list item component
-function RoomListItem({
+// Room list item component - memoized to prevent re-renders
+const RoomListItem = memo(function RoomListItem({
   chat,
   profiles,
   currentUserId,
-  onClick
 }: {
   chat: ChatItem
   profiles: Map<string, Profile>
   currentUserId: string | null
-  onClick: () => void
 }) {
   const hasUnread = chat.unread_count > 0
 
@@ -246,8 +245,9 @@ function RoomListItem({
   }, [chat, currentUserId, profiles])
 
   return (
-    <button
-      onClick={onClick}
+    <Link
+      href={`/room/${chat.id}`}
+      prefetch={true}
       className={`w-full flex items-center gap-4 px-5 py-4 text-left transition-colors duration-100
         ${hasUnread ? 'bg-stone-50/50' : 'bg-white'}
         hover:bg-stone-50 active:bg-stone-100`}
@@ -279,9 +279,9 @@ function RoomListItem({
           )}
         </div>
       </div>
-    </button>
+    </Link>
   )
-}
+})
 
 // Empty state component
 function EmptyState({ onNewChat, onNewGroup }: { onNewChat: () => void; onNewGroup: () => void }) {
@@ -591,7 +591,6 @@ export default function ChatsPage() {
                   chat={chat}
                   profiles={profiles}
                   currentUserId={userId}
-                  onClick={() => router.push(`/room/${chat.id}`)}
                 />
               ))}
             </div>

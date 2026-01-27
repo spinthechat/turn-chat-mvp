@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState, useCallback, useLayoutEffect } from 'react'
+import { useEffect, useMemo, useRef, useState, useCallback, useLayoutEffect, memo } from 'react'
 import { createPortal } from 'react-dom'
 import { supabase } from '@/lib/supabaseClient'
 import { usePushNotifications } from '@/lib/usePushNotifications'
@@ -37,7 +37,8 @@ import { EMOJI_OPTIONS, FREQUENCY_OPTIONS, PROMPT_MODES } from './types'
 
 
 // Message bubble component - compact WhatsApp-style
-function MessageBubble({
+// Memoized to prevent re-renders when other messages update
+const MessageBubble = memo(function MessageBubble({
   message,
   isMe,
   user,
@@ -963,7 +964,7 @@ function MessageBubble({
       )}
     </div>
   )
-}
+})
 
 
 
@@ -2043,12 +2044,17 @@ export default function RoomPage() {
     }
   }, [loadingOlderMessages, hasMoreMessages, messages, roomId])
 
+  // Throttle ref for scroll handler - prevents excessive checks
+  const scrollThrottleRef = useRef<NodeJS.Timeout | null>(null)
+  const lastScrollCheckRef = useRef(0)
+
   // Handle scroll for infinite scroll up and tracking position
+  // Throttled to run at most every 100ms for the "load older" check
   const handleScroll = useCallback(() => {
     const container = scrollContainerRef.current
     if (!container) return
 
-    // Check if near bottom (within 100px)
+    // Check if near bottom (within 100px) - always run immediately for UI responsiveness
     const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100
     isNearBottomRef.current = isNearBottom
 
@@ -2056,6 +2062,11 @@ export default function RoomPage() {
     if (isNearBottom) {
       setHasNewMessages(false)
     }
+
+    // Throttle the "load older messages" check to every 100ms
+    const now = Date.now()
+    if (now - lastScrollCheckRef.current < 100) return
+    lastScrollCheckRef.current = now
 
     // Check if near top (within 200px) - trigger loading older messages
     if (container.scrollTop < 200 && hasMoreMessages && !loadingOlderMessages) {
