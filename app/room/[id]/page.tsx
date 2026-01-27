@@ -1781,6 +1781,26 @@ export default function RoomPage() {
     }, 150)
   }, [scrollToBottom])
 
+  // Track previous input height to detect significant changes
+  const prevInputHeightRef = useRef(inputHeight)
+
+  // When input height changes significantly (e.g., turn prompt card appears),
+  // scroll to keep the last message visible if user was near bottom
+  useEffect(() => {
+    const prevHeight = prevInputHeightRef.current
+    const heightDelta = inputHeight - prevHeight
+    prevInputHeightRef.current = inputHeight
+
+    // Only adjust if height increased significantly (turn prompt appeared)
+    // and user was near the bottom
+    if (heightDelta > 30 && isNearBottomRef.current) {
+      // Use requestAnimationFrame to ensure DOM has updated
+      requestAnimationFrame(() => {
+        scrollToBottom(false) // instant scroll to prevent jarring
+      })
+    }
+  }, [inputHeight, scrollToBottom])
+
   const [uploadingImage, setUploadingImage] = useState(false)
 
   // Reply and reactions state
@@ -1878,23 +1898,57 @@ export default function RoomPage() {
   }, [isWaitingForCooldown])
 
   // Measure header and input heights for fixed layout offsets
+  // Uses ResizeObserver to continuously track changes (critical for turn prompt card)
   useLayoutEffect(() => {
     const updateHeights = () => {
       // Measure header (includes turn panel when visible)
       const hHeight = headerRef.current?.getBoundingClientRect().height ?? 64
       setHeaderHeight(hHeight)
 
-      // Measure input area
+      // Measure input area - CRITICAL: must include full height for scroll padding
       const iHeight = inputAreaRef.current?.getBoundingClientRect().height ?? 60
       setInputHeight(iHeight)
     }
     updateHeights()
-    // Re-measure on resize and after short delay (for animations)
+
+    // ResizeObserver for continuous tracking of input area height changes
+    // This catches: turn prompt card appearing/disappearing, reply preview, etc.
+    let resizeObserver: ResizeObserver | null = null
+    if (inputAreaRef.current) {
+      resizeObserver = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          const newHeight = entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height
+          if (newHeight > 0) {
+            setInputHeight(newHeight)
+          }
+        }
+      })
+      resizeObserver.observe(inputAreaRef.current)
+    }
+
+    // Also observe header for turn banner changes
+    let headerObserver: ResizeObserver | null = null
+    if (headerRef.current) {
+      headerObserver = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          const newHeight = entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height
+          if (newHeight > 0) {
+            setHeaderHeight(newHeight)
+          }
+        }
+      })
+      headerObserver.observe(headerRef.current)
+    }
+
+    // Fallback: window resize and delayed check
     window.addEventListener('resize', updateHeights)
-    const timer = setTimeout(updateHeights, 100) // Catch late layout shifts
+    const timer = setTimeout(updateHeights, 100)
+
     return () => {
       window.removeEventListener('resize', updateHeights)
       clearTimeout(timer)
+      resizeObserver?.disconnect()
+      headerObserver?.disconnect()
     }
   }, [gameActive, isMyTurn, isWaitingForCooldown])
 
@@ -2652,12 +2706,13 @@ export default function RoomPage() {
   useEffect(() => {
     if (!isLoading && messages.length > 0 && !hasInitiallyScrolled.current) {
       // Wait for DOM to fully render after loading completes
+      // Use scrollToBottom which properly handles the container scroll
       setTimeout(() => {
-        bottomRef.current?.scrollIntoView({ behavior: 'auto' })
+        scrollToBottom(false) // instant scroll on initial load
         hasInitiallyScrolled.current = true
       }, 100)
     }
-  }, [isLoading, messages.length])
+  }, [isLoading, messages.length, scrollToBottom])
 
   // Scroll to bottom when new messages arrive (realtime updates)
   useEffect(() => {
@@ -2666,9 +2721,13 @@ export default function RoomPage() {
 
     // Only auto-scroll if user is near the bottom
     if (isNearBottom()) {
-      bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+      // Use scrollToBottom for consistent behavior
+      // Small delay to ensure DOM has updated with new message
+      requestAnimationFrame(() => {
+        scrollToBottom(true)
+      })
     }
-  }, [messages.length])
+  }, [messages.length, scrollToBottom])
 
   const sendChat = async () => {
     if (!userId || !chatText.trim()) return
@@ -2691,6 +2750,11 @@ export default function RoomPage() {
     setMessages(prev => [...prev, optimisticMsg])
     setChatText('')
     setReplyingTo(null)
+
+    // Scroll to show the new message immediately
+    requestAnimationFrame(() => {
+      scrollToBottom(true)
+    })
 
     // Actually insert the message
     const { data, error } = await supabase
@@ -3342,7 +3406,12 @@ export default function RoomPage() {
         ref={scrollContainerRef}
         onScroll={handleScroll}
         className="chat-messages-scroller"
-        style={{ paddingTop: headerHeight, paddingBottom: inputHeight }}
+        style={{
+          paddingTop: headerHeight,
+          // CRITICAL: Add buffer (16px) to prevent last message from being clipped
+          // The inputHeight already includes the input area's safe-area padding via getBoundingClientRect
+          paddingBottom: inputHeight + 16
+        }}
       >
         <div className="chat-messages">
         <div className={`max-w-3xl mx-auto py-4 ${isDM ? 'px-3' : 'px-4'}`}>
@@ -3435,7 +3504,8 @@ export default function RoomPage() {
             })}
             </>
           )}
-          <div ref={bottomRef} />
+          {/* Scroll anchor - ensures last message is never clipped */}
+          <div ref={bottomRef} className="h-1" aria-hidden="true" />
         </div>
 
         {/* New messages pill - modern floating design */}
