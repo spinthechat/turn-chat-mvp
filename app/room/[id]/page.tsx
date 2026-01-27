@@ -2706,11 +2706,18 @@ export default function RoomPage() {
   useEffect(() => {
     if (!isLoading && messages.length > 0 && !hasInitiallyScrolled.current) {
       // Wait for DOM to fully render after loading completes
-      // Use scrollToBottom which properly handles the container scroll
-      setTimeout(() => {
+      // Use multiple attempts to ensure scroll happens after layout is computed
+      const scrollAttempt = () => {
         scrollToBottom(false) // instant scroll on initial load
+      }
+
+      // First attempt after short delay
+      setTimeout(scrollAttempt, 50)
+      // Second attempt after layout should be stable
+      setTimeout(() => {
+        scrollAttempt()
         hasInitiallyScrolled.current = true
-      }, 100)
+      }, 150)
     }
   }, [isLoading, messages.length, scrollToBottom])
 
@@ -3425,8 +3432,8 @@ export default function RoomPage() {
         style={{
           paddingTop: headerHeight,
           // Input height already includes safe-area-inset-bottom (from .chat-input-area CSS)
-          // Just add a small buffer for visual spacing
-          paddingBottom: inputHeight + 8
+          // Add buffer for visual spacing to ensure last message is visible above input
+          paddingBottom: inputHeight + 16
         }}
       >
         <div className="chat-messages">
