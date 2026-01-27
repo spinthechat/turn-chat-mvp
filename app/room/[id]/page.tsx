@@ -1751,7 +1751,7 @@ export default function RoomPage() {
   const cameraInputRef = useRef<HTMLInputElement | null>(null)
   const turnCameraInputRef = useRef<HTMLInputElement | null>(null)
   const turnLibraryInputRef = useRef<HTMLInputElement | null>(null)
-  const chatInputRef = useRef<HTMLInputElement | null>(null)
+  const chatInputRef = useRef<HTMLTextAreaElement | null>(null)
   const hasInitiallyScrolled = useRef(false)
 
   // Photo action sheet state
@@ -2729,6 +2729,18 @@ export default function RoomPage() {
     }
   }, [messages.length, scrollToBottom])
 
+  // Auto-resize textarea to content (up to max 4 lines ~96px)
+  const autoResizeTextarea = useCallback(() => {
+    const textarea = chatInputRef.current
+    if (!textarea) return
+    // Reset to single line to measure content
+    textarea.style.height = 'auto'
+    // Calculate new height (max ~4 lines at 24px line-height = 96px)
+    const maxHeight = 96
+    const newHeight = Math.min(textarea.scrollHeight, maxHeight)
+    textarea.style.height = `${newHeight}px`
+  }, [])
+
   const sendChat = async () => {
     if (!userId || !chatText.trim()) return
     setError(null)
@@ -2750,6 +2762,10 @@ export default function RoomPage() {
     setMessages(prev => [...prev, optimisticMsg])
     setChatText('')
     setReplyingTo(null)
+    // Reset textarea height to single line
+    if (chatInputRef.current) {
+      chatInputRef.current.style.height = 'auto'
+    }
 
     // Scroll to show the new message immediately
     requestAnimationFrame(() => {
@@ -3884,7 +3900,7 @@ export default function RoomPage() {
               <span className="text-[11px] font-medium uppercase tracking-wide">Chat</span>
             </div>
           )}
-          <div className={`flex gap-2 p-1.5 chat-input-pill transition-all duration-200 ${
+          <div className={`flex items-end gap-1.5 p-1 chat-input-pill transition-all duration-200 ${
             isDM
               ? 'bg-stone-100/90 dark:bg-stone-800/90'
               : isFlirtyTheme
@@ -3894,7 +3910,7 @@ export default function RoomPage() {
             <button
               onClick={() => setShowPhotoSheet(true)}
               disabled={uploadingImage}
-              className={`p-2.5 rounded-xl transition-all duration-200 disabled:opacity-50 ${
+              className={`p-2 rounded-xl transition-all duration-200 disabled:opacity-50 self-end mb-0.5 ${
                 isDM
                   ? 'text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 hover:bg-white/80 dark:hover:bg-stone-700/80 active:scale-95'
                   : isFlirtyTheme
@@ -3934,10 +3950,14 @@ export default function RoomPage() {
               aria-hidden="true"
             />
 
-            <input
+            <textarea
               ref={chatInputRef}
               value={chatText}
-              onChange={(e) => setChatText(e.target.value)}
+              onChange={(e) => {
+                setChatText(e.target.value)
+                autoResizeTextarea()
+              }}
+              rows={1}
               placeholder={gameActive && isMyTurn && !isWaitingForCooldown ? "Send a chat message..." : "Type a message..."}
               inputMode="text"
               enterKeyHint="send"
@@ -3947,7 +3967,7 @@ export default function RoomPage() {
               // When turn prompt is active, make chat input non-focusable to prevent iOS keyboard
               // from showing prev/next arrows (only one focusable text input at a time)
               tabIndex={gameActive && isMyTurn && !isWaitingForCooldown ? -1 : 0}
-              className={`flex-1 min-w-0 bg-transparent px-3 py-2.5 text-base focus:outline-none ${
+              className={`flex-1 min-w-0 bg-transparent px-3 py-2 text-base focus:outline-none resize-none leading-6 min-h-[44px] max-h-24 overflow-y-auto ${
                 isDM
                   ? 'placeholder:text-stone-400 dark:placeholder:text-stone-500'
                   : isFlirtyTheme
@@ -3969,7 +3989,7 @@ export default function RoomPage() {
               }}
               disabled={!chatText.trim()}
               aria-label="Send message"
-              className={`shrink-0 w-10 h-10 flex items-center justify-center text-white ${
+              className={`shrink-0 w-9 h-9 flex items-center justify-center text-white self-end mb-0.5 ${
                 chatText.trim()
                   ? isDM
                     ? 'send-button !bg-gradient-to-br !from-stone-700 !to-stone-900 dark:!from-stone-600 dark:!to-stone-800'
