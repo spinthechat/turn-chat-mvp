@@ -3,19 +3,14 @@
 import { useEffect } from 'react'
 
 /**
- * Mobile viewport handling.
+ * iOS Safari keyboard handling using visualViewport API.
  *
- * iOS Safari: Do NOT use visualViewport-based positioning. iOS natively
- * handles keyboard by scrolling the focused input into view. Using
- * visualViewport to resize/offset the container causes double compensation
- * (input jumps too far up, creating a gap above the keyboard).
+ * The problem: On iOS, `position: fixed` elements are fixed to the
+ * LAYOUT viewport, not the VISUAL viewport. When the keyboard opens,
+ * the visual viewport shrinks but fixed elements don't move with it.
  *
- * Instead, we rely on:
- * - 100dvh for container height (iOS handles this correctly)
- * - position: fixed + bottom: 0 for input area
- * - env(safe-area-inset-bottom) for notch padding
- *
- * Android/other: Keep visualViewport tracking as those browsers may need it.
+ * The solution: Track the visual viewport via CSS custom properties
+ * and use them to position the chat container correctly.
  */
 export function useMobileViewport() {
   useEffect(() => {
@@ -23,28 +18,13 @@ export function useMobileViewport() {
     const originalOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
 
-    // Detect iOS (Safari, Chrome on iOS, PWA)
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
-
-    // On iOS, don't use visualViewport-based positioning
-    // iOS handles keyboard natively - our intervention causes double offset
-    if (isIOS) {
-      // Just ensure we're not applying any stale values
-      document.documentElement.style.removeProperty('--vv-height')
-      document.documentElement.style.removeProperty('--vv-offset-top')
-
-      return () => {
-        document.body.style.overflow = originalOverflow
-      }
-    }
-
-    // For non-iOS browsers, use visualViewport tracking
     const updateViewport = () => {
       const vv = window.visualViewport
       if (!vv) return
 
       // Set CSS custom properties for the visual viewport
+      // --vv-height: The actual visible height (shrinks when keyboard opens)
+      // --vv-offset-top: How far down the visual viewport is from layout viewport top
       document.documentElement.style.setProperty('--vv-height', `${vv.height}px`)
       document.documentElement.style.setProperty('--vv-offset-top', `${vv.offsetTop}px`)
     }
@@ -59,7 +39,7 @@ export function useMobileViewport() {
       vv.addEventListener('scroll', updateViewport)
     }
 
-    // Also listen to regular resize
+    // Also listen to regular resize for non-iOS browsers
     window.addEventListener('resize', updateViewport)
 
     return () => {
