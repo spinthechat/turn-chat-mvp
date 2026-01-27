@@ -4,6 +4,17 @@
 -- Returns rooms with member info in ONE query
 -- Eliminates N+1 problem where each room required
 -- a separate member lookup
+--
+-- NOTE: This is an OPTIONAL optimization. The client-side
+-- code already batches queries efficiently. This SQL function
+-- could be used in the future to reduce round-trips further.
+--
+-- The current client approach:
+-- 1. Parallel fetch: rooms RPC + all room_members
+-- 2. Client-side join to build member lists
+-- 3. Fetch only needed profiles
+--
+-- This SQL approach would do it all server-side in one query.
 
 -- Drop existing function if exists
 DROP FUNCTION IF EXISTS get_rooms_with_members();
@@ -33,27 +44,36 @@ BEGIN
     WHERE rm.user_id = auth.uid()
   ),
   room_member_details AS (
-    -- Get member details aggregated per room (limit to 5 for avatar mosaic)
+    -- Get member details aggregated per room
     SELECT
       rm.room_id,
       COUNT(*)::BIGINT as member_count,
-      ARRAY_AGG(rm.user_id ORDER BY rm.joined_at) FILTER (WHERE rm.user_id != auth.uid()) as other_member_ids
+      -- Get first 5 other members (for avatar mosaic)
+      (SELECT ARRAY_AGG(sub.user_id)
+       FROM (
+         SELECT rm2.user_id
+         FROM room_members rm2
+         WHERE rm2.room_id = rm.room_id AND rm2.user_id != auth.uid()
+         ORDER BY rm2.joined_at
+         LIMIT 5
+       ) sub
+      ) as other_member_ids
     FROM room_members rm
     WHERE rm.room_id IN (SELECT ur.room_id FROM user_rooms ur)
     GROUP BY rm.room_id
   ),
   member_profiles AS (
-    -- Get profile info for display (only for members we need to show)
+    -- Get profile info for display members
     SELECT
       rmd.room_id,
-      ARRAY_AGG(p.id ORDER BY rm.joined_at)[:5] as member_ids,
-      ARRAY_AGG(p.email ORDER BY rm.joined_at)[:5] as member_emails,
-      ARRAY_AGG(COALESCE(p.display_name, '') ORDER BY rm.joined_at)[:5] as member_names,
-      ARRAY_AGG(COALESCE(p.avatar_url, '') ORDER BY rm.joined_at)[:5] as member_avatars
+      ARRAY_AGG(p.id) as member_ids,
+      ARRAY_AGG(p.email) as member_emails,
+      ARRAY_AGG(COALESCE(p.display_name, '')) as member_names,
+      ARRAY_AGG(COALESCE(p.avatar_url, '')) as member_avatars
     FROM room_member_details rmd
-    LEFT JOIN LATERAL unnest(rmd.other_member_ids[:5]) WITH ORDINALITY AS u(uid, ord) ON true
-    LEFT JOIN room_members rm ON rm.room_id = rmd.room_id AND rm.user_id = u.uid
+    LEFT JOIN LATERAL unnest(rmd.other_member_ids) AS u(uid) ON true
     LEFT JOIN profiles p ON p.id = u.uid
+    WHERE rmd.other_member_ids IS NOT NULL
     GROUP BY rmd.room_id
   ),
   last_messages AS (

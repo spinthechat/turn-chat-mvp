@@ -821,9 +821,9 @@ export default function ChatsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
+    <div className="h-screen-safe bg-white flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="sticky top-0 z-10 bg-white/80 backdrop-blur-xl border-b border-stone-100">
+      <header className="flex-shrink-0 z-10 bg-white/80 backdrop-blur-xl border-b border-stone-100">
         <div className="max-w-2xl mx-auto px-5 py-4">
           <div className="flex items-center justify-between">
             <div>
@@ -884,9 +884,9 @@ export default function ChatsPage() {
         </div>
       )}
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-2xl mx-auto">
+      {/* Content - scrollable area */}
+      <div className="flex-1 overflow-y-auto overscroll-contain">
+        <div className="max-w-2xl mx-auto pb-safe">
           {loading ? (
             // Skeleton loading
             <div className="divide-y divide-stone-50">
