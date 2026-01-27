@@ -19,10 +19,13 @@ CREATE INDEX IF NOT EXISTS room_used_prompts_room_mode_idx
   ON room_used_prompts (room_id, mode);
 
 -- 2. Function to get next prompt using shuffle-bag algorithm
+-- Drop existing function first (return type changed from 3 to 2 columns)
+DROP FUNCTION IF EXISTS get_shuffle_bag_prompt(UUID, TEXT);
+
 CREATE OR REPLACE FUNCTION get_shuffle_bag_prompt(
   p_room_id UUID,
   p_mode TEXT
-) RETURNS TABLE (prompt_id UUID, prompt_text TEXT, prompt_type TEXT) AS $$
+) RETURNS TABLE (prompt_text TEXT, prompt_type TEXT) AS $$
 DECLARE
   v_available_count INT;
   v_total_count INT;
@@ -73,8 +76,7 @@ BEGIN
     ON CONFLICT (room_id, mode, prompt_id) DO NOTHING;
   END IF;
 
-  -- Return the result
-  prompt_id := v_selected_id;
+  -- Return the result (only text and type, not id)
   prompt_text := v_selected_text;
   prompt_type := v_selected_type;
   RETURN NEXT;
@@ -238,7 +240,8 @@ BEGIN
       prompt_text = new_prompt_text,
       current_prompt_type = new_prompt_type,
       waiting_until = next_waiting_until,
-      last_turn_completed_at = NOW()
+      last_turn_completed_at = NOW(),
+      turn_instance_id = gen_random_uuid()
   WHERE room_id = p_room_id AND is_active = true;
 
   RETURN TRUE;
@@ -325,7 +328,8 @@ BEGIN
       prompt_text = new_prompt_text,
       current_prompt_type = new_prompt_type,
       waiting_until = next_waiting_until,
-      last_turn_completed_at = NOW()
+      last_turn_completed_at = NOW(),
+      turn_instance_id = gen_random_uuid()
   WHERE room_id = p_room_id AND is_active = true;
 
   RETURN TRUE;
