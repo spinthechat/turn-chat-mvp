@@ -80,112 +80,94 @@
 }
 
 /* ============================================
-   Chat Layout - Fixed Header/Input Pattern
-   WhatsApp-style: header stays fixed, keyboard
-   pushes only input, messages scroll in middle
+   Chat Layout - iOS Safari Keyboard Compatible
+   Uses visualViewport API for accurate sizing
    ============================================ */
 
-/* Prevent body scroll when chat is active */
-body:has(.chat-container) {
+/* CSS Variables (set by JS via useVisualViewport hook):
+   --vvh: visualViewport.height in pixels (e.g., 600)
+   --vvo: visualViewport.offsetTop in pixels (e.g., 0)
+   Fallback to window.innerHeight if visualViewport unavailable
+*/
+
+/* Lock html/body when chat is active - NO page scroll */
+html:has(.chat-viewport-shell),
+body:has(.chat-viewport-shell) {
+  height: 100%;
   overflow: hidden;
+  overscroll-behavior: none;
   position: fixed;
   width: 100%;
-  height: 100%;
-  overscroll-behavior: none;
-}
-
-/* Main chat container - fills viewport */
-.chat-container {
-  position: fixed;
   top: 0;
   left: 0;
+}
+
+/* Viewport shell - sized exactly to visible viewport */
+.chat-viewport-shell {
+  position: fixed;
+  left: 0;
   right: 0;
-  bottom: 0;
+  /* Top position accounts for iOS viewport offset */
+  top: calc(var(--vvo, 0) * 1px);
+  /* Height from visualViewport */
+  height: calc(var(--vvh, 100) * 1px);
+  overflow: hidden;
+  /* DO NOT add transform, filter, perspective - breaks sticky/fixed */
+}
+
+/* Inner flex layout container */
+.chat-layout {
   display: flex;
   flex-direction: column;
+  height: 100%;
   overflow: hidden;
-  /* Use JS-calculated viewport height for keyboard handling */
-  height: var(--viewport-height, 100vh);
 }
 
-/* Modern browsers with dvh support */
-@supports (height: 100dvh) {
-  .chat-container {
-    height: 100dvh;
-  }
-  /* When keyboard is detected, switch to calculated height */
-  body.keyboard-open .chat-container {
-    height: var(--viewport-height, 100dvh);
-  }
-}
-
-/* Chat header - sticky at top of scroll container */
+/* Header - flex item at top, never scrolls */
 .chat-header {
-  position: sticky;
-  top: 0;
+  flex-shrink: 0;
   z-index: 30;
   /* Safe area for notched devices */
   padding-top: env(safe-area-inset-top, 0px);
 }
 
-/* Scrollable area containing header + messages */
-.chat-scroll-wrapper {
+/* Messages scroller - the ONLY scrollable element */
+.chat-messages-scroller {
   flex: 1 1 0%;
   min-height: 0; /* Critical for flex child scrolling */
   overflow-y: auto;
   overflow-x: hidden;
   overscroll-behavior-y: contain;
   -webkit-overflow-scrolling: touch;
-  position: relative;
 }
 
-/* Messages content inside the scroll wrapper */
+/* Messages content wrapper */
 .chat-messages {
   position: relative;
 }
 
-/* Chat input area - stays at bottom of flex container */
+/* Input area - flex item at bottom */
 .chat-input-area {
   flex-shrink: 0;
   z-index: 20;
-  position: relative;
   /* Safe area padding for notched devices */
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-/* Additional keyboard-open state styles */
-body.keyboard-open {
-  /* Extra safety: lock everything */
-  touch-action: none;
-}
-
-body.keyboard-open .chat-messages {
-  /* Allow scrolling in messages when keyboard is open */
+/* Keyboard open state - proper touch handling */
+body.keyboard-open .chat-messages-scroller {
   touch-action: pan-y;
 }
 
 body.keyboard-open .chat-input-area {
-  /* Input area should handle touches normally */
   touch-action: auto;
 }
 
-/* iOS Safari specific fixes */
+/* iOS Safari specific - prevent zoom on input focus */
 @supports (-webkit-touch-callout: none) {
-  .chat-container {
-    /* Fallback for iOS before keyboard opens */
-    height: -webkit-fill-available;
-  }
-
-  body.keyboard-open .chat-container {
-    /* Use calculated height when keyboard is open */
-    height: var(--viewport-height, 100vh);
-  }
-
-  /* Prevent iOS from zooming on input focus */
   .chat-input-area input,
   .chat-input-area textarea {
     font-size: 16px !important;
-    transform: translateZ(0);
   }
 }
 

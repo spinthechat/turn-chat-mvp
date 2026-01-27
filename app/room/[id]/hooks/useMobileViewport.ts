@@ -1,113 +1,93 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 
-interface ViewportState {
-  keyboardHeight: number
-  keyboardOpen: boolean
-  viewportHeight: number
-  visualViewportHeight: number
-}
-
-// Hook to handle mobile viewport height and keyboard - WhatsApp-style behavior
+/**
+ * Hook to handle iOS Safari keyboard layout using visualViewport API
+ *
+ * Sets CSS variables on document.documentElement:
+ * - --vvh: visualViewport.height (or window.innerHeight fallback)
+ * - --vvo: visualViewport.offsetTop (or 0 fallback)
+ *
+ * These variables drive the chat-viewport-shell sizing.
+ */
 export function useMobileViewport() {
-  const [state, setState] = useState<ViewportState>({
-    keyboardHeight: 0,
-    keyboardOpen: false,
-    viewportHeight: typeof window !== 'undefined' ? window.innerHeight : 0,
-    visualViewportHeight: typeof window !== 'undefined' ? window.innerHeight : 0,
-  })
-
-  // Track the initial viewport height (before keyboard opens)
-  const initialViewportHeight = useRef<number>(0)
-
-  const updateViewport = useCallback(() => {
-    const windowHeight = window.innerHeight
-    const visualHeight = window.visualViewport?.height ?? windowHeight
-
-    // Store initial height on first call or when keyboard is closed
-    if (initialViewportHeight.current === 0 || visualHeight >= windowHeight * 0.9) {
-      initialViewportHeight.current = windowHeight
-    }
-
-    // Calculate keyboard height
-    // On iOS, visualViewport.height shrinks when keyboard opens
-    // On Android, window.innerHeight shrinks when keyboard opens
-    const keyboardH = Math.max(0, initialViewportHeight.current - visualHeight)
-    const keyboardOpen = keyboardH > 100 // Threshold to detect keyboard vs small UI changes
-
-    // Update CSS custom properties for layout
-    document.documentElement.style.setProperty('--viewport-height', `${visualHeight}px`)
-    document.documentElement.style.setProperty('--keyboard-height', `${keyboardH}px`)
-    document.documentElement.style.setProperty('--vh', `${visualHeight * 0.01}px`)
-
-    // Add/remove class to body for keyboard state
-    if (keyboardOpen) {
-      document.body.classList.add('keyboard-open')
-    } else {
-      document.body.classList.remove('keyboard-open')
-    }
-
-    setState({
-      keyboardHeight: keyboardH,
-      keyboardOpen,
-      viewportHeight: windowHeight,
-      visualViewportHeight: visualHeight,
-    })
-  }, [])
+  const rafId = useRef<number | null>(null)
+  const lastVvh = useRef<number>(0)
+  const lastVvo = useRef<number>(0)
 
   useEffect(() => {
-    // Initial measurement
-    updateViewport()
+    const updateViewport = () => {
+      // Cancel any pending rAF to avoid stacking
+      if (rafId.current !== null) {
+        cancelAnimationFrame(rafId.current)
+      }
 
-    // Debounce for performance
-    let rafId: number | null = null
-    const throttledUpdate = () => {
-      if (rafId) return
-      rafId = requestAnimationFrame(() => {
-        updateViewport()
-        rafId = null
+      rafId.current = requestAnimationFrame(() => {
+        const vv = window.visualViewport
+
+        // Get values from visualViewport or fallback
+        const vvh = vv ? vv.height : window.innerHeight
+        const vvo = vv ? vv.offsetTop : 0
+
+        // Only update DOM if values actually changed (avoid layout thrash)
+        if (vvh !== lastVvh.current || vvo !== lastVvo.current) {
+          lastVvh.current = vvh
+          lastVvo.current = vvo
+
+          // Write CSS variables directly - no React state to avoid re-renders
+          document.documentElement.style.setProperty('--vvh', String(vvh))
+          document.documentElement.style.setProperty('--vvo', String(vvo))
+
+          // Toggle keyboard-open class for touch-action styles
+          const keyboardOpen = vv ? (window.innerHeight - vvh > 100) : false
+          if (keyboardOpen) {
+            document.body.classList.add('keyboard-open')
+          } else {
+            document.body.classList.remove('keyboard-open')
+          }
+        }
+
+        rafId.current = null
       })
     }
 
-    // Listen to resize events
-    window.addEventListener('resize', throttledUpdate)
-    window.addEventListener('orientationchange', throttledUpdate)
+    // Initial measurement
+    updateViewport()
 
-    // VisualViewport API for keyboard detection (iOS Safari + modern browsers)
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', throttledUpdate)
-      window.visualViewport.addEventListener('scroll', throttledUpdate)
+    // Listen to visualViewport events (primary method for iOS)
+    const vv = window.visualViewport
+    if (vv) {
+      vv.addEventListener('resize', updateViewport)
+      vv.addEventListener('scroll', updateViewport)
     }
 
-    // Also listen to focus/blur on inputs for keyboard detection
-    const handleFocusIn = (e: FocusEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
-        // Small delay to let keyboard animation start
-        setTimeout(throttledUpdate, 100)
-        setTimeout(throttledUpdate, 300)
-      }
-    }
-    const handleFocusOut = () => {
-      setTimeout(throttledUpdate, 100)
-      setTimeout(throttledUpdate, 300)
+    // Fallback listeners for browsers without visualViewport
+    window.addEventListener('resize', updateViewport)
+    window.addEventListener('orientationchange', updateViewport)
+
+    // Also update on focus events (keyboard open/close)
+    const handleFocus = () => {
+      // Delay to allow keyboard animation to start
+      setTimeout(updateViewport, 100)
+      setTimeout(updateViewport, 300)
     }
 
-    document.addEventListener('focusin', handleFocusIn)
-    document.addEventListener('focusout', handleFocusOut)
+    document.addEventListener('focusin', handleFocus)
+    document.addEventListener('focusout', handleFocus)
 
     return () => {
-      window.removeEventListener('resize', throttledUpdate)
-      window.removeEventListener('orientationchange', throttledUpdate)
-      if (window.visualViewport) {
-        window.visualViewport.removeEventListener('resize', throttledUpdate)
-        window.visualViewport.removeEventListener('scroll', throttledUpdate)
+      if (rafId.current !== null) {
+        cancelAnimationFrame(rafId.current)
       }
-      document.removeEventListener('focusin', handleFocusIn)
-      document.removeEventListener('focusout', handleFocusOut)
-      if (rafId) cancelAnimationFrame(rafId)
+      if (vv) {
+        vv.removeEventListener('resize', updateViewport)
+        vv.removeEventListener('scroll', updateViewport)
+      }
+      window.removeEventListener('resize', updateViewport)
+      window.removeEventListener('orientationchange', updateViewport)
+      document.removeEventListener('focusin', handleFocus)
+      document.removeEventListener('focusout', handleFocus)
     }
-  }, [updateViewport])
-
-  return state
+  }, [])
 }

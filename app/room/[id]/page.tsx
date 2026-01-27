@@ -1643,8 +1643,8 @@ export default function RoomPage() {
   const params = useParams<{ id: string }>()
   const roomId = params.id
 
-  // Set up mobile viewport height and keyboard handling
-  const { keyboardHeight } = useMobileViewport()
+  // Set up mobile viewport height via CSS variables (--vvh, --vvo)
+  useMobileViewport()
 
   const [userId, setUserId] = useState<string | null>(null)
   const [isHost, setIsHost] = useState(false)
@@ -3043,15 +3043,16 @@ export default function RoomPage() {
   }
 
   return (
-    <div
-      className={`chat-theme-container chat-container max-w-full ${
-        isDM
-          ? 'bg-gradient-to-b from-stone-50 via-stone-50/95 to-stone-100/90'
-          : theme.bgGradient
-      } ${!isDM && theme.bgOverlay ? `theme-${theme.mode}` : ''}`}
-      style={!isDM ? getThemeCSSVars(theme) : undefined}
-    >
-      {/* Group Details Drawer */}
+    <div className="chat-viewport-shell">
+      <div
+        className={`chat-layout chat-theme-container ${
+          isDM
+            ? 'bg-gradient-to-b from-stone-50 via-stone-50/95 to-stone-100/90'
+            : theme.bgGradient
+        } ${!isDM && theme.bgOverlay ? `theme-${theme.mode}` : ''}`}
+        style={!isDM ? getThemeCSSVars(theme) : undefined}
+      >
+        {/* Group Details Drawer */}
       <GroupDetailsDrawer
         isOpen={showGroupDetails}
         onClose={() => setShowGroupDetails(false)}
@@ -3088,10 +3089,8 @@ export default function RoomPage() {
         aria-hidden="true"
       />
 
-      {/* Scrollable area containing header + messages */}
-      <div ref={scrollContainerRef} onScroll={handleScroll} className="chat-scroll-wrapper">
-        {/* Header - sticky at top */}
-        <header ref={headerRef} className={`chat-header ${
+      {/* Header - flex item at top, does not scroll */}
+      <header ref={headerRef} className={`chat-header ${
         isDM
           ? 'bg-white/80 backdrop-blur-xl border-b border-stone-200/40'
           : isFlirtyTheme
@@ -3308,9 +3307,10 @@ export default function RoomPage() {
           </div>
         )}
 
-        </header>
+      </header>
 
-        {/* Messages content */}
+      {/* Messages scroller - the ONLY scrollable area */}
+      <div ref={scrollContainerRef} onScroll={handleScroll} className="chat-messages-scroller">
         <div className="chat-messages">
         <div className={`max-w-3xl mx-auto py-4 ${isDM ? 'px-3' : 'px-4'}`}>
           {/* Error banner */}
@@ -3429,6 +3429,7 @@ export default function RoomPage() {
             </svg>
           </button>
         )}
+        </div>
         </div>
       </div>
 
