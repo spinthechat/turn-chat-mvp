@@ -6,14 +6,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { usePushNotifications } from '@/lib/usePushNotifications'
 import { useThemePreference, type ThemePreference } from '@/lib/useThemePreference'
 import { hapticTick, clearTextSelection, clearTextSelectionAggressive, setGlobalNoSelect } from '@/lib/haptics'
-import { getThemeForMode, isDarkTheme, getThemeCSSVars, type ChatTheme } from '@/lib/themes'
-import { validatePromptCounts } from '@/lib/prompts'
 import { useParams, useRouter } from 'next/navigation'
-
-// Dev sanity check for prompt counts
-if (process.env.NODE_ENV === 'development') {
-  validatePromptCounts()
-}
 
 // Hook to handle mobile viewport height and keyboard
 function useMobileViewport() {
@@ -2756,17 +2749,6 @@ export default function RoomPage() {
     return null
   }, [turnSession, users])
 
-  // Determine chat mode for visual styling (must be before any early returns)
-  const isDM = roomInfo?.type === 'dm'
-
-  // Get theme based on room mode (only for group chats)
-  const theme = useMemo(() => {
-    if (isDM) return getThemeForMode('fun') // DMs use default theme
-    return getThemeForMode(roomInfo?.prompt_mode)
-  }, [isDM, roomInfo?.prompt_mode])
-
-  const isFlirtyTheme = theme.mode === 'flirty'
-
   // Room-wide prompt frequency setting
   const roomFrequency = useMemo(() => {
     return roomInfo?.prompt_interval_minutes ?? 0
@@ -3940,15 +3922,15 @@ export default function RoomPage() {
     )
   }
 
+  // Determine chat mode for visual styling
+  const isDM = roomInfo?.type === 'dm'
+
   return (
-    <div
-      className={`chat-theme-container h-screen-safe flex flex-col overflow-hidden max-w-full ${
-        isDM
-          ? 'bg-gradient-to-b from-stone-50 via-stone-50/95 to-stone-100/90'
-          : theme.bgGradient
-      } ${!isDM && theme.bgOverlay ? `theme-${theme.mode}` : ''}`}
-      style={!isDM ? getThemeCSSVars(theme) : undefined}
-    >
+    <div className={`h-screen-safe flex flex-col overflow-hidden max-w-full ${
+      isDM
+        ? 'bg-gradient-to-b from-stone-50 via-stone-50/95 to-stone-100/90'
+        : 'bg-gradient-to-b from-slate-50 via-slate-50/95 to-slate-100/90'
+    }`}>
       {/* Group Details Drawer */}
       <GroupDetailsDrawer
         isOpen={showGroupDetails}
@@ -3982,7 +3964,7 @@ export default function RoomPage() {
         className={`fixed inset-0 pointer-events-none z-20 transition-opacity duration-500 ease-out ${
           turnPulseActive ? 'opacity-100' : 'opacity-0'
         }`}
-        style={{ backgroundColor: isDM ? 'rgba(0, 0, 0, 0.06)' : theme.turnPulseBg }}
+        style={{ backgroundColor: 'rgba(0, 0, 0, 0.06)' }}
         aria-hidden="true"
       />
 
@@ -3990,9 +3972,7 @@ export default function RoomPage() {
       <header className={`flex-shrink-0 sticky top-0 z-30 ${
         isDM
           ? 'bg-white/80 backdrop-blur-xl border-b border-stone-200/40'
-          : isFlirtyTheme
-            ? 'bg-slate-900/90 backdrop-blur-xl border-b border-slate-700/50'
-            : 'bg-white/85 backdrop-blur-xl border-b border-slate-200/50'
+          : 'bg-white/85 backdrop-blur-xl border-b border-slate-200/50'
       }`}>
         <div className="max-w-3xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -4075,26 +4055,14 @@ export default function RoomPage() {
           )}
         </div>
 
-        {/* Turn status bar - refined, glassy design with theme support */}
+        {/* Turn status bar - refined, glassy design */}
         {gameActive && (
           <div className={`${
             isMyTurn && !isWaitingForCooldown
-              ? isDM
-                ? 'bg-gradient-to-r from-indigo-50/90 via-violet-50/80 to-purple-50/90 border-b border-indigo-200/40'
-                : isFlirtyTheme
-                  ? 'bg-gradient-to-r from-rose-950/40 via-pink-950/30 to-rose-950/40 border-b border-rose-800/30'
-                  : theme.mode === 'family'
-                    ? 'bg-gradient-to-r from-amber-50/90 via-orange-50/70 to-amber-50/90 border-b border-amber-200/40'
-                    : theme.mode === 'deep'
-                      ? 'bg-gradient-to-r from-blue-50/90 via-indigo-50/70 to-blue-50/90 border-b border-blue-200/40'
-                      : theme.mode === 'couple'
-                        ? 'bg-gradient-to-r from-pink-50/90 via-rose-50/70 to-pink-50/90 border-b border-pink-200/40'
-                        : 'bg-gradient-to-r from-indigo-50/90 via-violet-50/80 to-purple-50/90 border-b border-indigo-200/40'
+              ? 'bg-gradient-to-r from-indigo-50/90 via-violet-50/80 to-purple-50/90 border-b border-indigo-200/40'
               : isDM
                 ? 'bg-stone-50/80 border-b border-stone-200/40'
-                : isFlirtyTheme
-                  ? 'bg-slate-900/60 border-b border-slate-700/40'
-                  : 'bg-slate-50/80 border-b border-slate-200/40'
+                : 'bg-slate-50/80 border-b border-slate-200/40'
           }`}>
             <div className="max-w-3xl mx-auto px-4 py-2.5">
               <div className="flex items-center justify-between">
@@ -4103,20 +4071,19 @@ export default function RoomPage() {
                     isWaitingForCooldown ? (
                       <>
                         <span className="w-2 h-2 rounded-full bg-amber-400 shadow-sm shadow-amber-400/50" />
-                        <span className={`font-medium ${isFlirtyTheme ? 'text-amber-400' : 'text-amber-600'}`}>Your turn</span>
-                        <span className={isDM ? 'text-stone-300' : isFlirtyTheme ? 'text-slate-500' : 'text-slate-300'}>·</span>
-                        <span className={`text-xs ${isDM ? 'text-stone-400' : isFlirtyTheme ? 'text-slate-400' : 'text-slate-400'}`}>
+                        <span className="text-amber-600 font-medium">Your turn</span>
+                        <span className={isDM ? 'text-stone-300' : 'text-slate-300'}>·</span>
+                        <span className={`text-xs ${isDM ? 'text-stone-400' : 'text-slate-400'}`}>
                           available in {waitingUntil ? formatTimeRemaining(waitingUntil) : '...'}
                         </span>
                       </>
                     ) : (
                       <>
-                        {/* Live indicator - uses theme accent color */}
                         <span className="relative flex h-2 w-2">
-                          <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 motion-reduce:animate-none ${isDM ? 'bg-indigo-400' : theme.liveDotPulse}`}></span>
-                          <span className={`relative inline-flex rounded-full h-2 w-2 ${isDM ? 'bg-indigo-500 shadow-indigo-500/50' : theme.liveDotColor}`} style={{ boxShadow: isDM ? undefined : `0 1px 3px ${theme.accentGlow}` }}></span>
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75 motion-reduce:animate-none"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500 shadow-sm shadow-indigo-500/50"></span>
                         </span>
-                        <span className={`font-semibold ${isDM ? 'text-indigo-600' : theme.accentText}`}>
+                        <span className="text-indigo-600 font-semibold">
                           Your turn {isPhotoPrompt ? '— photo required' : '— ready now'}
                         </span>
                       </>
@@ -4312,15 +4279,7 @@ export default function RoomPage() {
             className={`absolute bottom-4 left-1/2 -translate-x-1/2 px-5 py-2.5 text-white text-sm font-semibold rounded-full shadow-lg hover:shadow-xl transition-all active:scale-95 animate-in slide-in-from-bottom-2 duration-200 ${
               isDM
                 ? 'bg-slate-800 hover:bg-slate-900'
-                : isFlirtyTheme
-                  ? 'bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 shadow-rose-500/25'
-                  : theme.mode === 'family'
-                    ? 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 shadow-amber-500/25'
-                    : theme.mode === 'deep'
-                      ? 'bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 shadow-blue-500/25'
-                      : theme.mode === 'couple'
-                        ? 'bg-gradient-to-r from-pink-500 to-rose-400 hover:from-pink-600 hover:to-rose-500 shadow-pink-500/25'
-                        : 'bg-gradient-to-r from-indigo-500 to-violet-500 hover:from-indigo-600 hover:to-violet-600 shadow-indigo-500/25'
+                : 'bg-gradient-to-r from-indigo-500 to-violet-500 hover:from-indigo-600 hover:to-violet-600 shadow-indigo-500/25'
             }`}
           >
             New messages
@@ -4335,36 +4294,22 @@ export default function RoomPage() {
       <div className={`flex-shrink-0 pb-safe ${
         isDM
           ? 'bg-white/80 backdrop-blur-xl border-t border-stone-200/40'
-          : isFlirtyTheme
-            ? 'bg-slate-900/90 backdrop-blur-xl border-t border-slate-700/50'
-            : 'bg-white/85 backdrop-blur-xl border-t border-slate-200/50'
+          : 'bg-white/85 backdrop-blur-xl border-t border-slate-200/50'
       }`}>
         {/* Turn response input - only when it's your turn AND cooldown passed */}
         {gameActive && isMyTurn && !isWaitingForCooldown && (
-          <div className={`border-b transition-all duration-500 ${
-            isDM
-              ? (isPhotoPrompt ? 'border-violet-100/60 bg-gradient-to-r from-violet-50/60 to-purple-50/60' : 'border-indigo-100/60 bg-gradient-to-r from-indigo-50/60 to-violet-50/60')
-              : isFlirtyTheme
-                ? 'border-rose-500/20 bg-gradient-to-r from-rose-950/40 to-pink-950/30'
-                : theme.mode === 'family'
-                  ? 'border-amber-200/60 bg-gradient-to-r from-amber-50/60 to-orange-50/60'
-                  : theme.mode === 'deep'
-                    ? 'border-blue-200/60 bg-gradient-to-r from-blue-50/60 to-indigo-50/60'
-                    : theme.mode === 'couple'
-                      ? 'border-pink-200/60 bg-gradient-to-r from-pink-50/60 to-rose-50/60'
-                      : 'border-indigo-100/60 bg-gradient-to-r from-indigo-50/60 to-violet-50/60'
-          }`}>
+          <div className={`border-b transition-all duration-500 ${isPhotoPrompt ? 'border-violet-100/60 bg-gradient-to-r from-violet-50/60 to-purple-50/60' : 'border-indigo-100/60 bg-gradient-to-r from-indigo-50/60 to-violet-50/60'}`}>
             <div className="max-w-3xl mx-auto px-safe py-3">
               <div className="flex items-center gap-2 mb-2.5">
                 {/* Live indicator dot - subtle opacity pulse, stays for entire turn */}
                 <span className="relative flex h-2 w-2 shrink-0">
-                  <span className={`absolute inline-flex h-full w-full rounded-full ${isDM ? 'bg-red-500/40' : theme.liveDotPulse} animate-[pulse-opacity_2s_ease-in-out_infinite]`}></span>
-                  <span className={`relative inline-flex rounded-full h-2 w-2 ${isDM ? 'bg-red-500' : theme.liveDotColor}`}></span>
+                  <span className="absolute inline-flex h-full w-full rounded-full bg-red-500/40 animate-[pulse-opacity_2s_ease-in-out_infinite]"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
                 </span>
-                <span className={`text-xs font-semibold ${isDM ? (isPhotoPrompt ? 'text-violet-600' : 'text-indigo-600') : theme.accentText}`}>
+                <span className={`text-xs font-semibold ${isPhotoPrompt ? 'text-violet-600' : 'text-indigo-600'}`}>
                   Your turn {isPhotoPrompt && '— upload a photo'}
                 </span>
-                <span className={`text-xs ${isDM ? (isPhotoPrompt ? 'text-violet-400' : 'text-indigo-400') : theme.mutedText}`}>
+                <span className={`text-xs ${isPhotoPrompt ? 'text-violet-400' : 'text-indigo-400'}`}>
                   · &ldquo;{turnSession?.prompt_text}&rdquo;
                 </span>
               </div>
@@ -4404,64 +4349,40 @@ export default function RoomPage() {
                     type="button"
                     onClick={() => setShowTurnPhotoSheet(true)}
                     disabled={uploadingImage}
-                    className={`flex-1 flex items-center justify-center gap-2.5 py-3.5 backdrop-blur-sm rounded-xl ring-1 shadow-sm cursor-pointer transition-all duration-500 active:scale-[0.98] ${
-                      isDM
-                        ? `bg-white/90 hover:bg-violet-50/50 ${turnPulseActive ? 'ring-violet-400/80 shadow-violet-500/20 shadow-lg' : 'ring-violet-200/60'}`
-                        : isFlirtyTheme
-                          ? `bg-slate-800/80 hover:bg-slate-700/80 ${turnPulseActive ? 'ring-rose-400/60 shadow-rose-500/20 shadow-lg' : 'ring-rose-500/30'}`
-                          : theme.mode === 'family'
-                            ? `bg-white/90 hover:bg-white ${turnPulseActive ? 'ring-amber-400/70 shadow-amber-500/15 shadow-lg' : 'ring-amber-200/60'}`
-                            : theme.mode === 'deep'
-                              ? `bg-white/90 hover:bg-white ${turnPulseActive ? 'ring-blue-400/60 shadow-blue-500/15 shadow-lg' : 'ring-blue-200/50'}`
-                              : theme.mode === 'couple'
-                                ? `bg-white/90 hover:bg-white ${turnPulseActive ? 'ring-pink-400/60 shadow-pink-500/15 shadow-lg' : 'ring-pink-200/60'}`
-                                : `bg-white/90 hover:bg-white ${turnPulseActive ? 'ring-indigo-400/80 shadow-indigo-500/20 shadow-lg' : 'ring-indigo-200/60'}`
+                    className={`flex-1 flex items-center justify-center gap-2.5 py-3.5 bg-white/90 backdrop-blur-sm rounded-xl ring-1 shadow-sm cursor-pointer hover:bg-violet-50/50 transition-all duration-500 active:scale-[0.98] ${
+                      turnPulseActive
+                        ? 'ring-violet-400/80 shadow-violet-500/20 shadow-lg'
+                        : 'ring-violet-200/60'
                     } ${uploadingImage ? 'opacity-50 pointer-events-none' : ''}`}
                   >
                     {uploadingImage ? (
                       <>
-                        <div className={`w-5 h-5 border-2 rounded-full animate-spin ${
-                          isDM ? 'border-violet-200 border-t-violet-600' : isFlirtyTheme ? 'border-rose-300/40 border-t-rose-400' : 'border-slate-200 border-t-slate-600'
-                        }`} />
-                        <span className={`text-sm font-semibold ${isDM ? 'text-violet-600' : theme.accentText}`}>Uploading...</span>
+                        <div className="w-5 h-5 border-2 border-violet-200 border-t-violet-600 rounded-full animate-spin" />
+                        <span className="text-sm font-semibold text-violet-600">Uploading...</span>
                       </>
                     ) : (
                       <>
-                        <svg className={`w-5 h-5 ${isDM ? 'text-violet-500' : isFlirtyTheme ? 'text-rose-400' : `text-${theme.accentPrimary}`}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <svg className="w-5 h-5 text-violet-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                           <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>
-                        <span className={`text-sm font-semibold ${isDM ? 'text-violet-600' : theme.accentText}`}>Take or Choose Photo</span>
+                        <span className="text-sm font-semibold text-violet-600">Take or Choose Photo</span>
                       </>
                     )}
                   </button>
                 </div>
               ) : (
-                <div className={`flex gap-2 backdrop-blur-sm rounded-xl p-1.5 ring-1 shadow-sm transition-all duration-500 ${
-                  isDM
-                    ? `bg-white/90 ${turnPulseActive ? 'ring-indigo-400/80 shadow-indigo-500/20 shadow-lg' : 'ring-indigo-200/60'}`
-                    : isFlirtyTheme
-                      ? `bg-slate-800/80 ${turnPulseActive ? 'ring-rose-400/60 shadow-rose-500/20 shadow-lg' : 'ring-rose-500/30'}`
-                      : theme.mode === 'family'
-                        ? `bg-white/90 ${turnPulseActive ? 'ring-amber-400/70 shadow-amber-500/15 shadow-lg' : 'ring-amber-200/60'}`
-                        : theme.mode === 'deep'
-                          ? `bg-white/90 ${turnPulseActive ? 'ring-blue-400/60 shadow-blue-500/15 shadow-lg' : 'ring-blue-200/50'}`
-                          : theme.mode === 'couple'
-                            ? `bg-white/90 ${turnPulseActive ? 'ring-pink-400/60 shadow-pink-500/15 shadow-lg' : 'ring-pink-200/60'}`
-                            : `bg-white/90 ${turnPulseActive ? 'ring-indigo-400/80 shadow-indigo-500/20 shadow-lg' : 'ring-indigo-200/60'}`
+                <div className={`flex gap-2 bg-white/90 backdrop-blur-sm rounded-xl p-1.5 ring-1 shadow-sm transition-all duration-500 ${
+                  turnPulseActive
+                    ? 'ring-indigo-400/80 shadow-indigo-500/20 shadow-lg'
+                    : 'ring-indigo-200/60'
                 }`}>
                   <input
                     ref={turnInputRef}
                     value={turnText}
                     onChange={(e) => setTurnText(e.target.value)}
                     placeholder="Type your response..."
-                    className={`flex-1 bg-transparent px-3 py-2.5 text-base focus:outline-none ${
-                      isDM
-                        ? 'placeholder:text-indigo-300'
-                        : isFlirtyTheme
-                          ? 'placeholder:text-rose-300/60 text-slate-100'
-                          : 'placeholder:text-slate-400'
-                    }`}
+                    className="flex-1 bg-transparent px-3 py-2.5 text-base placeholder:text-indigo-300 focus:outline-none"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault()
@@ -4473,19 +4394,7 @@ export default function RoomPage() {
                   <button
                     onClick={submitTurn}
                     disabled={!turnText.trim()}
-                    className={`px-4 py-2 text-sm font-semibold rounded-lg text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95 shadow-sm ${
-                      isDM
-                        ? 'bg-gradient-to-r from-indigo-500 to-violet-500 hover:from-indigo-600 hover:to-violet-600'
-                        : isFlirtyTheme
-                          ? 'bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600'
-                          : theme.mode === 'family'
-                            ? 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600'
-                            : theme.mode === 'deep'
-                              ? 'bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600'
-                              : theme.mode === 'couple'
-                                ? 'bg-gradient-to-r from-pink-500 to-rose-400 hover:from-pink-600 hover:to-rose-500'
-                                : 'bg-gradient-to-r from-indigo-500 to-violet-500 hover:from-indigo-600 hover:to-violet-600'
-                    }`}
+                    className="px-4 py-2 text-sm font-semibold rounded-lg bg-gradient-to-r from-indigo-500 to-violet-500 text-white disabled:opacity-40 disabled:cursor-not-allowed hover:from-indigo-600 hover:to-violet-600 transition-all active:scale-95 shadow-sm"
                   >
                     Submit
                   </button>
@@ -4497,32 +4406,14 @@ export default function RoomPage() {
 
         {/* Reply preview - refined */}
         {replyingTo && (
-          <div className={`border-b ${
-            isDM
-              ? 'border-stone-200/50 bg-stone-50/80'
-              : isFlirtyTheme
-                ? 'border-slate-700/50 bg-slate-800/80'
-                : 'border-slate-200/50 bg-slate-50/80'
-          }`}>
+          <div className={`border-b ${isDM ? 'border-stone-200/50 bg-stone-50/80' : 'border-slate-200/50 bg-slate-50/80'}`}>
             <div className="max-w-3xl mx-auto px-safe py-2.5 flex items-center gap-3">
-              <div className={`w-1 h-10 rounded-full ${
-                isDM
-                  ? 'bg-gradient-to-b from-indigo-400 to-violet-400'
-                  : isFlirtyTheme
-                    ? 'bg-gradient-to-b from-rose-400 to-pink-400'
-                    : 'bg-gradient-to-b from-indigo-400 to-violet-400'
-              }`} />
+              <div className="w-1 h-10 bg-gradient-to-b from-indigo-400 to-violet-400 rounded-full" />
               <div className="flex-1 min-w-0">
-                <div className={`text-xs font-semibold ${isDM ? 'text-indigo-600' : theme.accentText}`}>
+                <div className="text-xs font-semibold text-indigo-600">
                   Replying to {replyingTo.user_id ? getUserInfo(replyingTo.user_id)?.displayName : 'message'}
                 </div>
-                <div className={`text-xs truncate ${
-                  isDM
-                    ? 'text-stone-500'
-                    : isFlirtyTheme
-                      ? 'text-slate-400'
-                      : 'text-slate-500'
-                }`}>
+                <div className={`text-xs truncate ${isDM ? 'text-stone-500' : 'text-slate-500'}`}>
                   {replyingTo.type === 'image' ? '📷 Photo' : (() => {
                     if (replyingTo.type === 'turn_response') {
                       try {
@@ -4536,13 +4427,7 @@ export default function RoomPage() {
               </div>
               <button
                 onClick={() => setReplyingTo(null)}
-                className={`p-1.5 rounded-lg transition-colors ${
-                  isDM
-                    ? 'text-stone-400 hover:text-stone-600 hover:bg-stone-100'
-                    : isFlirtyTheme
-                      ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700'
-                      : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
-                }`}
+                className={`p-1.5 rounded-lg transition-colors ${isDM ? 'text-stone-400 hover:text-stone-600 hover:bg-stone-100' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -4565,9 +4450,7 @@ export default function RoomPage() {
           <div className={`flex gap-2 rounded-2xl p-1.5 shadow-sm ${
             isDM
               ? 'bg-stone-100/80 ring-1 ring-stone-200/50'
-              : isFlirtyTheme
-                ? 'bg-slate-800/80 ring-1 ring-slate-600/50'
-                : 'bg-slate-100/80 ring-1 ring-slate-200/50'
+              : 'bg-slate-100/80 ring-1 ring-slate-200/50'
           }`}>
             <button
               onClick={() => setShowPhotoSheet(true)}
@@ -4575,17 +4458,13 @@ export default function RoomPage() {
               className={`p-2.5 rounded-xl transition-all duration-200 disabled:opacity-50 ${
                 isDM
                   ? 'text-stone-400 hover:text-stone-600 hover:bg-white/80 active:scale-95'
-                  : isFlirtyTheme
-                    ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/80 active:scale-95'
-                    : 'text-slate-400 hover:text-slate-600 hover:bg-white/80 active:scale-95'
+                  : 'text-slate-400 hover:text-slate-600 hover:bg-white/80 active:scale-95'
               }`}
               title="Attach photo"
               aria-label="Attach photo"
             >
               {uploadingImage ? (
-                <div className={`w-5 h-5 border-2 rounded-full animate-spin ${
-                  isDM ? 'border-stone-300 border-t-stone-600' : isFlirtyTheme ? 'border-slate-500 border-t-slate-300' : 'border-slate-300 border-t-slate-600'
-                }`} />
+                <div className={`w-5 h-5 border-2 rounded-full animate-spin ${isDM ? 'border-stone-300 border-t-stone-600' : 'border-slate-300 border-t-slate-600'}`} />
               ) : (
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
@@ -4618,9 +4497,7 @@ export default function RoomPage() {
               className={`flex-1 min-w-0 bg-transparent px-3 py-2.5 text-base focus:outline-none ${
                 isDM
                   ? 'placeholder:text-stone-400'
-                  : isFlirtyTheme
-                    ? 'placeholder:text-slate-500 text-slate-100'
-                    : 'placeholder:text-slate-400'
+                  : 'placeholder:text-slate-400'
               }`}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
@@ -4641,14 +4518,10 @@ export default function RoomPage() {
                 chatText.trim()
                   ? isDM
                     ? 'bg-gradient-to-br from-stone-700 to-stone-900 shadow-sm hover:shadow-md'
-                    : isFlirtyTheme
-                      ? 'bg-gradient-to-br from-rose-500 via-pink-500 to-rose-600 shadow-sm shadow-rose-500/25 hover:shadow-md hover:shadow-rose-500/30'
-                      : 'bg-gradient-to-br from-indigo-500 via-violet-500 to-purple-500 shadow-sm shadow-indigo-500/25 hover:shadow-md hover:shadow-indigo-500/30'
+                    : 'bg-gradient-to-br from-indigo-500 via-violet-500 to-purple-500 shadow-sm shadow-indigo-500/25 hover:shadow-md hover:shadow-indigo-500/30'
                   : isDM
                     ? 'bg-stone-300 cursor-not-allowed'
-                    : isFlirtyTheme
-                      ? 'bg-slate-600 cursor-not-allowed'
-                      : 'bg-slate-300 cursor-not-allowed'
+                    : 'bg-slate-300 cursor-not-allowed'
               }`}
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
