@@ -3444,10 +3444,10 @@ export default function RoomPage() {
                   <span className={`absolute inline-flex h-full w-full rounded-full ${isDM ? 'bg-red-500/40' : theme.liveDotPulse} animate-[pulse-opacity_2s_ease-in-out_infinite]`}></span>
                   <span className={`relative inline-flex rounded-full h-2 w-2 ${isDM ? 'bg-red-500' : theme.liveDotColor}`}></span>
                 </span>
-                <span className={`text-xs font-semibold ${isDM ? (isPhotoPrompt ? 'text-violet-600' : 'text-indigo-600') : theme.accentText}`}>
+                <span className={`text-xs font-semibold ${isDM ? (isPhotoPrompt ? 'text-violet-600 dark:text-violet-400' : 'text-indigo-600 dark:text-indigo-400') : theme.accentText}`}>
                   Your turn {isPhotoPrompt && '— upload a photo'}
                 </span>
-                <span className={`text-xs ${isDM ? (isPhotoPrompt ? 'text-violet-400' : 'text-indigo-400') : theme.mutedText}`}>
+                <span className={`text-xs ${isDM ? (isPhotoPrompt ? 'text-violet-400 dark:text-violet-300' : 'text-indigo-400 dark:text-indigo-300') : theme.mutedText}`}>
                   · &ldquo;{turnSession?.prompt_text}&rdquo;
                 </span>
               </div>

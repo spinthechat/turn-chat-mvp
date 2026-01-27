@@ -271,19 +271,19 @@ const RoomListItem = memo(function RoomListItem({
 
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline justify-between gap-3">
-          <span className={`truncate text-[15px] ${hasUnread ? 'font-semibold text-stone-900' : 'font-medium text-stone-800'}`}>
+          <span className={`truncate text-[15px] ${hasUnread ? 'font-semibold text-stone-900 dark:text-stone-50' : 'font-medium text-stone-800 dark:text-stone-200'}`}>
             {displayName}
           </span>
-          <span className={`text-xs flex-shrink-0 tabular-nums ${hasUnread ? 'text-stone-900 font-medium' : 'text-stone-400'}`}>
+          <span className={`text-xs flex-shrink-0 tabular-nums ${hasUnread ? 'text-stone-900 dark:text-stone-100 font-medium' : 'text-stone-400 dark:text-stone-500'}`}>
             {formatTime(chat.last_message_at)}
           </span>
         </div>
         <div className="flex items-center justify-between gap-3 mt-1">
-          <span className={`text-[14px] truncate ${hasUnread ? 'text-stone-600' : 'text-stone-400'}`}>
+          <span className={`text-[14px] truncate ${hasUnread ? 'text-stone-600 dark:text-stone-300' : 'text-stone-400 dark:text-stone-500'}`}>
             {lastMessagePreview}
           </span>
           {hasUnread && (
-            <span className="min-w-[22px] h-[22px] flex items-center justify-center bg-stone-900 text-white text-[11px] font-semibold rounded-full px-1.5 flex-shrink-0">
+            <span className="min-w-[22px] h-[22px] flex items-center justify-center bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-[11px] font-semibold rounded-full px-1.5 flex-shrink-0">
               {chat.unread_count > 99 ? '99+' : chat.unread_count}
             </span>
           )}
@@ -302,19 +302,19 @@ const RoomListItem = memo(function RoomListItem({
 function EmptyState({ onNewChat, onNewGroup }: { onNewChat: () => void; onNewGroup: () => void }) {
   return (
     <div className="flex-1 flex flex-col items-center justify-center px-8 py-16">
-      <div className="w-20 h-20 rounded-full bg-stone-100 flex items-center justify-center mb-6">
-        <svg className="w-10 h-10 text-stone-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <div className="w-20 h-20 rounded-full bg-stone-100 dark:bg-stone-800 flex items-center justify-center mb-6">
+        <svg className="w-10 h-10 text-stone-300 dark:text-stone-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
         </svg>
       </div>
-      <h3 className="text-lg font-semibold text-stone-900 mb-2">No conversations yet</h3>
-      <p className="text-stone-500 text-center mb-8 max-w-xs">
+      <h3 className="text-lg font-semibold text-stone-900 dark:text-stone-50 mb-2">No conversations yet</h3>
+      <p className="text-stone-500 dark:text-stone-400 text-center mb-8 max-w-xs">
         Start a chat with someone or create a group to get going.
       </p>
       <div className="flex gap-3">
         <button
           onClick={onNewChat}
-          className="px-5 py-2.5 bg-stone-900 text-white text-sm font-medium rounded-full hover:bg-stone-800 transition-colors"
+          className="px-5 py-2.5 bg-stone-900 dark:bg-stone-50 text-white dark:text-stone-900 text-sm font-medium rounded-full hover:bg-stone-800 dark:hover:bg-stone-200 transition-colors"
         >
           New Chat
         </button>
@@ -821,19 +821,19 @@ export default function ChatsPage() {
   }
 
   return (
-    <div className="h-screen-safe bg-white flex flex-col overflow-hidden">
+    <div className="h-screen-safe bg-white dark:bg-stone-900 flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="flex-shrink-0 z-10 bg-white/80 backdrop-blur-xl border-b border-stone-100">
+      <header className="flex-shrink-0 z-10 bg-white/80 dark:bg-stone-900/80 backdrop-blur-xl border-b border-stone-100 dark:border-stone-800">
         <div className="max-w-2xl mx-auto px-5 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-stone-900 tracking-tight">Chats</h1>
+              <h1 className="text-2xl font-bold text-stone-900 dark:text-stone-50 tracking-tight">Chats</h1>
             </div>
             <div className="flex items-center gap-1">
               {/* New chat button */}
               <button
                 onClick={() => setShowNewDM(true)}
-                className="p-2.5 rounded-full text-stone-500 hover:text-stone-900 hover:bg-stone-100 transition-colors"
+                className="p-2.5 rounded-full text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-50 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
                 title="New chat"
               >
                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
