@@ -2707,6 +2707,11 @@ export default function RoomPage() {
   } | null>(null)
   const [wasRemoved, setWasRemoved] = useState(false)
 
+  // Turn Pulse state - visual signature moment when it becomes user's turn
+  const [turnPulseActive, setTurnPulseActive] = useState(false)
+  const lastTurnInstanceRef = useRef<string | null>(null)
+  const turnPulseTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
   // Seen tracking state
   const [seenCounts, setSeenCounts] = useState<Map<string, number>>(new Map())
   const pendingSeenRef = useRef<Set<string>>(new Set())
@@ -3027,6 +3032,41 @@ export default function RoomPage() {
       turnInputRef.current.focus()
     }
   }, [isMyTurn])
+
+  // Turn Pulse - signature visual moment when turn becomes active
+  // Triggers ONCE when: turn becomes mine AND cooldown is done AND it's a new turn instance
+  useEffect(() => {
+    const currentInstance = turnSession?.turn_instance_id ?? null
+    const shouldTrigger = isMyTurn && !isWaitingForCooldown && gameActive
+
+    // Only trigger if this is a NEW turn instance that we haven't pulsed for
+    if (shouldTrigger && currentInstance && currentInstance !== lastTurnInstanceRef.current) {
+      lastTurnInstanceRef.current = currentInstance
+
+      // Clear any pending timeout
+      if (turnPulseTimeoutRef.current) {
+        clearTimeout(turnPulseTimeoutRef.current)
+      }
+
+      // Fire haptic feedback (once)
+      hapticTick('turn')
+
+      // Activate the pulse animation
+      setTurnPulseActive(true)
+
+      // Deactivate after 1.2 seconds - settle back to calm state
+      turnPulseTimeoutRef.current = setTimeout(() => {
+        setTurnPulseActive(false)
+      }, 1200)
+    }
+
+    // Cleanup on unmount
+    return () => {
+      if (turnPulseTimeoutRef.current) {
+        clearTimeout(turnPulseTimeoutRef.current)
+      }
+    }
+  }, [isMyTurn, isWaitingForCooldown, gameActive, turnSession?.turn_instance_id])
 
   useEffect(() => {
     let msgChannel: any = null
@@ -3919,6 +3959,15 @@ export default function RoomPage() {
         onStartDM={handleStartDM}
       />
 
+      {/* Turn Pulse - Background dim overlay (only during pulse animation) */}
+      <div
+        className={`fixed inset-0 pointer-events-none z-20 transition-opacity duration-500 ease-out ${
+          turnPulseActive ? 'opacity-100' : 'opacity-0'
+        }`}
+        style={{ backgroundColor: 'rgba(0, 0, 0, 0.06)' }}
+        aria-hidden="true"
+      />
+
       {/* Header - glassy, floating feel */}
       <header className={`flex-shrink-0 sticky top-0 z-30 ${
         isDM
@@ -4249,11 +4298,12 @@ export default function RoomPage() {
       }`}>
         {/* Turn response input - only when it's your turn AND cooldown passed */}
         {gameActive && isMyTurn && !isWaitingForCooldown && (
-          <div className={`border-b ${isPhotoPrompt ? 'border-violet-100/60 bg-gradient-to-r from-violet-50/60 to-purple-50/60' : 'border-indigo-100/60 bg-gradient-to-r from-indigo-50/60 to-violet-50/60'}`}>
+          <div className={`border-b transition-all duration-500 ${isPhotoPrompt ? 'border-violet-100/60 bg-gradient-to-r from-violet-50/60 to-purple-50/60' : 'border-indigo-100/60 bg-gradient-to-r from-indigo-50/60 to-violet-50/60'}`}>
             <div className="max-w-3xl mx-auto px-safe py-3">
               <div className="flex items-center gap-2 mb-2.5">
+                {/* Live indicator dot - subtle opacity pulse, stays for entire turn */}
                 <span className="relative flex h-2 w-2 shrink-0">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75 motion-reduce:animate-none"></span>
+                  <span className="absolute inline-flex h-full w-full rounded-full bg-red-500/40 animate-[pulse-opacity_2s_ease-in-out_infinite]"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
                 </span>
                 <span className={`text-xs font-semibold ${isPhotoPrompt ? 'text-violet-600' : 'text-indigo-600'}`}>
@@ -4299,7 +4349,11 @@ export default function RoomPage() {
                     type="button"
                     onClick={() => setShowTurnPhotoSheet(true)}
                     disabled={uploadingImage}
-                    className={`flex-1 flex items-center justify-center gap-2.5 py-3.5 bg-white/90 backdrop-blur-sm rounded-xl ring-1 ring-violet-200/60 shadow-sm cursor-pointer hover:bg-violet-50/50 transition-all active:scale-[0.98] ${uploadingImage ? 'opacity-50 pointer-events-none' : ''}`}
+                    className={`flex-1 flex items-center justify-center gap-2.5 py-3.5 bg-white/90 backdrop-blur-sm rounded-xl ring-1 shadow-sm cursor-pointer hover:bg-violet-50/50 transition-all duration-500 active:scale-[0.98] ${
+                      turnPulseActive
+                        ? 'ring-violet-400/80 shadow-violet-500/20 shadow-lg'
+                        : 'ring-violet-200/60'
+                    } ${uploadingImage ? 'opacity-50 pointer-events-none' : ''}`}
                   >
                     {uploadingImage ? (
                       <>
@@ -4318,7 +4372,11 @@ export default function RoomPage() {
                   </button>
                 </div>
               ) : (
-                <div className="flex gap-2 bg-white/90 backdrop-blur-sm rounded-xl p-1.5 ring-1 ring-indigo-200/60 shadow-sm">
+                <div className={`flex gap-2 bg-white/90 backdrop-blur-sm rounded-xl p-1.5 ring-1 shadow-sm transition-all duration-500 ${
+                  turnPulseActive
+                    ? 'ring-indigo-400/80 shadow-indigo-500/20 shadow-lg'
+                    : 'ring-indigo-200/60'
+                }`}>
                   <input
                     ref={turnInputRef}
                     value={turnText}
