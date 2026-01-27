@@ -4408,8 +4408,14 @@ export default function RoomPage() {
                       isDM
                         ? `bg-white/90 hover:bg-violet-50/50 ${turnPulseActive ? 'ring-violet-400/80 shadow-violet-500/20 shadow-lg' : 'ring-violet-200/60'}`
                         : isFlirtyTheme
-                          ? `bg-slate-800/80 hover:bg-slate-700/80 ${turnPulseActive ? `${theme.turnPulseRing} ${theme.turnPulseShadow} shadow-lg` : theme.ringColor}`
-                          : `bg-white/90 hover:bg-white ${turnPulseActive ? `${theme.turnPulseRing} ${theme.turnPulseShadow} shadow-lg` : theme.ringColor}`
+                          ? `bg-slate-800/80 hover:bg-slate-700/80 ${turnPulseActive ? 'ring-rose-400/60 shadow-rose-500/20 shadow-lg' : 'ring-rose-500/30'}`
+                          : theme.mode === 'family'
+                            ? `bg-white/90 hover:bg-white ${turnPulseActive ? 'ring-amber-400/70 shadow-amber-500/15 shadow-lg' : 'ring-amber-200/60'}`
+                            : theme.mode === 'deep'
+                              ? `bg-white/90 hover:bg-white ${turnPulseActive ? 'ring-blue-400/60 shadow-blue-500/15 shadow-lg' : 'ring-blue-200/50'}`
+                              : theme.mode === 'couple'
+                                ? `bg-white/90 hover:bg-white ${turnPulseActive ? 'ring-pink-400/60 shadow-pink-500/15 shadow-lg' : 'ring-pink-200/60'}`
+                                : `bg-white/90 hover:bg-white ${turnPulseActive ? 'ring-indigo-400/80 shadow-indigo-500/20 shadow-lg' : 'ring-indigo-200/60'}`
                     } ${uploadingImage ? 'opacity-50 pointer-events-none' : ''}`}
                   >
                     {uploadingImage ? (
@@ -4435,8 +4441,14 @@ export default function RoomPage() {
                   isDM
                     ? `bg-white/90 ${turnPulseActive ? 'ring-indigo-400/80 shadow-indigo-500/20 shadow-lg' : 'ring-indigo-200/60'}`
                     : isFlirtyTheme
-                      ? `bg-slate-800/80 ${turnPulseActive ? `${theme.turnPulseRing} ${theme.turnPulseShadow} shadow-lg` : theme.ringColor}`
-                      : `bg-white/90 ${turnPulseActive ? `${theme.turnPulseRing} ${theme.turnPulseShadow} shadow-lg` : theme.ringColor}`
+                      ? `bg-slate-800/80 ${turnPulseActive ? 'ring-rose-400/60 shadow-rose-500/20 shadow-lg' : 'ring-rose-500/30'}`
+                      : theme.mode === 'family'
+                        ? `bg-white/90 ${turnPulseActive ? 'ring-amber-400/70 shadow-amber-500/15 shadow-lg' : 'ring-amber-200/60'}`
+                        : theme.mode === 'deep'
+                          ? `bg-white/90 ${turnPulseActive ? 'ring-blue-400/60 shadow-blue-500/15 shadow-lg' : 'ring-blue-200/50'}`
+                          : theme.mode === 'couple'
+                            ? `bg-white/90 ${turnPulseActive ? 'ring-pink-400/60 shadow-pink-500/15 shadow-lg' : 'ring-pink-200/60'}`
+                            : `bg-white/90 ${turnPulseActive ? 'ring-indigo-400/80 shadow-indigo-500/20 shadow-lg' : 'ring-indigo-200/60'}`
                 }`}>
                   <input
                     ref={turnInputRef}
