@@ -3567,10 +3567,10 @@ export default function RoomPage() {
             ? 'bg-slate-900/90 backdrop-blur-xl border-t border-slate-700/50'
             : 'bg-white/85 backdrop-blur-xl border-t border-slate-200/50'
       }`}>
-        {/* TURN PROMPT CARD - Visually distinct from chat input */}
+        {/* TURN ANSWER PANEL - Completely distinct from chat input */}
         {gameActive && isMyTurn && !isWaitingForCooldown && (
-          <div className="px-3 pt-3 pb-2">
-            <div className={`rounded-2xl shadow-lg transition-all duration-300 overflow-hidden ${
+          <div className="px-3 pt-4 pb-3">
+            <div className={`rounded-3xl shadow-xl transition-all duration-300 overflow-hidden animate-turn-panel-enter animate-turn-glow ${
               isDM
                 ? (isPhotoPrompt
                     ? 'bg-gradient-to-br from-violet-50 to-purple-50 dark:from-violet-950/50 dark:to-purple-950/50 ring-1 ring-violet-200/80 dark:ring-violet-700/50 shadow-violet-200/50 dark:shadow-violet-900/30'
@@ -3764,20 +3764,23 @@ export default function RoomPage() {
                     <button
                       onClick={submitTurn}
                       disabled={!turnText.trim()}
-                      className={`w-full py-3.5 font-semibold rounded-xl text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-[0.98] shadow-md ${
+                      className={`w-full py-4 font-bold rounded-2xl text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-[0.98] shadow-lg flex items-center justify-center gap-2.5 text-base ${
                         isDM
-                          ? 'bg-gradient-to-r from-indigo-500 to-violet-500 hover:from-indigo-600 hover:to-violet-600 shadow-indigo-500/25'
+                          ? 'bg-gradient-to-r from-indigo-500 to-violet-500 hover:from-indigo-600 hover:to-violet-600 shadow-indigo-500/30'
                           : isFlirtyTheme
-                            ? 'bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 shadow-rose-500/25'
+                            ? 'bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 shadow-rose-500/30'
                             : theme.mode === 'family'
-                              ? 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 shadow-amber-500/25'
+                              ? 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 shadow-amber-500/30'
                               : theme.mode === 'deep'
-                                ? 'bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 shadow-blue-500/25'
+                                ? 'bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 shadow-blue-500/30'
                                 : theme.mode === 'couple'
-                                  ? 'bg-gradient-to-r from-pink-500 to-rose-400 hover:from-pink-600 hover:to-rose-500 shadow-pink-500/25'
-                                  : 'bg-gradient-to-r from-indigo-500 to-violet-500 hover:from-indigo-600 hover:to-violet-600 shadow-indigo-500/25'
+                                  ? 'bg-gradient-to-r from-pink-500 to-rose-400 hover:from-pink-600 hover:to-rose-500 shadow-pink-500/30'
+                                  : 'bg-gradient-to-r from-indigo-500 to-violet-500 hover:from-indigo-600 hover:to-violet-600 shadow-indigo-500/30'
                       }`}
                     >
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
                       Submit Answer
                     </button>
                   </div>
@@ -3885,130 +3888,135 @@ export default function RoomPage() {
           onChooseLibrary={() => imageInputRef.current?.click()}
         />
 
-        {/* CHAT INPUT - Secondary to turn prompt */}
-        <div className={`max-w-3xl mx-auto px-4 transition-all duration-200 ${
-          gameActive && isMyTurn && !isWaitingForCooldown ? 'py-1.5 opacity-70' : 'py-2.5'
-        }`}>
-          {/* Chat label - shown when turn prompt is active to distinguish */}
-          {gameActive && isMyTurn && !isWaitingForCooldown && (
-            <div className={`flex items-center gap-1.5 mb-1.5 px-1 ${
+        {/* CHAT INPUT - Hidden when it's user's turn to answer */}
+        {gameActive && isMyTurn && !isWaitingForCooldown ? (
+          /* Disabled state when answering */
+          <div className="max-w-3xl mx-auto px-4 py-3">
+            <div className={`flex items-center justify-center gap-2 py-3 px-4 rounded-2xl ${
               isDM
-                ? 'text-stone-400 dark:text-stone-500'
+                ? 'bg-stone-100/60 dark:bg-stone-800/60'
                 : isFlirtyTheme
-                  ? 'text-slate-500'
-                  : 'text-stone-400 dark:text-stone-500'
+                  ? 'bg-slate-800/60'
+                  : 'bg-slate-100/60 dark:bg-stone-800/60'
             }`}>
-              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              <svg className={`w-4 h-4 ${
+                isDM ? 'text-stone-400 dark:text-stone-500' : isFlirtyTheme ? 'text-slate-500' : 'text-stone-400 dark:text-stone-500'
+              }`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
               </svg>
-              <span className="text-[11px] font-medium uppercase tracking-wide">Chat</span>
+              <span className={`text-sm ${
+                isDM ? 'text-stone-400 dark:text-stone-500' : isFlirtyTheme ? 'text-slate-500' : 'text-stone-400 dark:text-stone-500'
+              }`}>
+                Submit your answer above to continue chatting
+              </span>
             </div>
-          )}
-          <div className={`flex items-end gap-1.5 p-1 chat-input-pill transition-all duration-200 ${
-            isDM
-              ? 'bg-stone-100/90 dark:bg-stone-800/90'
-              : isFlirtyTheme
-                ? 'bg-slate-800/90 border-slate-600/30'
-                : 'bg-slate-50/90 dark:bg-stone-800/90'
-          } ${gameActive && isMyTurn && !isWaitingForCooldown ? 'scale-[0.98] origin-bottom' : ''}`}>
-            <button
-              onClick={() => setShowPhotoSheet(true)}
-              disabled={uploadingImage}
-              className={`p-2 rounded-xl transition-all duration-200 disabled:opacity-50 self-end mb-0.5 ${
-                isDM
-                  ? 'text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 hover:bg-white/80 dark:hover:bg-stone-700/80 active:scale-95'
-                  : isFlirtyTheme
-                    ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/80 active:scale-95'
-                    : 'text-slate-400 hover:text-slate-600 dark:hover:text-stone-300 hover:bg-white/80 dark:hover:bg-stone-700/80 active:scale-95'
-              }`}
-              title="Attach photo"
-              aria-label="Attach photo"
-            >
-              {uploadingImage ? (
-                <div className={`w-5 h-5 border-2 rounded-full animate-spin ${
-                  isDM ? 'border-stone-300 border-t-stone-600' : isFlirtyTheme ? 'border-slate-500 border-t-slate-300' : 'border-slate-300 border-t-slate-600'
-                }`} />
-              ) : (
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
-                </svg>
-              )}
-            </button>
-            <input
-              ref={cameraInputRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              onChange={sendImage}
-              className="hidden"
-              tabIndex={-1}
-              aria-hidden="true"
-            />
-            <input
-              ref={imageInputRef}
-              type="file"
-              accept="image/*"
-              onChange={sendImage}
-              className="hidden"
-              tabIndex={-1}
-              aria-hidden="true"
-            />
-
-            <textarea
-              ref={chatInputRef}
-              value={chatText}
-              onChange={(e) => {
-                setChatText(e.target.value)
-                autoResizeTextarea()
-              }}
-              rows={1}
-              placeholder={gameActive && isMyTurn && !isWaitingForCooldown ? "Send a chat message..." : "Type a message..."}
-              inputMode="text"
-              enterKeyHint="send"
-              autoCorrect="on"
-              autoCapitalize="sentences"
-              spellCheck={true}
-              // When turn prompt is active, make chat input non-focusable to prevent iOS keyboard
-              // from showing prev/next arrows (only one focusable text input at a time)
-              tabIndex={gameActive && isMyTurn && !isWaitingForCooldown ? -1 : 0}
-              className={`flex-1 min-w-0 bg-transparent px-3 py-2 text-base focus:outline-none resize-none leading-6 min-h-[44px] max-h-24 overflow-y-auto ${
-                isDM
-                  ? 'placeholder:text-stone-400 dark:placeholder:text-stone-500'
-                  : isFlirtyTheme
-                    ? 'placeholder:text-slate-500 text-slate-100'
-                    : 'placeholder:text-slate-400 dark:placeholder:text-stone-500'
-              }`}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault()
-                  sendChat()
-                }
-              }}
-              onFocus={handleInputFocus}
-            />
-            <button
-              onClick={() => {
-                hapticTick('light')
-                sendChat()
-              }}
-              disabled={!chatText.trim()}
-              aria-label="Send message"
-              className={`shrink-0 w-9 h-9 flex items-center justify-center text-white self-end mb-0.5 ${
-                chatText.trim()
-                  ? isDM
-                    ? 'send-button !bg-gradient-to-br !from-stone-700 !to-stone-900 dark:!from-stone-600 dark:!to-stone-800'
-                    : isFlirtyTheme
-                      ? 'send-button !bg-gradient-to-br !from-rose-500 !via-pink-500 !to-rose-600 !shadow-rose-500/25'
-                      : 'send-button'
-                  : 'send-button'
-              }`}
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
-              </svg>
-            </button>
           </div>
-        </div>
+        ) : (
+          /* Normal chat input */
+          <div className="max-w-3xl mx-auto px-4 py-2.5">
+            <div className={`flex items-end gap-1.5 p-1 chat-input-pill transition-all duration-200 ${
+              isDM
+                ? 'bg-stone-100/90 dark:bg-stone-800/90'
+                : isFlirtyTheme
+                  ? 'bg-slate-800/90 border-slate-600/30'
+                  : 'bg-slate-50/90 dark:bg-stone-800/90'
+            }`}>
+              <button
+                onClick={() => setShowPhotoSheet(true)}
+                disabled={uploadingImage}
+                className={`p-2 rounded-xl transition-all duration-200 disabled:opacity-50 self-end mb-0.5 ${
+                  isDM
+                    ? 'text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 hover:bg-white/80 dark:hover:bg-stone-700/80 active:scale-95'
+                    : isFlirtyTheme
+                      ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/80 active:scale-95'
+                      : 'text-slate-400 hover:text-slate-600 dark:hover:text-stone-300 hover:bg-white/80 dark:hover:bg-stone-700/80 active:scale-95'
+                }`}
+                title="Attach photo"
+                aria-label="Attach photo"
+              >
+                {uploadingImage ? (
+                  <div className={`w-5 h-5 border-2 rounded-full animate-spin ${
+                    isDM ? 'border-stone-300 border-t-stone-600' : isFlirtyTheme ? 'border-slate-500 border-t-slate-300' : 'border-slate-300 border-t-slate-600'
+                  }`} />
+                ) : (
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                  </svg>
+                )}
+              </button>
+              <input
+                ref={cameraInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={sendImage}
+                className="hidden"
+                tabIndex={-1}
+                aria-hidden="true"
+              />
+              <input
+                ref={imageInputRef}
+                type="file"
+                accept="image/*"
+                onChange={sendImage}
+                className="hidden"
+                tabIndex={-1}
+                aria-hidden="true"
+              />
+
+              <textarea
+                ref={chatInputRef}
+                value={chatText}
+                onChange={(e) => {
+                  setChatText(e.target.value)
+                  autoResizeTextarea()
+                }}
+                rows={1}
+                placeholder="Type a message..."
+                inputMode="text"
+                enterKeyHint="send"
+                autoCorrect="on"
+                autoCapitalize="sentences"
+                spellCheck={true}
+                className={`flex-1 min-w-0 bg-transparent px-3 py-2 text-base focus:outline-none resize-none leading-6 min-h-[44px] max-h-24 overflow-y-auto ${
+                  isDM
+                    ? 'placeholder:text-stone-400 dark:placeholder:text-stone-500'
+                    : isFlirtyTheme
+                      ? 'placeholder:text-slate-500 text-slate-100'
+                      : 'placeholder:text-slate-400 dark:placeholder:text-stone-500'
+                }`}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault()
+                    sendChat()
+                  }
+                }}
+                onFocus={handleInputFocus}
+              />
+              <button
+                onClick={() => {
+                  hapticTick('light')
+                  sendChat()
+                }}
+                disabled={!chatText.trim()}
+                aria-label="Send message"
+                className={`shrink-0 w-9 h-9 flex items-center justify-center text-white self-end mb-0.5 ${
+                  chatText.trim()
+                    ? isDM
+                      ? 'send-button !bg-gradient-to-br !from-stone-700 !to-stone-900 dark:!from-stone-600 dark:!to-stone-800'
+                      : isFlirtyTheme
+                        ? 'send-button !bg-gradient-to-br !from-rose-500 !via-pink-500 !to-rose-600 !shadow-rose-500/25'
+                        : 'send-button'
+                    : 'send-button'
+                }`}
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
       </div>
       )}
     </div>
