@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { GroupAvatarMosaic, type GroupMember } from '@/app/components/GroupAvatarMosaic'
+import { StoriesRow } from '@/app/components/stories'
 import { usePushNotifications } from '@/lib/usePushNotifications'
 import { useThemePreference, type ThemePreference } from '@/lib/useThemePreference'
 
@@ -887,6 +888,15 @@ export default function ChatsPage() {
       {/* Content - scrollable area */}
       <div className="flex-1 overflow-y-auto overscroll-contain">
         <div className="max-w-2xl mx-auto pb-safe">
+          {/* Stories Row */}
+          {userId && !loading && (
+            <StoriesRow
+              currentUserId={userId}
+              userAvatarUrl={userProfile?.avatar_url || null}
+              userEmail={userEmail || ''}
+            />
+          )}
+
           {loading ? (
             // Skeleton loading
             <div className="divide-y divide-stone-50 dark:divide-stone-800">
