@@ -309,14 +309,25 @@ export function StoryEditor({ imageUrl, onComplete, onBack }: StoryEditorProps) 
   }, [selectedLayerId])
 
   // Complete editing
-  const handleComplete = () => {
-    // Filter out empty text layers
+  const handleComplete = useCallback(() => {
+    // Blur any active input first to ensure text is committed
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur()
+    }
+
+    // Clear editing state
+    setEditingLayerId(null)
+    setSelectedLayerId(null)
+    setShowControls(false)
+    setShowContextMenu(null)
+
+    // Filter out empty text layers and complete
     const validLayers = textLayers.filter((l) => l.text.trim())
     onComplete({
       textLayers: validLayers,
       dimOverlay,
     })
-  }
+  }, [textLayers, dimOverlay, onComplete])
 
   // Get text style classes
   const getTextClasses = (layer: TextLayer) => {
@@ -340,9 +351,12 @@ export function StoryEditor({ imageUrl, onComplete, onBack }: StoryEditorProps) 
 
   return (
     <div className="fixed inset-0 z-[100] bg-black flex flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-4 pt-safe border-b border-white/10">
-        <button onClick={onBack} className="p-2 -ml-2 text-white">
+      {/* Header - z-index ensures it's above canvas and context menu */}
+      <div className="relative z-50 flex items-center justify-between px-4 py-4 pt-safe border-b border-white/10 bg-black">
+        <button
+          onClick={onBack}
+          className="p-2 -ml-2 text-white touch-manipulation"
+        >
           <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
           </svg>
@@ -353,7 +367,7 @@ export function StoryEditor({ imageUrl, onComplete, onBack }: StoryEditorProps) 
           <button
             onClick={undo}
             disabled={historyIndex <= 0}
-            className="p-2 text-white disabled:opacity-30"
+            className="p-2 text-white disabled:opacity-30 touch-manipulation"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
@@ -362,7 +376,7 @@ export function StoryEditor({ imageUrl, onComplete, onBack }: StoryEditorProps) 
           <button
             onClick={redo}
             disabled={historyIndex >= history.length - 1}
-            className="p-2 text-white disabled:opacity-30"
+            className="p-2 text-white disabled:opacity-30 touch-manipulation"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 15l6-6m0 0l-6-6m6 6H9a6 6 0 000 12h3" />
@@ -372,7 +386,12 @@ export function StoryEditor({ imageUrl, onComplete, onBack }: StoryEditorProps) 
 
         <button
           onClick={handleComplete}
-          className="px-4 py-1.5 bg-indigo-500 text-white text-sm font-semibold rounded-full"
+          onTouchEnd={(e) => {
+            // Prevent ghost click and ensure handler fires on touch devices
+            e.preventDefault()
+            handleComplete()
+          }}
+          className="px-4 py-1.5 bg-indigo-500 text-white text-sm font-semibold rounded-full touch-manipulation active:bg-indigo-600"
         >
           Done
         </button>
@@ -444,10 +463,10 @@ export function StoryEditor({ imageUrl, onComplete, onBack }: StoryEditorProps) 
           </div>
         ))}
 
-        {/* Context menu */}
+        {/* Context menu - z-40 to stay below header */}
         {showContextMenu && (
           <div
-            className="absolute bg-stone-800 rounded-xl shadow-xl overflow-hidden z-50 animate-scale-in"
+            className="absolute bg-stone-800 rounded-xl shadow-xl overflow-hidden z-40 animate-scale-in"
             style={{
               left: showContextMenu.x,
               top: showContextMenu.y,
@@ -488,8 +507,8 @@ export function StoryEditor({ imageUrl, onComplete, onBack }: StoryEditorProps) 
         )}
       </div>
 
-      {/* Bottom toolbar */}
-      <div className="border-t border-white/10 bg-black/80 backdrop-blur-xl pb-safe">
+      {/* Bottom toolbar - z-index ensures it's above canvas */}
+      <div className="relative z-50 border-t border-white/10 bg-black/80 backdrop-blur-xl pb-safe">
         {/* Style controls for selected layer */}
         {showControls && selectedLayer && (
           <div className="px-4 py-3 border-b border-white/10 space-y-3 animate-slide-up">
@@ -614,7 +633,7 @@ export function StoryEditor({ imageUrl, onComplete, onBack }: StoryEditorProps) 
             <button
               onClick={addTextLayer}
               disabled={textLayers.length >= MAX_TEXT_LAYERS}
-              className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-full text-white text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-full text-white text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-colors touch-manipulation"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -625,7 +644,7 @@ export function StoryEditor({ imageUrl, onComplete, onBack }: StoryEditorProps) 
             {/* Dim toggle */}
             <button
               onClick={() => setDimOverlay(!dimOverlay)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-colors touch-manipulation ${
                 dimOverlay ? 'bg-white text-black' : 'bg-white/10 text-white hover:bg-white/20'
               }`}
             >
