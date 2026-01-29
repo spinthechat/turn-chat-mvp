@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { supabase } from '@/lib/supabaseClient'
 import type { UserInfo } from '../types'
 
 interface ProfileDrawerProps {
@@ -9,6 +10,7 @@ interface ProfileDrawerProps {
   user: UserInfo | null
   currentUserId: string | null
   onStartDM: (userId: string) => Promise<void>
+  onFollowChange?: (userId: string, isFollowing: boolean) => void
 }
 
 export function ProfileDrawer({
@@ -17,8 +19,69 @@ export function ProfileDrawer({
   user,
   currentUserId,
   onStartDM,
+  onFollowChange,
 }: ProfileDrawerProps) {
   const [startingDM, setStartingDM] = useState(false)
+  const [isFollowing, setIsFollowing] = useState<boolean | null>(null)
+  const [followLoading, setFollowLoading] = useState(false)
+  const [followError, setFollowError] = useState<string | null>(null)
+
+  // Check follow status when drawer opens
+  useEffect(() => {
+    if (!isOpen || !user || !currentUserId || user.id === currentUserId) {
+      setIsFollowing(null)
+      return
+    }
+
+    const checkFollowStatus = async () => {
+      try {
+        const { data, error } = await supabase.rpc('is_following', {
+          p_following_id: user.id
+        })
+        if (error) throw error
+        setIsFollowing(data)
+      } catch (err) {
+        console.error('Failed to check follow status:', err)
+        setIsFollowing(false)
+      }
+    }
+
+    checkFollowStatus()
+  }, [isOpen, user, currentUserId])
+
+  const handleFollowToggle = useCallback(async () => {
+    if (!user || followLoading || isFollowing === null) return
+
+    const newFollowState = !isFollowing
+    setFollowLoading(true)
+    setFollowError(null)
+
+    // Optimistic update
+    setIsFollowing(newFollowState)
+
+    try {
+      if (newFollowState) {
+        const { error } = await supabase.rpc('follow_user', {
+          p_following_id: user.id
+        })
+        if (error) throw error
+      } else {
+        const { error } = await supabase.rpc('unfollow_user', {
+          p_following_id: user.id
+        })
+        if (error) throw error
+      }
+      // Notify parent of follow change
+      onFollowChange?.(user.id, newFollowState)
+    } catch (err) {
+      // Revert optimistic update
+      setIsFollowing(!newFollowState)
+      setFollowError(err instanceof Error ? err.message : 'Failed to update follow status')
+      console.error('Failed to toggle follow:', err)
+    } finally {
+      setFollowLoading(false)
+    }
+  }, [user, isFollowing, followLoading, onFollowChange])
 
   if (!isOpen || !user) return null
 
@@ -79,6 +142,47 @@ export function ProfileDrawer({
             <div className="mb-6">
               <h3 className="text-xs font-medium text-stone-400 dark:text-stone-500 uppercase tracking-wide mb-2">About</h3>
               <p className="text-sm text-stone-700 dark:text-stone-300 leading-relaxed">{user.bio}</p>
+            </div>
+          )}
+
+          {/* Follow/Unfollow button */}
+          {!isOwnProfile && isFollowing !== null && (
+            <div className="mb-4">
+              <button
+                onClick={handleFollowToggle}
+                disabled={followLoading}
+                className={`w-full py-3 px-4 font-medium rounded-xl transition-all flex items-center justify-center gap-2 ${
+                  isFollowing
+                    ? 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700'
+                    : 'bg-indigo-500 text-white hover:bg-indigo-600'
+                } disabled:opacity-50`}
+              >
+                {followLoading ? (
+                  <div className="w-4 h-4 border-2 border-current/30 border-t-current rounded-full animate-spin" />
+                ) : isFollowing ? (
+                  <>
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    Following
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                    </svg>
+                    Follow
+                  </>
+                )}
+              </button>
+              {followError && (
+                <p className="mt-2 text-xs text-red-500 text-center">{followError}</p>
+              )}
+              {isFollowing && (
+                <p className="mt-2 text-xs text-stone-400 dark:text-stone-500 text-center">
+                  You&apos;ll see their stories in your feed
+                </p>
+              )}
             </div>
           )}
 

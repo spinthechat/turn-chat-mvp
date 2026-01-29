@@ -2373,11 +2373,11 @@ export default function RoomPage() {
         console.log('[room] first render in', Math.round(performance.now() - bootStart), 'ms, msgs:', sortedMsgs.length)
       }
 
-      // HYDRATE: Fetch profiles, reactions, and active stories in parallel (non-blocking)
+      // HYDRATE: Fetch profiles, reactions, active stories, and follows in parallel (non-blocking)
       const memberIds = members?.map(m => m.user_id) ?? []
       const msgIds = sortedMsgs.map(m => m.id)
 
-      const [profilesResult, reactionsResult, storiesResult] = await Promise.all([
+      const [profilesResult, reactionsResult, storiesResult, followsResult] = await Promise.all([
         memberIds.length > 0
           ? supabase.from('profiles').select('id, email, display_name, avatar_url, bio').in('id', memberIds)
           : Promise.resolve({ data: [] }),
@@ -2387,14 +2387,25 @@ export default function RoomPage() {
         // Fetch active stories for room members (created within 24h)
         memberIds.length > 0
           ? supabase.from('stories').select('user_id').in('user_id', memberIds).gt('expires_at', new Date().toISOString())
-          : Promise.resolve({ data: [] })
+          : Promise.resolve({ data: [] }),
+        // Fetch who the current user follows (for story ring display)
+        supabase.from('follows').select('following_id').eq('follower_id', uid)
       ])
 
       const profiles = profilesResult.data
 
-      // Build set of user IDs with active stories
+      // Build set of user IDs with active stories (only for followed users + self)
+      const followedUserIds = new Set<string>(
+        (followsResult.data || []).map((f: { following_id: string }) => f.following_id)
+      )
+      followedUserIds.add(uid) // Always include self
+
       if (storiesResult.data) {
-        const storyUserIds = new Set<string>(storiesResult.data.map((s: { user_id: string }) => s.user_id))
+        const storyUserIds = new Set<string>(
+          storiesResult.data
+            .map((s: { user_id: string }) => s.user_id)
+            .filter((id: string) => followedUserIds.has(id))
+        )
         setActiveStoryUserIds(storyUserIds)
       }
 
@@ -3207,6 +3218,16 @@ export default function RoomPage() {
         user={selectedProfileUserId ? users.get(selectedProfileUserId) ?? null : null}
         currentUserId={userId}
         onStartDM={handleStartDM}
+        onFollowChange={(userId, isFollowing) => {
+          // Update activeStoryUserIds when follow status changes
+          setActiveStoryUserIds(prev => {
+            const next = new Set(prev)
+            if (!isFollowing) {
+              next.delete(userId)
+            }
+            return next
+          })
+        }}
       />
 
       {/* Turn Pulse - Background dim overlay (only during pulse animation) */}
