@@ -250,7 +250,15 @@ export function ProfileDrawer({
 
   // Handle view story from menu
   const handleViewStory = useCallback(() => {
-    if (!user || !onViewStory) return
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[ProfileDrawer] View story clicked', { userId: user?.id, hasOnViewStory: !!onViewStory })
+    }
+    if (!user || !onViewStory) {
+      if (process.env.NODE_ENV === 'development') {
+        console.error('[ProfileDrawer] Cannot view story - missing user or onViewStory handler')
+      }
+      return
+    }
     setShowAvatarMenu(false)
     onClose()
     onViewStory(user.id)

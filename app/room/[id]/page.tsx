@@ -10,6 +10,8 @@ import { getThemeForMode, isDarkTheme, getThemeCSSVars, type ChatTheme } from '@
 import { useParams, useRouter } from 'next/navigation'
 import { GroupAvatarMosaic, type GroupMember } from '@/app/components/GroupAvatarMosaic'
 import { StoryRing } from '@/app/components/StoryRing'
+import { StoryViewer } from '@/app/components/stories/StoryViewer'
+import { groupStoriesByUser, type Story, type StoryUser } from '@/app/components/stories/types'
 
 // Local imports from extracted modules
 import { useMobileViewport } from './hooks'
@@ -1962,6 +1964,11 @@ export default function RoomPage() {
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set())
   const [activeStoryUserIds, setActiveStoryUserIds] = useState<Set<string>>(new Set())
 
+  // Story viewer state
+  const [storyViewerUsers, setStoryViewerUsers] = useState<StoryUser[]>([])
+  const [storyViewerOpen, setStoryViewerOpen] = useState(false)
+  const [storyViewerInitialIndex, setStoryViewerInitialIndex] = useState(0)
+
   // Derived state: any drawer/modal is open (hides chat input to prevent layering issues)
   const isAnyDrawerOpen = showGroupDetails || selectedProfileUserId !== null
 
@@ -2433,15 +2440,43 @@ export default function RoomPage() {
   }, [hasMoreMessages, loadingOlderMessages, loadOlderMessages])
 
   const handleNudge = async () => {
-    if (!userId || nudgeLoading || hasNudgedThisTurn || isMyTurn || !currentTurnUserId) return
+    // Debug logging for nudge
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[Nudge] Clicked', {
+        userId,
+        currentTurnUserId,
+        isMyTurn,
+        hasNudgedThisTurn,
+        nudgeLoading,
+        gameActive,
+      })
+    }
+
+    if (!userId || nudgeLoading || hasNudgedThisTurn || isMyTurn || !currentTurnUserId) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[Nudge] Early return - condition failed', {
+          noUserId: !userId,
+          isLoading: nudgeLoading,
+          alreadyNudged: hasNudgedThisTurn,
+          isMyTurn,
+          noCurrentTurn: !currentTurnUserId,
+        })
+      }
+      return
+    }
 
     setNudgeLoading(true)
     try {
       const { data: sessionData } = await supabase.auth.getSession()
       const accessToken = sessionData?.session?.access_token
       if (!accessToken) {
+        console.error('[Nudge] No access token')
         setNudgeToast({ message: 'Not logged in', type: 'error' })
         return
+      }
+
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[Nudge] Calling API with roomId:', roomId)
       }
 
       const res = await fetch('/api/push/nudge', {
@@ -2454,6 +2489,10 @@ export default function RoomPage() {
       })
 
       const result = await res.json()
+
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[Nudge] API response:', result)
+      }
 
       if (result.success) {
         setHasNudgedThisTurn(true)
@@ -2472,9 +2511,11 @@ export default function RoomPage() {
           })
         }
       } else {
+        console.error('[Nudge] API returned error:', result.error)
         setNudgeToast({ message: result.error || 'Failed to nudge', type: 'error' })
       }
-    } catch {
+    } catch (err) {
+      console.error('[Nudge] Exception:', err)
       setNudgeToast({ message: 'Failed to nudge', type: 'error' })
     } finally {
       setNudgeLoading(false)
@@ -3282,6 +3323,62 @@ export default function RoomPage() {
     setSelectedProfileUserId(userId)
   }
 
+  // Handle viewing a user's story from profile drawer
+  const handleViewStory = useCallback(async (targetUserId: string) => {
+    if (!userId) return
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[Story] Opening story for user:', targetUserId)
+    }
+
+    try {
+      // Fetch stories from that user
+      const { data, error } = await supabase.rpc('get_stories_feed', {
+        for_user_id: userId,
+      })
+
+      if (error) {
+        console.error('[Story] Failed to fetch stories:', error)
+        return
+      }
+
+      const stories = (data || []) as Story[]
+      const storyUsers = groupStoriesByUser(stories)
+
+      // Find the index of the target user
+      const userIndex = storyUsers.findIndex(u => u.user_id === targetUserId)
+
+      if (userIndex === -1) {
+        console.error('[Story] User has no active stories')
+        return
+      }
+
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[Story] Found user at index:', userIndex, 'stories:', storyUsers[userIndex].stories.length)
+      }
+
+      setStoryViewerUsers(storyUsers)
+      setStoryViewerInitialIndex(userIndex)
+      setStoryViewerOpen(true)
+    } catch (err) {
+      console.error('[Story] Error opening story viewer:', err)
+    }
+  }, [userId])
+
+  // Handle story viewed - mark as seen
+  const handleStoryViewed = useCallback((storyId: string) => {
+    // Update local state to mark as viewed
+    setStoryViewerUsers(prev => prev.map(user => ({
+      ...user,
+      stories: user.stories.map(s =>
+        s.story_id === storyId ? { ...s, is_viewed: true } : s
+      ),
+      has_unseen: user.stories.some(s =>
+        s.story_id !== storyId && !s.is_viewed
+      ),
+    })))
+  }, [])
+
   const scrollToMessage = (messageId: string) => {
     const el = messageRefs.current.get(messageId)
     if (el) {
@@ -3623,7 +3720,20 @@ export default function RoomPage() {
           })
         }}
         hasActiveStory={selectedProfileUserId ? activeStoryUserIds.has(selectedProfileUserId) : false}
+        onViewStory={handleViewStory}
       />
+
+      {/* Story Viewer */}
+      {storyViewerOpen && storyViewerUsers.length > 0 && userId && (
+        <StoryViewer
+          users={storyViewerUsers}
+          initialUserIndex={storyViewerInitialIndex}
+          currentUserId={userId}
+          onClose={() => setStoryViewerOpen(false)}
+          onStoryViewed={handleStoryViewed}
+          onNavigateToRoom={(roomId) => router.push(`/room/${roomId}`)}
+        />
+      )}
 
       {/* Turn Pulse - Background dim overlay (only during pulse animation) */}
       <div
