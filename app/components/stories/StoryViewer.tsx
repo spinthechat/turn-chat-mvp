@@ -12,6 +12,7 @@ import {
   stringToColor,
 } from './types'
 import { supabase } from '@/lib/supabaseClient'
+import { useMobileViewport } from './useMobileViewport'
 
 interface StoryViewerProps {
   users: StoryUser[]
@@ -48,6 +49,9 @@ export function StoryViewer({
 
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const touchStartRef = useRef<{ x: number; y: number } | null>(null)
+
+  // Mobile viewport hook for keyboard handling
+  const { keyboardHeight, viewportHeight } = useMobileViewport()
 
   const currentUser = users[currentUserIndex]
   const currentStory = currentUser?.stories[currentStoryIndex]
@@ -144,7 +148,7 @@ export function StoryViewer({
 
   // Handle tap zones (left/right)
   const handleTap = (e: React.MouseEvent | React.TouchEvent) => {
-    if (showViewers) return
+    if (showViewers || isReplying) return
 
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
     const x = 'touches' in e ? e.changedTouches[0].clientX : e.clientX
@@ -160,6 +164,7 @@ export function StoryViewer({
 
   // Touch handlers for swipe down to close
   const handleTouchStart = (e: React.TouchEvent) => {
+    if (isReplying) return
     touchStartRef.current = {
       x: e.touches[0].clientX,
       y: e.touches[0].clientY,
@@ -167,7 +172,7 @@ export function StoryViewer({
   }
 
   const handleTouchEnd = (e: React.TouchEvent) => {
-    if (!touchStartRef.current) return
+    if (!touchStartRef.current || isReplying) return
 
     const deltaY = e.changedTouches[0].clientY - touchStartRef.current.y
     const deltaX = Math.abs(e.changedTouches[0].clientX - touchStartRef.current.x)
@@ -239,10 +244,13 @@ export function StoryViewer({
 
   // Handle reply input blur
   const handleReplyBlur = () => {
-    if (!replyText.trim()) {
-      setIsReplying(false)
-    }
-    setIsPaused(false)
+    // Small delay to allow send button click to register
+    setTimeout(() => {
+      if (!replyText.trim()) {
+        setIsReplying(false)
+      }
+      setIsPaused(false)
+    }, 100)
   }
 
   // Preload next image
@@ -262,10 +270,18 @@ export function StoryViewer({
   const initials = getInitialsFromEmail(currentUser.email)
   const timeAgo = getTimeAgo(currentStory.created_at)
 
+  // Calculate bottom offset for reply composer when keyboard is open
+  const composerBottomOffset = keyboardHeight > 0 ? keyboardHeight : 0
+
   return (
-    <div className="fixed inset-0 z-[100] bg-black flex flex-col">
-      {/* Header */}
-      <div className="absolute top-0 left-0 right-0 z-10 pt-safe">
+    <div
+      className="fixed inset-0 z-[100] bg-black flex flex-col overflow-hidden"
+      style={{
+        height: viewportHeight > 0 ? viewportHeight : '100dvh',
+      }}
+    >
+      {/* Header - Fixed at top */}
+      <div className="flex-shrink-0 z-20 pt-safe bg-gradient-to-b from-black/60 to-transparent">
         {/* Progress bars */}
         <div className="flex gap-1 px-2 pt-2">
           {currentUser.stories.map((_, idx) => (
@@ -315,16 +331,14 @@ export function StoryViewer({
         </div>
       </div>
 
-      {/* Story image with overlays */}
+      {/* Story image with overlays - Flexible middle section */}
       <div
-        className="flex-1 flex items-center justify-center relative"
+        className="flex-1 flex items-center justify-center relative min-h-0"
         onClick={handleTap}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
-        onMouseDown={() => setIsPaused(true)}
-        onMouseUp={() => setIsPaused(false)}
-        onTouchStartCapture={() => setIsPaused(true)}
-        onTouchEndCapture={() => setIsPaused(false)}
+        onMouseDown={() => !isReplying && setIsPaused(true)}
+        onMouseUp={() => !isReplying && setIsPaused(false)}
       >
         <Image
           src={currentStory.image_url}
@@ -346,8 +360,13 @@ export function StoryViewer({
         ))}
       </div>
 
-      {/* Footer - viewers count for own stories, reply input for others */}
-      <div className="absolute bottom-0 left-0 right-0 pb-safe z-10">
+      {/* Footer - Fixed at bottom, moves with keyboard */}
+      <div
+        className="flex-shrink-0 z-20 bg-gradient-to-t from-black/60 to-transparent transition-transform duration-200"
+        style={{
+          paddingBottom: composerBottomOffset > 0 ? composerBottomOffset : 'env(safe-area-inset-bottom)',
+        }}
+      >
         {isOwnStory ? (
           <button
             onClick={() => {
@@ -384,6 +403,9 @@ export function StoryViewer({
                   placeholder={`Reply to ${displayName}...`}
                   className="w-full px-4 py-2.5 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full text-white placeholder-white/50 text-sm focus:outline-none focus:border-white/40 focus:bg-white/15 transition-colors"
                   disabled={sendingReply}
+                  autoComplete="off"
+                  autoCorrect="on"
+                  enterKeyHint="send"
                 />
               </div>
               {(replyText.trim() || isReplying) && (
@@ -411,7 +433,7 @@ export function StoryViewer({
 
       {/* Viewers modal */}
       {showViewers && (
-        <div className="absolute inset-0 bg-black/80 z-20 flex flex-col">
+        <div className="absolute inset-0 bg-black/80 z-30 flex flex-col">
           <div className="flex items-center justify-between px-4 py-4 pt-safe border-b border-white/10">
             <h3 className="text-white font-semibold">Viewers</h3>
             <button
