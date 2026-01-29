@@ -2436,11 +2436,11 @@ export default function RoomPage() {
         console.log('[room] first render in', Math.round(performance.now() - bootStart), 'ms, msgs:', sortedMsgs.length)
       }
 
-      // HYDRATE: Fetch profiles, reactions, active stories, and follows in parallel (non-blocking)
+      // HYDRATE: Fetch profiles, reactions, active stories, and effective follows in parallel (non-blocking)
       const memberIds = members?.map(m => m.user_id) ?? []
       const msgIds = sortedMsgs.map(m => m.id)
 
-      const [profilesResult, reactionsResult, storiesResult, followsResult] = await Promise.all([
+      const [profilesResult, reactionsResult, storiesResult, effectiveFollowsResult] = await Promise.all([
         memberIds.length > 0
           ? supabase.from('profiles').select('id, email, display_name, avatar_url, bio').in('id', memberIds)
           : Promise.resolve({ data: [] }),
@@ -2451,15 +2451,17 @@ export default function RoomPage() {
         memberIds.length > 0
           ? supabase.from('stories').select('user_id').in('user_id', memberIds).gt('expires_at', new Date().toISOString())
           : Promise.resolve({ data: [] }),
-        // Fetch who the current user follows (for story ring display)
-        supabase.from('follows').select('following_id').eq('follower_id', uid)
+        // Get effectively followed users (explicit + implicit, excluding overrides)
+        memberIds.length > 0
+          ? supabase.rpc('get_effective_following_ids', { p_target_ids: memberIds })
+          : Promise.resolve({ data: [] })
       ])
 
       const profiles = profilesResult.data
 
-      // Build set of user IDs with active stories (only for followed users + self)
+      // Build set of effectively followed user IDs (includes implicit auto-follows)
       const followedUserIds = new Set<string>(
-        (followsResult.data || []).map((f: { following_id: string }) => f.following_id)
+        (effectiveFollowsResult.data || []).map((f: { user_id: string }) => f.user_id)
       )
       followedUserIds.add(uid) // Always include self
 

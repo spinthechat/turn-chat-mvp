@@ -4,6 +4,9 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import type { UserInfo } from '../types'
 
+// Follow status: 'explicit' | 'implicit' | 'none' | 'unfollowed'
+type FollowStatus = 'explicit' | 'implicit' | 'none' | 'unfollowed' | null
+
 interface ProfileDrawerProps {
   isOpen: boolean
   onClose: () => void
@@ -22,27 +25,40 @@ export function ProfileDrawer({
   onFollowChange,
 }: ProfileDrawerProps) {
   const [startingDM, setStartingDM] = useState(false)
-  const [isFollowing, setIsFollowing] = useState<boolean | null>(null)
+  const [followStatus, setFollowStatus] = useState<FollowStatus>(null)
   const [followLoading, setFollowLoading] = useState(false)
   const [followError, setFollowError] = useState<string | null>(null)
+
+  // Derived state
+  const isFollowing = followStatus === 'explicit' || followStatus === 'implicit'
+  const isImplicit = followStatus === 'implicit'
 
   // Check follow status when drawer opens
   useEffect(() => {
     if (!isOpen || !user || !currentUserId || user.id === currentUserId) {
-      setIsFollowing(null)
+      setFollowStatus(null)
       return
     }
 
     const checkFollowStatus = async () => {
       try {
-        const { data, error } = await supabase.rpc('is_following', {
-          p_following_id: user.id
+        const { data, error } = await supabase.rpc('get_follow_status', {
+          p_target_id: user.id
         })
         if (error) throw error
-        setIsFollowing(data)
+        setFollowStatus(data as FollowStatus)
       } catch (err) {
         console.error('Failed to check follow status:', err)
-        setIsFollowing(false)
+        // Fallback to old is_following if get_follow_status doesn't exist yet
+        try {
+          const { data, error } = await supabase.rpc('is_following', {
+            p_target_id: user.id
+          })
+          if (error) throw error
+          setFollowStatus(data ? 'explicit' : 'none')
+        } catch {
+          setFollowStatus('none')
+        }
       }
     }
 
@@ -50,38 +66,41 @@ export function ProfileDrawer({
   }, [isOpen, user, currentUserId])
 
   const handleFollowToggle = useCallback(async () => {
-    if (!user || followLoading || isFollowing === null) return
+    if (!user || followLoading || followStatus === null) return
 
-    const newFollowState = !isFollowing
+    const wasFollowing = isFollowing
     setFollowLoading(true)
     setFollowError(null)
 
     // Optimistic update
-    setIsFollowing(newFollowState)
+    setFollowStatus(wasFollowing ? 'none' : 'explicit')
 
     try {
-      if (newFollowState) {
-        const { error } = await supabase.rpc('follow_user', {
+      if (!wasFollowing) {
+        const { data, error } = await supabase.rpc('follow_user', {
           p_following_id: user.id
         })
         if (error) throw error
+        // Update to actual status returned (could be 'implicit' or 'explicit')
+        setFollowStatus(data as FollowStatus || 'explicit')
       } else {
         const { error } = await supabase.rpc('unfollow_user', {
           p_following_id: user.id
         })
         if (error) throw error
+        setFollowStatus('unfollowed')
       }
       // Notify parent of follow change
-      onFollowChange?.(user.id, newFollowState)
+      onFollowChange?.(user.id, !wasFollowing)
     } catch (err) {
       // Revert optimistic update
-      setIsFollowing(!newFollowState)
+      setFollowStatus(wasFollowing ? (isImplicit ? 'implicit' : 'explicit') : 'none')
       setFollowError(err instanceof Error ? err.message : 'Failed to update follow status')
       console.error('Failed to toggle follow:', err)
     } finally {
       setFollowLoading(false)
     }
-  }, [user, isFollowing, followLoading, onFollowChange])
+  }, [user, followStatus, isFollowing, isImplicit, followLoading, onFollowChange])
 
   if (!isOpen || !user) return null
 
@@ -146,7 +165,7 @@ export function ProfileDrawer({
           )}
 
           {/* Follow/Unfollow button */}
-          {!isOwnProfile && isFollowing !== null && (
+          {!isOwnProfile && followStatus !== null && (
             <div className="mb-4">
               <button
                 onClick={handleFollowToggle}
@@ -165,6 +184,9 @@ export function ProfileDrawer({
                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                     </svg>
                     Following
+                    {isImplicit && (
+                      <span className="text-xs opacity-60 ml-1">• Auto</span>
+                    )}
                   </>
                 ) : (
                   <>
@@ -180,7 +202,14 @@ export function ProfileDrawer({
               )}
               {isFollowing && (
                 <p className="mt-2 text-xs text-stone-400 dark:text-stone-500 text-center">
-                  You&apos;ll see their stories in your feed
+                  {isImplicit
+                    ? 'Auto-following based on shared group activity'
+                    : "You'll see their stories in your feed"}
+                </p>
+              )}
+              {followStatus === 'unfollowed' && (
+                <p className="mt-2 text-xs text-stone-400 dark:text-stone-500 text-center">
+                  You won&apos;t see their stories
                 </p>
               )}
             </div>
