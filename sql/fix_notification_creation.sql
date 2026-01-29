@@ -3,6 +3,10 @@
 -- Run this AFTER all other SQL migrations
 -- ============================================
 
+-- Drop existing functions first to allow signature changes
+DROP FUNCTION IF EXISTS send_nudge(UUID);
+DROP FUNCTION IF EXISTS advance_turn(UUID, TEXT, UUID);
+
 -- ============================================
 -- PART 1: Updated send_nudge with notification creation
 -- ============================================
