@@ -17,11 +17,39 @@ interface GroupAvatarMosaicProps {
   className?: string
 }
 
-// Size in pixels for next/image
-const sizePixels = {
-  sm: 44,
-  md: 56,
-  lg: 64,
+// Size configurations
+const sizeConfig = {
+  sm: {
+    container: 'w-11 h-11',
+    tile: 'text-[8px]',
+    gap: 'gap-[1px]',
+    // Fan layout
+    fanContainer: 44,
+    fanAvatar: 28,
+    fanOffset: 7,
+    fanText: 'text-[9px]',
+    fanRing: 'ring-[1.5px]',
+  },
+  md: {
+    container: 'w-14 h-14',
+    tile: 'text-[9px]',
+    gap: 'gap-[1.5px]',
+    fanContainer: 56,
+    fanAvatar: 34,
+    fanOffset: 9,
+    fanText: 'text-[10px]',
+    fanRing: 'ring-2',
+  },
+  lg: {
+    container: 'w-16 h-16',
+    tile: 'text-[10px]',
+    gap: 'gap-[2px]',
+    fanContainer: 64,
+    fanAvatar: 40,
+    fanOffset: 10,
+    fanText: 'text-[11px]',
+    fanRing: 'ring-2',
+  },
 }
 
 // Generate consistent colors from string (same as elsewhere in app)
@@ -38,26 +66,92 @@ const stringToColor = (str: string): string => {
   return colors[Math.abs(hash) % colors.length]
 }
 
+// Single fanned avatar
+function FannedAvatar({
+  member,
+  size,
+  position,
+  config,
+}: {
+  member: GroupMember
+  size: 'sm' | 'md' | 'lg'
+  position: 'left' | 'center' | 'right'
+  config: typeof sizeConfig.md
+}) {
+  const avatarSize = config.fanAvatar
+  const offset = config.fanOffset
+
+  // Position transforms
+  const transforms = {
+    left: {
+      transform: 'rotate(-8deg)',
+      left: 0,
+      top: offset,
+      zIndex: 1,
+    },
+    center: {
+      transform: 'rotate(0deg)',
+      left: '50%',
+      marginLeft: -avatarSize / 2,
+      top: 0,
+      zIndex: 3,
+    },
+    right: {
+      transform: 'rotate(8deg)',
+      right: 0,
+      top: offset,
+      zIndex: 2,
+    },
+  }
+
+  const style = transforms[position]
+
+  const content = member.avatarUrl ? (
+    <Image
+      src={member.avatarUrl}
+      alt={member.displayName}
+      width={avatarSize}
+      height={avatarSize}
+      className="rounded-full object-cover"
+      style={{ width: avatarSize, height: avatarSize }}
+    />
+  ) : (
+    <div
+      className={`rounded-full ${member.color || stringToColor(member.id)} flex items-center justify-center text-white font-semibold ${config.fanText}`}
+      style={{ width: avatarSize, height: avatarSize }}
+    >
+      {member.initials}
+    </div>
+  )
+
+  return (
+    <div
+      className={`absolute ${config.fanRing} ring-white dark:ring-stone-900 rounded-full shadow-sm`}
+      style={{
+        width: avatarSize,
+        height: avatarSize,
+        ...style,
+      }}
+    >
+      {content}
+    </div>
+  )
+}
+
 export function GroupAvatarMosaic({
   members,
   size = 'md',
   className = '',
 }: GroupAvatarMosaicProps) {
-  const sizeConfig = {
-    sm: { container: 'w-11 h-11', tile: 'text-[8px]', gap: 'gap-[1px]' },
-    md: { container: 'w-14 h-14', tile: 'text-[9px]', gap: 'gap-[1.5px]' },
-    lg: { container: 'w-16 h-16', tile: 'text-[10px]', gap: 'gap-[2px]' },
-  }
-
   const config = sizeConfig[size]
 
-  // Take first 4 members for the mosaic
+  // Take first 4 members for display
   const displayMembers = useMemo(() => members.slice(0, 4), [members])
   const count = displayMembers.length
 
-  const px = sizePixels[size]
+  const px = config.fanContainer
 
-  // Render a single tile (avatar or initials)
+  // Render a single tile (for 2-3 member layouts)
   const renderTile = (member: GroupMember, tileClass: string) => {
     if (member.avatarUrl) {
       return (
@@ -139,13 +233,43 @@ export function GroupAvatarMosaic({
     )
   }
 
-  // 4+ members - 2x2 grid
+  // 4+ members - fanned overlapping layout (like a hand of cards)
+  // Show first 3 members in a fan arrangement
+  const fanMembers = displayMembers.slice(0, 3)
+
   return (
-    <div className={`${config.container} rounded-full overflow-hidden flex-shrink-0 ring-1 ring-stone-200/50 dark:ring-stone-600/50 grid grid-cols-2 grid-rows-2 ${config.gap} bg-white dark:bg-stone-800 ${className}`}>
-      {renderTile(displayMembers[0], 'w-full h-full rounded-tl-full')}
-      {renderTile(displayMembers[1], 'w-full h-full rounded-tr-full')}
-      {renderTile(displayMembers[2], 'w-full h-full rounded-bl-full')}
-      {renderTile(displayMembers[3], 'w-full h-full rounded-br-full')}
+    <div
+      className={`relative flex-shrink-0 ${className}`}
+      style={{
+        width: config.fanContainer,
+        height: config.fanContainer,
+      }}
+    >
+      {/* Left avatar - rotated -8deg, behind */}
+      <FannedAvatar
+        member={fanMembers[0]}
+        size={size}
+        position="left"
+        config={config}
+      />
+      {/* Right avatar - rotated +8deg, middle layer */}
+      {fanMembers.length > 2 && (
+        <FannedAvatar
+          member={fanMembers[2]}
+          size={size}
+          position="right"
+          config={config}
+        />
+      )}
+      {/* Center avatar - on top */}
+      {fanMembers.length > 1 && (
+        <FannedAvatar
+          member={fanMembers[1]}
+          size={size}
+          position="center"
+          config={config}
+        />
+      )}
     </div>
   )
 }
