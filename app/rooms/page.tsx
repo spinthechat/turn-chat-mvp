@@ -10,6 +10,7 @@ import { StoriesRow, type StoriesRowRef } from '@/app/components/stories'
 import { StoryRing } from '@/app/components/StoryRing'
 import { usePushNotifications } from '@/lib/usePushNotifications'
 import { useThemePreference, type ThemePreference } from '@/lib/useThemePreference'
+import { NotificationCenter, NotificationBell, useNotifications } from '@/app/components/NotificationCenter'
 
 // Prompt mode options
 const PROMPT_MODES = [
@@ -620,6 +621,11 @@ export default function ChatsPage() {
 
   // Active story user IDs for showing story ring on avatars
   const [activeStoryUserIds, setActiveStoryUserIds] = useState<Set<string>>(new Set())
+
+  // Notifications
+  const [showNotifications, setShowNotifications] = useState(false)
+  const { unreadCount: notificationCount, refreshCount: refreshNotificationCount } = useNotifications(userId)
+
   const touchStartY = useRef(0)
   const isPulling = useRef(false)
   const PULL_THRESHOLD = 80 // px needed to trigger refresh
@@ -954,6 +960,11 @@ export default function ChatsPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
                 </svg>
               </button>
+              {/* Notifications button */}
+              <NotificationBell
+                unreadCount={notificationCount}
+                onClick={() => setShowNotifications(true)}
+              />
               {/* Profile button */}
               <button
                 onClick={() => setShowProfileMenu(true)}
@@ -1185,6 +1196,24 @@ export default function ChatsPage() {
           router.push('/profile')
         }}
         onSignOut={handleSignOut}
+      />
+
+      {/* Notification Center */}
+      <NotificationCenter
+        isOpen={showNotifications}
+        onClose={() => {
+          setShowNotifications(false)
+          refreshNotificationCount()
+        }}
+        onNavigateToRoom={(roomId) => {
+          setShowNotifications(false)
+          router.push(`/room/${roomId}`)
+        }}
+        onNavigateToProfile={(userId) => {
+          setShowNotifications(false)
+          router.push(`/profile?user=${userId}`)
+        }}
+        userId={userId}
       />
     </div>
   )
