@@ -2,7 +2,15 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Image from 'next/image'
-import { Story, StoryUser, StoryViewer as StoryViewerType, getDisplayNameFromEmail, getInitialsFromEmail, stringToColor } from './types'
+import {
+  Story,
+  StoryUser,
+  StoryViewer as StoryViewerType,
+  TextLayer,
+  getDisplayNameFromEmail,
+  getInitialsFromEmail,
+  stringToColor,
+} from './types'
 import { supabase } from '@/lib/supabaseClient'
 
 interface StoryViewerProps {
@@ -254,9 +262,9 @@ export function StoryViewer({
         </div>
       </div>
 
-      {/* Story image */}
+      {/* Story image with overlays */}
       <div
-        className="flex-1 flex items-center justify-center"
+        className="flex-1 flex items-center justify-center relative"
         onClick={handleTap}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
@@ -273,6 +281,16 @@ export function StoryViewer({
           onLoad={() => setImageLoaded(true)}
           priority
         />
+
+        {/* Dim overlay */}
+        {currentStory.overlays?.dimOverlay && (
+          <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/40 pointer-events-none" />
+        )}
+
+        {/* Text overlays */}
+        {currentStory.overlays?.textLayers?.map((layer) => (
+          <TextOverlay key={layer.id} layer={layer} />
+        ))}
       </div>
 
       {/* Footer - viewers count for own stories */}
@@ -362,4 +380,48 @@ function getTimeAgo(dateString: string): string {
   if (diffMins < 60) return `${diffMins}m ago`
   if (diffHours < 24) return `${diffHours}h ago`
   return date.toLocaleDateString()
+}
+
+// Text layer rendering helper
+function TextOverlay({ layer }: { layer: TextLayer }) {
+  const fontClass = {
+    sans: 'font-sans',
+    serif: 'font-serif',
+    mono: 'font-mono',
+  }[layer.font]
+
+  const sizeClass = {
+    sm: 'text-base',
+    md: 'text-xl',
+    lg: 'text-3xl',
+  }[layer.size]
+
+  const alignClass = `text-${layer.align}`
+
+  const backgroundClass = {
+    none: '',
+    pill: 'bg-black/40 backdrop-blur-sm px-4 py-1.5 rounded-full',
+    solid: 'bg-black/60 px-4 py-2 rounded-lg',
+  }[layer.background]
+
+  return (
+    <div
+      className="absolute pointer-events-none select-none"
+      style={{
+        left: `${layer.x}%`,
+        top: `${layer.y}%`,
+        transform: `translate(-50%, -50%) scale(${layer.scale}) rotate(${layer.rotation}deg)`,
+      }}
+    >
+      <div
+        className={`whitespace-nowrap ${fontClass} ${sizeClass} ${alignClass} ${backgroundClass}`}
+        style={{
+          color: layer.color,
+          textShadow: layer.background === 'none' ? '0 2px 8px rgba(0,0,0,0.8)' : 'none',
+        }}
+      >
+        {layer.text}
+      </div>
+    </div>
+  )
 }

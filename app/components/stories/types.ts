@@ -1,3 +1,29 @@
+// Text layer types for story overlays
+export type TextFont = 'sans' | 'serif' | 'mono'
+export type TextSize = 'sm' | 'md' | 'lg'
+export type TextBackground = 'none' | 'pill' | 'solid'
+export type TextAlign = 'left' | 'center' | 'right'
+
+export interface TextLayer {
+  id: string
+  text: string
+  x: number // percentage 0-100
+  y: number // percentage 0-100
+  scale: number // 1 = 100%
+  rotation: number // degrees
+  font: TextFont
+  size: TextSize
+  color: string // hex color
+  background: TextBackground
+  align: TextAlign
+}
+
+export interface StoryOverlays {
+  textLayers: TextLayer[]
+  dimOverlay: boolean
+  // Future: stickers, mentions, links
+}
+
 export interface Story {
   story_id: string
   story_user_id: string
@@ -9,6 +35,7 @@ export interface Story {
   user_avatar_url: string | null
   is_viewed: boolean
   view_count: number
+  overlays: StoryOverlays | null
 }
 
 export interface StoryUser {
@@ -81,6 +108,37 @@ export function getInitialsFromEmail(email: string): string {
   if (cleaned.length >= 2) return cleaned.slice(0, 2).toUpperCase()
   return cleaned.toUpperCase() || '??'
 }
+
+// Create a new text layer with defaults
+export function createTextLayer(partial?: Partial<TextLayer>): TextLayer {
+  return {
+    id: crypto.randomUUID(),
+    text: '',
+    x: 50,
+    y: 50,
+    scale: 1,
+    rotation: 0,
+    font: 'sans',
+    size: 'md',
+    color: '#FFFFFF',
+    background: 'none',
+    align: 'center',
+    ...partial,
+  }
+}
+
+// Color palette for text
+export const TEXT_COLORS = [
+  '#FFFFFF', // White
+  '#000000', // Black
+  '#EF4444', // Red
+  '#F97316', // Orange
+  '#EAB308', // Yellow
+  '#22C55E', // Green
+  '#3B82F6', // Blue
+  '#8B5CF6', // Purple
+  '#EC4899', // Pink
+] as const
 
 // Generate consistent colors from string
 export function stringToColor(str: string): string {

@@ -3,6 +3,8 @@
 import { useState, useRef, useCallback } from 'react'
 import Image from 'next/image'
 import { supabase } from '@/lib/supabaseClient'
+import { StoryEditor } from './StoryEditor'
+import { StoryOverlays } from './types'
 
 interface StoryCreatorProps {
   isOpen: boolean
@@ -11,12 +13,13 @@ interface StoryCreatorProps {
   userId: string
 }
 
-type Step = 'select' | 'preview' | 'uploading'
+type Step = 'select' | 'preview' | 'edit' | 'uploading'
 
 export function StoryCreator({ isOpen, onClose, onStoryCreated, userId }: StoryCreatorProps) {
   const [step, setStep] = useState<Step>('select')
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [overlays, setOverlays] = useState<StoryOverlays | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const cameraInputRef = useRef<HTMLInputElement>(null)
@@ -53,7 +56,13 @@ export function StoryCreator({ isOpen, onClose, onStoryCreated, userId }: StoryC
     e.target.value = ''
   }, [])
 
-  const handleUpload = async () => {
+  // Handle editor completion
+  const handleEditorComplete = useCallback((editorOverlays: StoryOverlays) => {
+    setOverlays(editorOverlays)
+    handleUpload(editorOverlays)
+  }, [])
+
+  const handleUpload = async (storyOverlays?: StoryOverlays) => {
     if (!selectedFile || !userId) return
 
     setStep('uploading')
@@ -79,12 +88,16 @@ export function StoryCreator({ isOpen, onClose, onStoryCreated, userId }: StoryC
         .from('stories')
         .getPublicUrl(fileName)
 
-      // Create story record
+      // Create story record with overlays
+      const finalOverlays = storyOverlays || overlays
+      const hasOverlays = finalOverlays && (finalOverlays.textLayers.length > 0 || finalOverlays.dimOverlay)
+
       const { error: insertError } = await supabase
         .from('stories')
         .insert({
           user_id: userId,
           image_url: urlData.publicUrl,
+          overlays: hasOverlays ? finalOverlays : null,
         })
 
       if (insertError) throw insertError
@@ -95,7 +108,7 @@ export function StoryCreator({ isOpen, onClose, onStoryCreated, userId }: StoryC
     } catch (err) {
       console.error('Failed to upload story:', err)
       setError('Failed to upload story. Please try again.')
-      setStep('preview')
+      setStep('edit')
     }
   }
 
@@ -103,11 +116,23 @@ export function StoryCreator({ isOpen, onClose, onStoryCreated, userId }: StoryC
     setStep('select')
     setSelectedImage(null)
     setSelectedFile(null)
+    setOverlays(null)
     setError(null)
     onClose()
   }
 
   if (!isOpen) return null
+
+  // Show editor as full-screen overlay
+  if (step === 'edit' && selectedImage) {
+    return (
+      <StoryEditor
+        imageUrl={selectedImage}
+        onComplete={handleEditorComplete}
+        onBack={() => setStep('preview')}
+      />
+    )
+  }
 
   return (
     <div className="fixed inset-0 z-[100] bg-black flex flex-col">
@@ -134,10 +159,10 @@ export function StoryCreator({ isOpen, onClose, onStoryCreated, userId }: StoryC
 
         {step === 'preview' ? (
           <button
-            onClick={handleUpload}
+            onClick={() => setStep('edit')}
             className="px-4 py-1.5 bg-indigo-500 text-white text-sm font-semibold rounded-full"
           >
-            Share
+            Next
           </button>
         ) : (
           <div className="w-16" /> // Spacer
