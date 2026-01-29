@@ -9,6 +9,7 @@ import { hapticTick, clearTextSelection, clearTextSelectionAggressive, setGlobal
 import { getThemeForMode, isDarkTheme, getThemeCSSVars, type ChatTheme } from '@/lib/themes'
 import { useParams, useRouter } from 'next/navigation'
 import { GroupAvatarMosaic, type GroupMember } from '@/app/components/GroupAvatarMosaic'
+import { StoryRing } from '@/app/components/StoryRing'
 
 // Local imports from extracted modules
 import { useMobileViewport } from './hooks'
@@ -1671,6 +1672,7 @@ export default function RoomPage() {
   const [showGroupDetails, setShowGroupDetails] = useState(false)
   const [selectedProfileUserId, setSelectedProfileUserId] = useState<string | null>(null)
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set())
+  const [activeStoryUserIds, setActiveStoryUserIds] = useState<Set<string>>(new Set())
 
   // Derived state: any drawer/modal is open (hides chat input to prevent layering issues)
   const isAnyDrawerOpen = showGroupDetails || selectedProfileUserId !== null
@@ -1687,6 +1689,7 @@ export default function RoomPage() {
     if (!otherUser) {
       // Fallback if user not loaded yet
       return {
+        userId: otherMemberId,
         displayName: 'Direct Message',
         initials: 'DM',
         color: 'bg-stone-400',
@@ -1696,6 +1699,7 @@ export default function RoomPage() {
     }
 
     return {
+      userId: otherMemberId,
       displayName: otherUser.displayName,
       initials: otherUser.initials,
       color: otherUser.color,
@@ -2369,20 +2373,30 @@ export default function RoomPage() {
         console.log('[room] first render in', Math.round(performance.now() - bootStart), 'ms, msgs:', sortedMsgs.length)
       }
 
-      // HYDRATE: Fetch profiles and reactions in parallel (non-blocking)
+      // HYDRATE: Fetch profiles, reactions, and active stories in parallel (non-blocking)
       const memberIds = members?.map(m => m.user_id) ?? []
       const msgIds = sortedMsgs.map(m => m.id)
 
-      const [profilesResult, reactionsResult] = await Promise.all([
+      const [profilesResult, reactionsResult, storiesResult] = await Promise.all([
         memberIds.length > 0
           ? supabase.from('profiles').select('id, email, display_name, avatar_url, bio').in('id', memberIds)
           : Promise.resolve({ data: [] }),
         msgIds.length > 0
           ? supabase.from('message_reactions').select('*').in('message_id', msgIds)
+          : Promise.resolve({ data: [] }),
+        // Fetch active stories for room members (created within 24h)
+        memberIds.length > 0
+          ? supabase.from('stories').select('user_id').in('user_id', memberIds).gt('expires_at', new Date().toISOString())
           : Promise.resolve({ data: [] })
       ])
 
       const profiles = profilesResult.data
+
+      // Build set of user IDs with active stories
+      if (storiesResult.data) {
+        const storyUserIds = new Set<string>(storiesResult.data.map((s: { user_id: string }) => s.user_id))
+        setActiveStoryUserIds(storyUserIds)
+      }
 
       setUsers(prev => {
         const next = new Map(prev)
@@ -3237,25 +3251,29 @@ export default function RoomPage() {
             >
               {/* Avatar: DM shows larger avatar, group shows styled icon */}
               {isDM && dmDisplayInfo ? (
-                <div className="relative">
-                  {dmDisplayInfo.avatarUrl ? (
-                    <img
-                      src={dmDisplayInfo.avatarUrl}
-                      alt={dmDisplayInfo.displayName}
-                      className="w-10 h-10 rounded-full object-cover ring-2 ring-white/80 shadow-sm"
-                    />
-                  ) : (
-                    <div className={`w-10 h-10 rounded-full ${dmDisplayInfo.color} flex items-center justify-center ring-2 ring-white/80 shadow-sm`}>
-                      <span className="text-sm font-semibold text-white">{dmDisplayInfo.initials}</span>
-                    </div>
-                  )}
-                  {/* Online indicator - refined */}
-                  {dmDisplayInfo.isOnline && (
-                    <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-400 rounded-full border-[2.5px] border-white shadow-sm" />
-                  )}
-                </div>
+                <StoryRing active={activeStoryUserIds.has(dmDisplayInfo.userId)} size="sm">
+                  <div className="relative">
+                    {dmDisplayInfo.avatarUrl ? (
+                      <img
+                        src={dmDisplayInfo.avatarUrl}
+                        alt={dmDisplayInfo.displayName}
+                        className="w-10 h-10 rounded-full object-cover ring-2 ring-white/80 shadow-sm"
+                      />
+                    ) : (
+                      <div className={`w-10 h-10 rounded-full ${dmDisplayInfo.color} flex items-center justify-center ring-2 ring-white/80 shadow-sm`}>
+                        <span className="text-sm font-semibold text-white">{dmDisplayInfo.initials}</span>
+                      </div>
+                    )}
+                    {/* Online indicator - refined */}
+                    {dmDisplayInfo.isOnline && (
+                      <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-400 rounded-full border-[2.5px] border-white shadow-sm" />
+                    )}
+                  </div>
+                </StoryRing>
               ) : (
-                <GroupAvatarMosaic members={groupMosaicMembers} size="sm" />
+                <StoryRing active={groupMosaicMembers.some(m => activeStoryUserIds.has(m.id))} size="sm">
+                  <GroupAvatarMosaic members={groupMosaicMembers} size="sm" />
+                </StoryRing>
               )}
               <div className="text-left">
                 <h1 className={`chat-header-title flex items-center gap-1.5 ${

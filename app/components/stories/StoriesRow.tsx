@@ -11,18 +11,21 @@ interface StoriesRowProps {
   currentUserId: string
   userAvatarUrl: string | null
   userEmail: string
+  onActiveStoryUsersChange?: (userIds: Set<string>) => void
 }
 
 export interface StoriesRowRef {
   refresh: () => Promise<void>
+  getActiveStoryUserIds: () => Set<string>
 }
 
 export const StoriesRow = forwardRef<StoriesRowRef, StoriesRowProps>(function StoriesRow(
-  { currentUserId, userAvatarUrl, userEmail },
+  { currentUserId, userAvatarUrl, userEmail, onActiveStoryUsersChange },
   ref
 ) {
   const [stories, setStories] = useState<Story[]>([])
   const [storyUsers, setStoryUsers] = useState<StoryUser[]>([])
+  const [activeStoryUserIds, setActiveStoryUserIds] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
   const [showViewer, setShowViewer] = useState(false)
   const [viewerInitialIndex, setViewerInitialIndex] = useState(0)
@@ -37,19 +40,26 @@ export const StoriesRow = forwardRef<StoriesRowRef, StoriesRowProps>(function St
 
       if (error) throw error
 
-      setStories(data || [])
-      setStoryUsers(groupStoriesByUser(data || []))
+      const storiesData = data || []
+      setStories(storiesData)
+      setStoryUsers(groupStoriesByUser(storiesData))
+
+      // Build set of user IDs with active stories
+      const userIds = new Set<string>(storiesData.map((s: Story) => s.story_user_id))
+      setActiveStoryUserIds(userIds)
+      onActiveStoryUsersChange?.(userIds)
     } catch (err) {
       console.error('Failed to fetch stories:', err)
     } finally {
       setLoading(false)
     }
-  }, [currentUserId])
+  }, [currentUserId, onActiveStoryUsersChange])
 
-  // Expose refresh function to parent
+  // Expose refresh function and active story user IDs to parent
   useImperativeHandle(ref, () => ({
-    refresh: fetchStories
-  }), [fetchStories])
+    refresh: fetchStories,
+    getActiveStoryUserIds: () => activeStoryUserIds
+  }), [fetchStories, activeStoryUserIds])
 
   useEffect(() => {
     fetchStories()

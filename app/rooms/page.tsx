@@ -7,6 +7,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { GroupAvatarMosaic, type GroupMember } from '@/app/components/GroupAvatarMosaic'
 import { StoriesRow, type StoriesRowRef } from '@/app/components/stories'
+import { StoryRing } from '@/app/components/StoryRing'
 import { usePushNotifications } from '@/lib/usePushNotifications'
 import { useThemePreference, type ThemePreference } from '@/lib/useThemePreference'
 
@@ -154,8 +155,16 @@ function Modal({
   )
 }
 
-// Chat avatar component
-function ChatAvatar({ chat, size = 'md' }: { chat: ChatItem; size?: 'sm' | 'md' | 'lg' }) {
+// Chat avatar component with optional story ring
+function ChatAvatar({
+  chat,
+  size = 'md',
+  hasActiveStory = false,
+}: {
+  chat: ChatItem
+  size?: 'sm' | 'md' | 'lg'
+  hasActiveStory?: boolean
+}) {
   const sizeClasses = {
     sm: 'w-11 h-11 text-sm',
     md: 'w-14 h-14 text-base',
@@ -165,36 +174,45 @@ function ChatAvatar({ chat, size = 'md' }: { chat: ChatItem; size?: 'sm' | 'md' 
   const px = sizePixels[size]
 
   if (chat.type === 'dm' && chat.other_member) {
-    if (chat.other_member.avatarUrl) {
-      return (
-        <Image
-          src={chat.other_member.avatarUrl}
-          alt={chat.other_member.displayName}
-          width={px}
-          height={px}
-          className={`${sizeClasses[size]} rounded-full object-cover flex-shrink-0 ring-1 ring-stone-200/50 dark:ring-stone-600/50`}
-        />
-      )
-    }
-    return (
-      <div className={`${sizeClasses[size]} rounded-full ${chat.other_member.color} flex items-center justify-center text-white font-medium flex-shrink-0 ring-1 ring-stone-200/50 dark:ring-stone-600/50`}>
+    const avatar = chat.other_member.avatarUrl ? (
+      <Image
+        src={chat.other_member.avatarUrl}
+        alt={chat.other_member.displayName}
+        width={px}
+        height={px}
+        className={`${sizeClasses[size]} rounded-full object-cover flex-shrink-0`}
+      />
+    ) : (
+      <div className={`${sizeClasses[size]} rounded-full ${chat.other_member.color} flex items-center justify-center text-white font-medium flex-shrink-0`}>
         {chat.other_member.initials}
       </div>
+    )
+
+    return (
+      <StoryRing active={hasActiveStory} size={size}>
+        {avatar}
+      </StoryRing>
     )
   }
 
   // Group avatar - use mosaic if we have members
   if (chat.group_members && chat.group_members.length > 0) {
-    return <GroupAvatarMosaic members={chat.group_members} size={size} />
+    return (
+      <StoryRing active={hasActiveStory} size={size}>
+        <GroupAvatarMosaic members={chat.group_members} size={size} />
+      </StoryRing>
+    )
   }
 
   // Fallback group avatar
   return (
-    <div className={`${sizeClasses[size]} rounded-full bg-gradient-to-br from-stone-100 to-stone-200 dark:from-stone-700 dark:to-stone-800 flex items-center justify-center flex-shrink-0 ring-1 ring-stone-200/50 dark:ring-stone-600/50`}>
-      <svg className="w-7 h-7 text-stone-400 dark:text-stone-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
-      </svg>
-    </div>
+    <StoryRing active={hasActiveStory} size={size}>
+      <div className={`${sizeClasses[size]} rounded-full bg-gradient-to-br from-stone-100 to-stone-200 dark:from-stone-700 dark:to-stone-800 flex items-center justify-center flex-shrink-0`}>
+        <svg className="w-7 h-7 text-stone-400 dark:text-stone-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
+        </svg>
+      </div>
+    </StoryRing>
   )
 }
 
@@ -203,12 +221,25 @@ const RoomListItem = memo(function RoomListItem({
   chat,
   profiles,
   currentUserId,
+  activeStoryUserIds,
 }: {
   chat: ChatItem
   profiles: Map<string, Profile>
   currentUserId: string | null
+  activeStoryUserIds: Set<string>
 }) {
   const hasUnread = chat.unread_count > 0
+
+  // Check if any member of this chat has an active story
+  const hasActiveStory = useMemo(() => {
+    if (chat.type === 'dm' && chat.other_member) {
+      return activeStoryUserIds.has(chat.other_member.id)
+    }
+    if (chat.group_members) {
+      return chat.group_members.some(m => activeStoryUserIds.has(m.id))
+    }
+    return false
+  }, [chat, activeStoryUserIds])
 
   const displayName = useMemo(() => {
     if (chat.type === 'dm' && chat.other_member) {
@@ -268,7 +299,7 @@ const RoomListItem = memo(function RoomListItem({
         ${hasUnread ? 'bg-stone-50/60 dark:bg-stone-800/40' : 'bg-white dark:bg-stone-900'}
         hover:bg-stone-50 dark:hover:bg-stone-800/60 active:bg-stone-100 dark:active:bg-stone-800`}
     >
-      <ChatAvatar chat={chat} />
+      <ChatAvatar chat={chat} hasActiveStory={hasActiveStory} />
 
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline justify-between gap-3">
@@ -586,6 +617,9 @@ export default function ChatsPage() {
   const [pullDistance, setPullDistance] = useState(0)
   const storiesRef = useRef<StoriesRowRef>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
+
+  // Active story user IDs for showing story ring on avatars
+  const [activeStoryUserIds, setActiveStoryUserIds] = useState<Set<string>>(new Set())
   const touchStartY = useRef(0)
   const isPulling = useRef(false)
   const PULL_THRESHOLD = 80 // px needed to trigger refresh
@@ -1001,6 +1035,7 @@ export default function ChatsPage() {
               currentUserId={userId}
               userAvatarUrl={userProfile?.avatar_url || null}
               userEmail={userEmail || ''}
+              onActiveStoryUsersChange={setActiveStoryUserIds}
             />
           )}
 
@@ -1024,6 +1059,7 @@ export default function ChatsPage() {
                   chat={chat}
                   profiles={profiles}
                   currentUserId={userId}
+                  activeStoryUserIds={activeStoryUserIds}
                 />
               ))}
             </div>
