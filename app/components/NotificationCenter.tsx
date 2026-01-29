@@ -166,6 +166,24 @@ const getNotificationIcon = (type: string): { icon: ReactNode; bgColor: string }
         ),
         bgColor: 'bg-pink-500',
       }
+    case 'upvote_milestone':
+      return {
+        icon: (
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18" />
+          </svg>
+        ),
+        bgColor: 'bg-green-500',
+      }
+    case 'upvote_whole_group':
+      return {
+        icon: (
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
+          </svg>
+        ),
+        bgColor: 'bg-amber-500',
+      }
     default:
       return {
         icon: (
@@ -205,6 +223,12 @@ const getNotificationText = (notification: NotificationItem): string => {
       return `You were removed from ${notification.metadata?.room_name || notification.room_name || 'a group'}`
     case 'story_reply':
       return `${actorName} replied to your story`
+    case 'upvote_milestone': {
+      const milestone = notification.metadata?.milestone
+      return `Your answer got ${milestone}${milestone === 100 ? '+' : ''} upvote${milestone !== 1 ? 's' : ''}!`
+    }
+    case 'upvote_whole_group':
+      return `Whole group upvoted your answer!`
     default:
       return 'You have a new notification'
   }
@@ -218,6 +242,15 @@ const getSecondaryText = (notification: NotificationItem): string | null => {
   }
   if (notification.type === 'story_reply' && notification.metadata?.reply_preview) {
     return `"${notification.metadata.reply_preview}"`
+  }
+  if (notification.type === 'upvote_milestone' && notification.metadata?.answer_preview) {
+    return `"${notification.metadata.answer_preview}"`
+  }
+  if (notification.type === 'upvote_whole_group') {
+    const roomName = notification.metadata?.room_name || notification.room_name
+    if (roomName) {
+      return `Everyone in ${roomName} upvoted your reply`
+    }
   }
   return null
 }
@@ -329,7 +362,7 @@ export function NotificationCenter({
   const matchesFilter = (type: string, filterType: FilterType): boolean => {
     switch (filterType) {
       case 'social':
-        return ['followed_you', 'unfollowed_you', 'story_reply', 'story_view_milestone'].includes(type)
+        return ['followed_you', 'unfollowed_you', 'story_reply', 'story_view_milestone', 'upvote_milestone', 'upvote_whole_group'].includes(type)
       case 'turns':
         return ['your_turn', 'nudged_you', 'turn_skipped', 'turn_completed'].includes(type)
       case 'groups':
@@ -402,6 +435,13 @@ export function NotificationCenter({
         }
         break
       case 'story_reply':
+        if (notification.room_id) {
+          onNavigateToRoom(notification.room_id)
+        }
+        break
+      case 'upvote_milestone':
+      case 'upvote_whole_group':
+        // Navigate to room - message_id is stored for potential scroll-to
         if (notification.room_id) {
           onNavigateToRoom(notification.room_id)
         }
