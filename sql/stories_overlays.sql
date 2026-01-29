@@ -8,7 +8,10 @@ ALTER TABLE stories ADD COLUMN IF NOT EXISTS overlays JSONB;
 -- Add comment describing the expected structure
 COMMENT ON COLUMN stories.overlays IS 'Story overlays in format: { textLayers: [...], dimOverlay: boolean }. textLayers contains objects with: id, text, x, y, scale, rotation, font, size, color, background, align';
 
--- Update the get_stories_feed function to return overlays
+-- Drop existing function first (return type changed)
+DROP FUNCTION IF EXISTS get_stories_feed(UUID);
+
+-- Recreate with overlays column in return type
 CREATE OR REPLACE FUNCTION get_stories_feed(for_user_id UUID)
 RETURNS TABLE(
   story_id UUID,
