@@ -56,7 +56,12 @@ export async function POST(request: NextRequest) {
 
     if (nudgeError) {
       console.error('Nudge RPC error:', nudgeError)
-      return NextResponse.json({ success: false, error: 'Failed to send nudge' }, { status: 500 })
+      // Return the actual error message for debugging
+      return NextResponse.json({
+        success: false,
+        error: nudgeError.message || 'Failed to send nudge',
+        details: process.env.NODE_ENV === 'development' ? nudgeError : undefined
+      }, { status: 500 })
     }
 
     if (!nudgeResult.success) {
