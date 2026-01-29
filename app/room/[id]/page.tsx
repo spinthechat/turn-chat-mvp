@@ -2153,24 +2153,56 @@ export default function RoomPage() {
     return roomInfo?.prompt_interval_minutes ?? 0
   }, [roomInfo?.prompt_interval_minutes])
 
+  // For countdown timer - tick counter forces recomputation of isWaitingForCooldown
+  const [tick, setTick] = useState(0)
+
   // Check if we're waiting for cooldown
   const waitingUntil = useMemo(() => {
     if (!turnSession?.waiting_until) return null
     return new Date(turnSession.waiting_until)
   }, [turnSession?.waiting_until])
 
+  // CRITICAL: Include tick in dependencies so this recomputes as time passes
+  // Without tick, the memo caches the result and never detects when cooldown ends
   const isWaitingForCooldown = useMemo(() => {
     if (!waitingUntil) return false
     return waitingUntil > new Date()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [waitingUntil, tick])
+
+  // Run interval whenever we have a waiting_until timestamp
+  // This catches both when we're waiting AND when cooldown ends
+  useEffect(() => {
+    if (!waitingUntil) return
+    // Check every minute (60s) to update countdown and detect cooldown end
+    const interval = setInterval(() => setTick(t => t + 1), 60000)
+    // Also check immediately on mount/change
+    setTick(t => t + 1)
+    return () => clearInterval(interval)
   }, [waitingUntil])
 
-  // For countdown timer - force re-render every minute when waiting
-  const [, setTick] = useState(0)
+  // Dev-only debug logging for cooldown state
   useEffect(() => {
-    if (!isWaitingForCooldown) return
-    const interval = setInterval(() => setTick(t => t + 1), 60000)
-    return () => clearInterval(interval)
-  }, [isWaitingForCooldown])
+    if (process.env.NODE_ENV !== 'development') return
+    if (!turnSession?.waiting_until) return
+
+    const now = new Date()
+    const serverWaitingUntil = turnSession.waiting_until
+    const parsedWaitingUntil = waitingUntil
+    const remaining = parsedWaitingUntil ? parsedWaitingUntil.getTime() - now.getTime() : 0
+    const remainingMins = Math.round(remaining / 60000)
+
+    console.log('[Cooldown Debug]', {
+      serverTimestamp: serverWaitingUntil,
+      parsedDate: parsedWaitingUntil?.toISOString(),
+      nowLocal: now.toISOString(),
+      isWaiting: isWaitingForCooldown,
+      remainingMs: remaining,
+      remainingMins,
+      tick,
+      roomFrequency,
+    })
+  }, [turnSession?.waiting_until, waitingUntil, isWaitingForCooldown, tick, roomFrequency])
 
   // Measure header and input heights for fixed layout offsets
   // Uses ResizeObserver to continuously track changes (critical for turn prompt card)
