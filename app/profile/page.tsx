@@ -50,8 +50,14 @@ export default function ProfilePage() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
-  // Stats
-  const [stats, setStats] = useState<ProfileStats | null>(null)
+  // Stats - default to zeros so UI always renders
+  const [stats, setStats] = useState<ProfileStats>({
+    followers_count: 0,
+    following_count: 0,
+    groups_count: 0,
+    mutual_groups_count: 0
+  })
+  const [statsLoaded, setStatsLoaded] = useState(false)
 
   // List modal
   const [activeList, setActiveList] = useState<ListType>(null)
@@ -86,12 +92,29 @@ export default function ProfilePage() {
       }
 
       // Load stats
-      const { data: statsData } = await supabase.rpc('get_profile_stats', {
-        p_user_id: authData.user.id
-      })
-      if (statsData && statsData[0]) {
-        setStats(statsData[0])
+      try {
+        const { data: statsData, error: statsError } = await supabase.rpc('get_profile_stats', {
+          p_user_id: authData.user.id
+        })
+
+        if (statsError) {
+          console.error('Error loading stats:', statsError)
+        } else if (statsData) {
+          // RPC returns array for TABLE return type
+          const statsRow = Array.isArray(statsData) ? statsData[0] : statsData
+          if (statsRow) {
+            setStats({
+              followers_count: statsRow.followers_count ?? 0,
+              following_count: statsRow.following_count ?? 0,
+              groups_count: statsRow.groups_count ?? 0,
+              mutual_groups_count: statsRow.mutual_groups_count ?? 0
+            })
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load stats:', err)
       }
+      setStatsLoaded(true)
 
       setLoading(false)
     }
@@ -360,32 +383,45 @@ export default function ProfilePage() {
           <p className="text-sm text-stone-500 dark:text-stone-400">{profile?.email}</p>
         </div>
 
-        {/* Stats */}
-        {stats && (
-          <div className="grid grid-cols-3 gap-2 mb-8 bg-white dark:bg-stone-800 rounded-2xl p-4 border border-stone-200/50 dark:border-stone-700/50">
-            <button
-              onClick={() => openList('followers')}
-              className="flex flex-col items-center py-2 rounded-xl hover:bg-stone-50 dark:hover:bg-stone-700 transition-colors"
-            >
+        {/* Stats - always rendered, shows 0 if no data */}
+        <div className="grid grid-cols-3 gap-2 mb-8 bg-white dark:bg-stone-800 rounded-2xl p-4 border border-stone-200/50 dark:border-stone-700/50">
+          <button
+            onClick={() => openList('followers')}
+            disabled={!statsLoaded}
+            className="flex flex-col items-center py-2 rounded-xl hover:bg-stone-50 dark:hover:bg-stone-700 transition-colors disabled:opacity-50"
+          >
+            {statsLoaded ? (
               <span className="text-xl font-bold text-stone-900 dark:text-stone-50">{stats.followers_count}</span>
-              <span className="text-xs text-stone-500 dark:text-stone-400">Followers</span>
-            </button>
-            <button
-              onClick={() => openList('following')}
-              className="flex flex-col items-center py-2 rounded-xl hover:bg-stone-50 dark:hover:bg-stone-700 transition-colors"
-            >
+            ) : (
+              <div className="h-7 w-8 bg-stone-100 dark:bg-stone-700 rounded animate-pulse" />
+            )}
+            <span className="text-xs text-stone-500 dark:text-stone-400">Followers</span>
+          </button>
+          <button
+            onClick={() => openList('following')}
+            disabled={!statsLoaded}
+            className="flex flex-col items-center py-2 rounded-xl hover:bg-stone-50 dark:hover:bg-stone-700 transition-colors disabled:opacity-50"
+          >
+            {statsLoaded ? (
               <span className="text-xl font-bold text-stone-900 dark:text-stone-50">{stats.following_count}</span>
-              <span className="text-xs text-stone-500 dark:text-stone-400">Following</span>
-            </button>
-            <button
-              onClick={() => openList('groups')}
-              className="flex flex-col items-center py-2 rounded-xl hover:bg-stone-50 dark:hover:bg-stone-700 transition-colors"
-            >
+            ) : (
+              <div className="h-7 w-8 bg-stone-100 dark:bg-stone-700 rounded animate-pulse" />
+            )}
+            <span className="text-xs text-stone-500 dark:text-stone-400">Following</span>
+          </button>
+          <button
+            onClick={() => openList('groups')}
+            disabled={!statsLoaded}
+            className="flex flex-col items-center py-2 rounded-xl hover:bg-stone-50 dark:hover:bg-stone-700 transition-colors disabled:opacity-50"
+          >
+            {statsLoaded ? (
               <span className="text-xl font-bold text-stone-900 dark:text-stone-50">{stats.groups_count}</span>
-              <span className="text-xs text-stone-500 dark:text-stone-400">Groups</span>
-            </button>
-          </div>
-        )}
+            ) : (
+              <div className="h-7 w-8 bg-stone-100 dark:bg-stone-700 rounded animate-pulse" />
+            )}
+            <span className="text-xs text-stone-500 dark:text-stone-400">Groups</span>
+          </button>
+        </div>
 
         {/* Edit Form */}
         <div className="bg-white dark:bg-stone-800 rounded-2xl p-5 border border-stone-200/50 dark:border-stone-700/50 space-y-5">
