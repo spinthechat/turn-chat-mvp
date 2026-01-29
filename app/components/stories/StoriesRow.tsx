@@ -12,6 +12,7 @@ interface StoriesRowProps {
   userAvatarUrl: string | null
   userEmail: string
   onActiveStoryUsersChange?: (userIds: Set<string>) => void
+  onNavigateToRoom?: (roomId: string) => void
 }
 
 export interface StoriesRowRef {
@@ -20,7 +21,7 @@ export interface StoriesRowRef {
 }
 
 export const StoriesRow = forwardRef<StoriesRowRef, StoriesRowProps>(function StoriesRow(
-  { currentUserId, userAvatarUrl, userEmail, onActiveStoryUsersChange },
+  { currentUserId, userAvatarUrl, userEmail, onActiveStoryUsersChange, onNavigateToRoom },
   ref
 ) {
   const [stories, setStories] = useState<Story[]>([])
@@ -175,6 +176,7 @@ export const StoriesRow = forwardRef<StoriesRowRef, StoriesRowProps>(function St
           currentUserId={currentUserId}
           onClose={() => setShowViewer(false)}
           onStoryViewed={handleStoryViewed}
+          onNavigateToRoom={onNavigateToRoom}
         />
       )}
 

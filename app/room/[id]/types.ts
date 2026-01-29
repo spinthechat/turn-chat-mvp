@@ -1,13 +1,24 @@
 // Shared types for room components
 
+export type StorySnapshot = {
+  image_url: string
+  created_at: string
+  expires_at: string
+  author_id: string
+  author_name: string
+  overlay_text: string | null
+}
+
 export type Msg = {
   id: string
   room_id: string
   user_id: string | null
-  type: 'chat' | 'turn_response' | 'system' | 'image'
+  type: 'chat' | 'turn_response' | 'system' | 'image' | 'story_reply'
   content: string
   created_at: string
   reply_to_message_id: string | null
+  story_id?: string | null
+  story_snapshot?: StorySnapshot | null
 }
 
 export type Reaction = {

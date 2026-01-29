@@ -323,6 +323,7 @@ const MessageBubble = memo(function MessageBubble({
   const isTurnResponse = message.type === 'turn_response'
   const isSystem = message.type === 'system'
   const isImage = message.type === 'image'
+  const isStoryReply = message.type === 'story_reply'
 
   // Grouping-aware flags
   const isFirstInGroup = groupPosition === 'first' || groupPosition === 'single'
@@ -447,6 +448,67 @@ const MessageBubble = memo(function MessageBubble({
               </svg>
             )}
             {previewText}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Story reply preview component - shows story thumbnail and author
+  const StoryReplyPreview = () => {
+    if (!isStoryReply || !message.story_snapshot) return null
+
+    const snapshot = message.story_snapshot
+    const isExpired = new Date(snapshot.expires_at) < new Date()
+
+    return (
+      <div
+        className={`mb-2 rounded-xl overflow-hidden ${
+          isMe ? 'bg-white/10' : 'bg-stone-100 dark:bg-stone-800'
+        }`}
+      >
+        <div className="flex gap-2 p-2">
+          {/* Story thumbnail */}
+          <div className="flex-shrink-0 w-12 h-16 rounded-lg overflow-hidden relative">
+            <img
+              src={snapshot.image_url}
+              alt=""
+              className={`w-full h-full object-cover ${isExpired ? 'opacity-50' : ''}`}
+              loading="lazy"
+            />
+            {isExpired && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                <svg className="w-4 h-4 text-white/80" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+            )}
+          </div>
+          <div className="flex-1 min-w-0 flex flex-col justify-center">
+            <div className={`text-[10px] font-medium uppercase tracking-wide ${
+              isMe ? 'text-white/60' : 'text-stone-400 dark:text-stone-500'
+            }`}>
+              Replied to story
+            </div>
+            <div className={`text-xs font-semibold truncate ${
+              isMe ? 'text-white/90' : 'text-stone-700 dark:text-stone-300'
+            }`}>
+              {snapshot.author_name}
+            </div>
+            {snapshot.overlay_text && (
+              <div className={`text-[11px] truncate mt-0.5 ${
+                isMe ? 'text-white/70' : 'text-stone-500 dark:text-stone-400'
+              }`}>
+                &ldquo;{snapshot.overlay_text}&rdquo;
+              </div>
+            )}
+            {isExpired && (
+              <div className={`text-[10px] mt-0.5 ${
+                isMe ? 'text-white/50' : 'text-stone-400'
+              }`}>
+                Story expired
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -945,6 +1007,7 @@ const MessageBubble = memo(function MessageBubble({
               : `chat-bubble-other ${showContextMenu ? 'border-transparent' : ''}`
           }`}>
             <QuotedReply />
+            <StoryReplyPreview />
             <span className="msg-text text-[15px] leading-[1.45] whitespace-pre-wrap block">{message.content}</span>
             <div className={`msg-timestamp mt-1.5 ${isMe ? 'text-right' : ''}`}>
               {formatTime(message.created_at)}

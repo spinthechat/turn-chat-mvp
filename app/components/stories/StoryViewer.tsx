@@ -19,6 +19,7 @@ interface StoryViewerProps {
   currentUserId: string
   onClose: () => void
   onStoryViewed: (storyId: string) => void
+  onNavigateToRoom?: (roomId: string) => void
 }
 
 export function StoryViewer({
@@ -27,6 +28,7 @@ export function StoryViewer({
   currentUserId,
   onClose,
   onStoryViewed,
+  onNavigateToRoom,
 }: StoryViewerProps) {
   const [currentUserIndex, setCurrentUserIndex] = useState(initialUserIndex)
   const [currentStoryIndex, setCurrentStoryIndex] = useState(0)
@@ -36,6 +38,13 @@ export function StoryViewer({
   const [viewers, setViewers] = useState<StoryViewerType[]>([])
   const [loadingViewers, setLoadingViewers] = useState(false)
   const [imageLoaded, setImageLoaded] = useState(false)
+
+  // Reply state
+  const [replyText, setReplyText] = useState('')
+  const [isReplying, setIsReplying] = useState(false)
+  const [replyError, setReplyError] = useState<string | null>(null)
+  const [sendingReply, setSendingReply] = useState(false)
+  const replyInputRef = useRef<HTMLInputElement>(null)
 
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const touchStartRef = useRef<{ x: number; y: number } | null>(null)
@@ -192,6 +201,50 @@ export function StoryViewer({
     }
   }
 
+  // Send story reply
+  const handleSendReply = async () => {
+    if (!currentStory || !replyText.trim() || sendingReply) return
+
+    setSendingReply(true)
+    setReplyError(null)
+
+    try {
+      const { data, error } = await supabase.rpc('send_story_reply', {
+        p_story_id: currentStory.story_id,
+        p_text: replyText.trim(),
+      })
+
+      if (error) throw error
+
+      // Navigate to DM room
+      if (data && data[0]?.room_id && onNavigateToRoom) {
+        onClose()
+        onNavigateToRoom(data[0].room_id)
+      } else {
+        // Fallback: just close
+        onClose()
+      }
+    } catch (err) {
+      console.error('Failed to send story reply:', err)
+      setReplyError(err instanceof Error ? err.message : 'Failed to send reply')
+      setSendingReply(false)
+    }
+  }
+
+  // Handle reply input focus
+  const handleReplyFocus = () => {
+    setIsReplying(true)
+    setIsPaused(true)
+  }
+
+  // Handle reply input blur
+  const handleReplyBlur = () => {
+    if (!replyText.trim()) {
+      setIsReplying(false)
+    }
+    setIsPaused(false)
+  }
+
   // Preload next image
   useEffect(() => {
     const nextStory = currentUser?.stories[currentStoryIndex + 1] ||
@@ -293,9 +346,9 @@ export function StoryViewer({
         ))}
       </div>
 
-      {/* Footer - viewers count for own stories */}
-      {isOwnStory && (
-        <div className="absolute bottom-0 left-0 right-0 pb-safe">
+      {/* Footer - viewers count for own stories, reply input for others */}
+      <div className="absolute bottom-0 left-0 right-0 pb-safe z-10">
+        {isOwnStory ? (
           <button
             onClick={() => {
               setShowViewers(true)
@@ -311,8 +364,50 @@ export function StoryViewer({
               {currentStory.view_count} {currentStory.view_count === 1 ? 'view' : 'views'}
             </span>
           </button>
-        </div>
-      )}
+        ) : (
+          <div className="px-4 py-3">
+            <div className="flex items-center gap-2">
+              <div className="flex-1 relative">
+                <input
+                  ref={replyInputRef}
+                  type="text"
+                  value={replyText}
+                  onChange={(e) => setReplyText(e.target.value)}
+                  onFocus={handleReplyFocus}
+                  onBlur={handleReplyBlur}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault()
+                      handleSendReply()
+                    }
+                  }}
+                  placeholder={`Reply to ${displayName}...`}
+                  className="w-full px-4 py-2.5 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full text-white placeholder-white/50 text-sm focus:outline-none focus:border-white/40 focus:bg-white/15 transition-colors"
+                  disabled={sendingReply}
+                />
+              </div>
+              {(replyText.trim() || isReplying) && (
+                <button
+                  onClick={handleSendReply}
+                  disabled={!replyText.trim() || sendingReply}
+                  className="p-2.5 bg-white text-black rounded-full disabled:opacity-50 transition-opacity flex-shrink-0"
+                >
+                  {sendingReply ? (
+                    <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                  ) : (
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+                    </svg>
+                  )}
+                </button>
+              )}
+            </div>
+            {replyError && (
+              <p className="mt-2 text-xs text-red-400 text-center">{replyError}</p>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* Viewers modal */}
       {showViewers && (

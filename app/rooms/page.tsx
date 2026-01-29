@@ -1036,6 +1036,7 @@ export default function ChatsPage() {
               userAvatarUrl={userProfile?.avatar_url || null}
               userEmail={userEmail || ''}
               onActiveStoryUsersChange={setActiveStoryUserIds}
+              onNavigateToRoom={(roomId) => router.push(`/room/${roomId}`)}
             />
           )}
 
