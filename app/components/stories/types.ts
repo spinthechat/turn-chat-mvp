@@ -78,6 +78,17 @@ export function groupStoriesByUser(stories: Story[]): StoryUser[] {
     }
   }
 
+  // Sort each user's stories chronologically (oldest first, like Instagram)
+  for (const user of userMap.values()) {
+    user.stories.sort((a, b) => {
+      const timeA = new Date(a.created_at).getTime()
+      const timeB = new Date(b.created_at).getTime()
+      if (timeA !== timeB) return timeA - timeB
+      // Tie-break by story_id for stable ordering
+      return a.story_id.localeCompare(b.story_id)
+    })
+  }
+
   // Sort: users with unseen stories first
   return Array.from(userMap.values()).sort((a, b) => {
     if (a.has_unseen && !b.has_unseen) return -1
