@@ -24,7 +24,6 @@ import {
   LoadingState,
   PhotoActionSheet,
   PhotoLightbox,
-  ProfileDrawer,
   MessageSelectionOverlay,
   EmojiPickerPortal,
 } from './components'
@@ -1963,7 +1962,6 @@ export default function RoomPage() {
   const [roomInfo, setRoomInfo] = useState<RoomInfo | null>(null)
   const [copied, setCopied] = useState(false)
   const [showGroupDetails, setShowGroupDetails] = useState(false)
-  const [selectedProfileUserId, setSelectedProfileUserId] = useState<string | null>(null)
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set())
   const [activeStoryUserIds, setActiveStoryUserIds] = useState<Set<string>>(new Set())
 
@@ -1973,7 +1971,7 @@ export default function RoomPage() {
   const [storyViewerInitialIndex, setStoryViewerInitialIndex] = useState(0)
 
   // Derived state: any drawer/modal is open (hides chat input to prevent layering issues)
-  const isAnyDrawerOpen = showGroupDetails || selectedProfileUserId !== null
+  const isAnyDrawerOpen = showGroupDetails
 
   // For DM rooms, compute the "other member" display info
   const dmDisplayInfo = useMemo(() => {
@@ -3328,8 +3326,8 @@ export default function RoomPage() {
     }
   }
 
-  const handleProfileClick = (userId: string) => {
-    setSelectedProfileUserId(userId)
+  const handleProfileClick = (targetUserId: string) => {
+    router.push(`/profile/${targetUserId}`)
   }
 
   // Handle viewing a user's story from profile drawer
@@ -3716,27 +3714,6 @@ export default function RoomPage() {
         onUpdateRoomName={updateRoomName}
         onUpdatePromptMode={updateRoomPromptMode}
         onProfileClick={handleProfileClick}
-      />
-
-      {/* Profile Drawer */}
-      <ProfileDrawer
-        isOpen={selectedProfileUserId !== null}
-        onClose={() => setSelectedProfileUserId(null)}
-        user={selectedProfileUserId ? users.get(selectedProfileUserId) ?? null : null}
-        currentUserId={userId}
-        onStartDM={handleStartDM}
-        onFollowChange={(userId, isFollowing) => {
-          // Update activeStoryUserIds when follow status changes
-          setActiveStoryUserIds(prev => {
-            const next = new Set(prev)
-            if (!isFollowing) {
-              next.delete(userId)
-            }
-            return next
-          })
-        }}
-        hasActiveStory={selectedProfileUserId ? activeStoryUserIds.has(selectedProfileUserId) : false}
-        onViewStory={handleViewStory}
       />
 
       {/* Story Viewer */}
