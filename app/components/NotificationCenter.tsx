@@ -184,6 +184,15 @@ const getNotificationIcon = (type: string): { icon: ReactNode; bgColor: string }
         ),
         bgColor: 'bg-amber-500',
       }
+    case 'poked_you':
+      return {
+        icon: (
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M10.05 4.575a1.575 1.575 0 10-3.15 0v3m3.15-3v-1.5a1.575 1.575 0 013.15 0v1.5m-3.15 0l.075 5.925m3.075.75V4.575m0 0a1.575 1.575 0 013.15 0V15M6.9 7.575a1.575 1.575 0 10-3.15 0v8.175a6.75 6.75 0 006.75 6.75h2.018a5.25 5.25 0 003.712-1.538l1.732-1.732a5.25 5.25 0 001.538-3.712l.003-2.024a.668.668 0 01.198-.471 1.575 1.575 0 10-2.228-2.228 3.818 3.818 0 00-1.12 2.687M6.9 7.575V12m6.27 4.318A4.49 4.49 0 0116.35 15" />
+          </svg>
+        ),
+        bgColor: 'bg-amber-500',
+      }
     default:
       return {
         icon: (
@@ -229,6 +238,8 @@ const getNotificationText = (notification: NotificationItem): string => {
     }
     case 'upvote_whole_group':
       return `Whole group upvoted your answer!`
+    case 'poked_you':
+      return `${actorName} poked you 👋`
     default:
       return 'You have a new notification'
   }
@@ -362,7 +373,7 @@ export function NotificationCenter({
   const matchesFilter = (type: string, filterType: FilterType): boolean => {
     switch (filterType) {
       case 'social':
-        return ['followed_you', 'unfollowed_you', 'story_reply', 'story_view_milestone', 'upvote_milestone', 'upvote_whole_group'].includes(type)
+        return ['followed_you', 'unfollowed_you', 'story_reply', 'story_view_milestone', 'upvote_milestone', 'upvote_whole_group', 'poked_you'].includes(type)
       case 'turns':
         return ['your_turn', 'nudged_you', 'turn_skipped', 'turn_completed'].includes(type)
       case 'groups':
@@ -420,6 +431,7 @@ export function NotificationCenter({
     switch (notification.type) {
       case 'followed_you':
       case 'unfollowed_you':
+      case 'poked_you':
         if (notification.actor_user_id) {
           onNavigateToProfile(notification.actor_user_id)
         }
