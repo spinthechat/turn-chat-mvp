@@ -22,6 +22,23 @@ type ProfilePhoto = {
   position: number
 }
 
+type UserListItem = {
+  user_id: string
+  email: string
+  display_name: string | null
+  avatar_url: string | null
+  mutual_groups_count: number
+  follow_status: 'explicit' | 'implicit' | 'none' | 'unfollowed'
+}
+
+type GroupListItem = {
+  room_id: string
+  room_name: string
+  member_count: number
+}
+
+type ListType = 'followers' | 'following' | 'groups' | 'mutual_groups' | null
+
 // Haptic feedback helper
 function hapticTick() {
   if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
@@ -85,6 +102,12 @@ export function ProfileDrawer({
   // Flashbox YouTube
   const [flashboxVideoId, setFlashboxVideoId] = useState<string | null>(null)
 
+  // List modal state
+  const [activeList, setActiveList] = useState<ListType>(null)
+  const [listData, setListData] = useState<UserListItem[] | GroupListItem[]>([])
+  const [listLoading, setListLoading] = useState(false)
+  const [followingInProgress, setFollowingInProgress] = useState<Set<string>>(new Set())
+
   // Derived state
   const isFollowing = followStatus === 'explicit' || followStatus === 'implicit'
   const isImplicit = followStatus === 'implicit'
@@ -100,6 +123,8 @@ export function ProfileDrawer({
       setGalleryLoading(true)
       setGalleryViewerIndex(null)
       setFlashboxVideoId(null)
+      setActiveList(null)
+      setListData([])
       return
     }
 
@@ -323,6 +348,109 @@ export function ProfileDrawer({
     setShowPhotoViewer(true)
   }, [])
 
+  // Open list modal
+  const openList = useCallback(async (type: ListType) => {
+    if (!user || !type) return
+
+    setActiveList(type)
+    setListLoading(true)
+    setListData([])
+
+    try {
+      let data
+      if (type === 'followers') {
+        const result = await supabase.rpc('get_followers_list', { p_user_id: user.id })
+        data = result.data
+      } else if (type === 'following') {
+        const result = await supabase.rpc('get_following_list', { p_user_id: user.id })
+        data = result.data
+      } else if (type === 'groups') {
+        // get_user_groups_list uses auth.uid(), only works for viewing your own groups
+        const result = await supabase.rpc('get_user_groups_list', {})
+        data = result.data
+      } else if (type === 'mutual_groups' && currentUserId) {
+        const result = await supabase.rpc('get_mutual_groups_list', { p_other_user_id: user.id })
+        data = result.data
+      }
+      setListData(data || [])
+    } catch (err) {
+      console.error('Failed to load list:', err)
+    } finally {
+      setListLoading(false)
+    }
+  }, [user, currentUserId])
+
+  // Handle follow toggle in list
+  const handleListFollowToggle = useCallback(async (userId: string, currentStatus: string) => {
+    if (followingInProgress.has(userId)) return
+
+    setFollowingInProgress(prev => new Set(prev).add(userId))
+
+    const isCurrentlyFollowing = currentStatus === 'explicit' || currentStatus === 'implicit'
+
+    // Optimistic update
+    setListData(prev =>
+      (prev as UserListItem[]).map(item =>
+        item.user_id === userId
+          ? { ...item, follow_status: isCurrentlyFollowing ? 'unfollowed' : 'explicit' as UserListItem['follow_status'] }
+          : item
+      )
+    )
+
+    try {
+      if (isCurrentlyFollowing) {
+        await supabase.rpc('unfollow_user', { p_following_id: userId })
+      } else {
+        await supabase.rpc('follow_user', { p_following_id: userId })
+      }
+    } catch (err) {
+      console.error('Follow toggle failed:', err)
+      // Revert optimistic update
+      setListData(prev =>
+        (prev as UserListItem[]).map(item =>
+          item.user_id === userId
+            ? { ...item, follow_status: currentStatus as UserListItem['follow_status'] }
+            : item
+        )
+      )
+    } finally {
+      setFollowingInProgress(prev => {
+        const next = new Set(prev)
+        next.delete(userId)
+        return next
+      })
+    }
+  }, [followingInProgress])
+
+  // Helper functions
+  const getInitials = (email: string, name?: string | null): string => {
+    if (name) {
+      const parts = name.trim().split(/\s+/)
+      if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase()
+      if (parts[0].length >= 2) return parts[0].slice(0, 2).toUpperCase()
+      return parts[0].toUpperCase()
+    }
+    const emailName = email.split('@')[0]
+    const cleaned = emailName.replace(/[0-9]/g, '')
+    const parts = cleaned.split(/[._-]/).filter(p => p.length > 0)
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase()
+    if (cleaned.length >= 2) return cleaned.slice(0, 2).toUpperCase()
+    return cleaned.toUpperCase() || '??'
+  }
+
+  const getDisplayName = (email: string, name?: string | null): string => {
+    if (name) return name
+    const emailName = email.split('@')[0]
+    return emailName
+      .replace(/[._-]/g, ' ')
+      .replace(/[0-9]/g, '')
+      .trim()
+      .split(' ')
+      .filter(p => p.length > 0)
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ') || emailName
+  }
+
   if (!isOpen || !user) return null
 
   const isOwnProfile = user.id === currentUserId
@@ -406,39 +534,55 @@ export function ProfileDrawer({
 
           {/* Stats */}
           <div className={`grid ${isOwnProfile ? 'grid-cols-3' : 'grid-cols-4'} gap-1 mb-6 bg-stone-50 dark:bg-stone-800 rounded-xl p-3`}>
-            <div className="flex flex-col items-center py-2">
+            <button
+              onClick={() => openList('followers')}
+              disabled={!statsLoaded}
+              className="flex flex-col items-center py-2 rounded-lg hover:bg-stone-100 dark:hover:bg-stone-700 transition-colors disabled:opacity-50"
+            >
               {statsLoaded ? (
                 <span className="text-lg font-bold text-stone-900 dark:text-stone-50">{stats.followers_count}</span>
               ) : (
                 <div className="h-6 w-6 bg-stone-200 dark:bg-stone-700 rounded animate-pulse" />
               )}
               <span className="text-[10px] text-stone-500 dark:text-stone-400">Followers</span>
-            </div>
-            <div className="flex flex-col items-center py-2">
+            </button>
+            <button
+              onClick={() => openList('following')}
+              disabled={!statsLoaded}
+              className="flex flex-col items-center py-2 rounded-lg hover:bg-stone-100 dark:hover:bg-stone-700 transition-colors disabled:opacity-50"
+            >
               {statsLoaded ? (
                 <span className="text-lg font-bold text-stone-900 dark:text-stone-50">{stats.following_count}</span>
               ) : (
                 <div className="h-6 w-6 bg-stone-200 dark:bg-stone-700 rounded animate-pulse" />
               )}
               <span className="text-[10px] text-stone-500 dark:text-stone-400">Following</span>
-            </div>
-            <div className="flex flex-col items-center py-2">
+            </button>
+            <button
+              onClick={() => openList('groups')}
+              disabled={!statsLoaded}
+              className="flex flex-col items-center py-2 rounded-lg hover:bg-stone-100 dark:hover:bg-stone-700 transition-colors disabled:opacity-50"
+            >
               {statsLoaded ? (
                 <span className="text-lg font-bold text-stone-900 dark:text-stone-50">{stats.groups_count}</span>
               ) : (
                 <div className="h-6 w-6 bg-stone-200 dark:bg-stone-700 rounded animate-pulse" />
               )}
               <span className="text-[10px] text-stone-500 dark:text-stone-400">Groups</span>
-            </div>
+            </button>
             {!isOwnProfile && (
-              <div className="flex flex-col items-center py-2">
+              <button
+                onClick={() => openList('mutual_groups')}
+                disabled={!statsLoaded}
+                className="flex flex-col items-center py-2 rounded-lg hover:bg-stone-100 dark:hover:bg-stone-700 transition-colors disabled:opacity-50"
+              >
                 {statsLoaded ? (
                   <span className="text-lg font-bold text-stone-900 dark:text-stone-50">{stats.mutual_groups_count}</span>
                 ) : (
                   <div className="h-6 w-6 bg-stone-200 dark:bg-stone-700 rounded animate-pulse" />
                 )}
                 <span className="text-[10px] text-stone-500 dark:text-stone-400">Mutual</span>
-              </div>
+              </button>
             )}
           </div>
 
@@ -638,6 +782,20 @@ export function ProfileDrawer({
           imageUrl={user.avatarUrl}
           displayName={user.displayName}
           onClose={() => setShowPhotoViewer(false)}
+        />
+      )}
+
+      {/* List Modal */}
+      {activeList && (
+        <ListModal
+          type={activeList}
+          data={listData}
+          loading={listLoading}
+          followingInProgress={followingInProgress}
+          onFollowToggle={handleListFollowToggle}
+          onClose={() => setActiveList(null)}
+          getInitials={getInitials}
+          getDisplayName={getDisplayName}
         />
       )}
 
@@ -1071,6 +1229,166 @@ function GalleryViewer({
           </div>
         </div>
       )}
+    </div>
+  )
+
+  return createPortal(content, document.body)
+}
+
+// List Modal component
+function ListModal({
+  type,
+  data,
+  loading,
+  followingInProgress,
+  onFollowToggle,
+  onClose,
+  getInitials,
+  getDisplayName,
+}: {
+  type: ListType
+  data: UserListItem[] | GroupListItem[]
+  loading: boolean
+  followingInProgress: Set<string>
+  onFollowToggle: (userId: string, currentStatus: string) => void
+  onClose: () => void
+  getInitials: (email: string, name?: string | null) => string
+  getDisplayName: (email: string, name?: string | null) => string
+}) {
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+    const originalOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = originalOverflow
+    }
+  }, [])
+
+  if (!mounted) return null
+
+  const isGroupList = type === 'groups' || type === 'mutual_groups'
+
+  const content = (
+    <div className="fixed inset-0 z-[9999] bg-white dark:bg-stone-900 flex flex-col">
+      {/* Header */}
+      <header className="border-b border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800">
+        <div className="max-w-lg mx-auto px-4 h-14 flex items-center gap-3">
+          <button
+            onClick={onClose}
+            className="p-2 -ml-2 rounded-lg text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 hover:bg-stone-100 dark:hover:bg-stone-700 transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <h1 className="text-lg font-semibold text-stone-900 dark:text-stone-50 capitalize">
+            {type === 'mutual_groups' ? 'Mutual Groups' : type}
+          </h1>
+        </div>
+      </header>
+
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-lg mx-auto">
+          {loading ? (
+            <div className="flex items-center justify-center py-16">
+              <div className="w-8 h-8 border-2 border-stone-200 dark:border-stone-700 border-t-stone-600 dark:border-t-stone-300 rounded-full animate-spin" />
+            </div>
+          ) : data.length === 0 ? (
+            <div className="text-center py-16 px-4">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-stone-100 dark:bg-stone-800 flex items-center justify-center">
+                <svg className="w-8 h-8 text-stone-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
+                </svg>
+              </div>
+              <p className="text-stone-500 dark:text-stone-400">
+                {type === 'followers' && 'No followers yet'}
+                {type === 'following' && 'Not following anyone yet'}
+                {type === 'groups' && 'Not in any groups yet'}
+                {type === 'mutual_groups' && 'No mutual groups'}
+              </p>
+            </div>
+          ) : isGroupList ? (
+            <div className="divide-y divide-stone-100 dark:divide-stone-800">
+              {(data as GroupListItem[]).map((group) => (
+                <div
+                  key={group.room_id}
+                  className="flex items-center gap-3 px-4 py-3"
+                >
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center text-white font-semibold">
+                    {group.room_name?.[0]?.toUpperCase() || 'G'}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-stone-900 dark:text-stone-50 truncate">
+                      {group.room_name || 'Unnamed Group'}
+                    </p>
+                    <p className="text-sm text-stone-500 dark:text-stone-400">
+                      {group.member_count} members
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="divide-y divide-stone-100 dark:divide-stone-800">
+              {(data as UserListItem[]).map((user) => {
+                const isFollowing = user.follow_status === 'explicit' || user.follow_status === 'implicit'
+                const inProgress = followingInProgress.has(user.user_id)
+
+                return (
+                  <div
+                    key={user.user_id}
+                    className="flex items-center gap-3 px-4 py-3"
+                  >
+                    {user.avatar_url ? (
+                      <Image
+                        src={user.avatar_url}
+                        alt=""
+                        width={48}
+                        height={48}
+                        className="w-12 h-12 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center text-white font-semibold">
+                        {getInitials(user.email, user.display_name)}
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-stone-900 dark:text-stone-50 truncate">
+                        {getDisplayName(user.email, user.display_name)}
+                      </p>
+                      {user.mutual_groups_count > 0 && (
+                        <p className="text-sm text-stone-500 dark:text-stone-400">
+                          {user.mutual_groups_count} mutual group{user.mutual_groups_count !== 1 ? 's' : ''}
+                        </p>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => onFollowToggle(user.user_id, user.follow_status)}
+                      disabled={inProgress}
+                      className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+                        isFollowing
+                          ? 'bg-stone-100 dark:bg-stone-700 text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-600'
+                          : 'bg-indigo-500 text-white hover:bg-indigo-600'
+                      } disabled:opacity-50`}
+                    >
+                      {inProgress ? (
+                        <div className="w-4 h-4 border-2 border-current/30 border-t-current rounded-full animate-spin" />
+                      ) : isFollowing ? (
+                        'Following'
+                      ) : (
+                        'Follow'
+                      )}
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   )
 

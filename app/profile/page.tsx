@@ -494,7 +494,7 @@ export default function ProfilePage() {
         </div>
       </header>
 
-      <div className="max-w-lg mx-auto px-4 py-6">
+      <div className="max-w-lg mx-auto px-4 py-6 pb-24">
         {/* Message */}
         {message && (
           <div className={`mb-6 px-4 py-3 rounded-xl text-sm flex items-center gap-2 ${
