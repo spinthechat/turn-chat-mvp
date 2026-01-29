@@ -497,6 +497,41 @@ export function NotificationCenter({
 
   const unreadCount = notifications.filter(n => !n.read_at).length
 
+  // Mark notifications as read when they become visible
+  const observerRef = useRef<IntersectionObserver | null>(null)
+  const observedIds = useRef<Set<string>>(new Set())
+
+  useEffect(() => {
+    // Create observer to mark notifications as read when visible
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const notificationId = entry.target.getAttribute('data-notification-id')
+            if (notificationId && !observedIds.current.has(notificationId)) {
+              observedIds.current.add(notificationId)
+              // Find the notification and mark as read if unread
+              const notification = notifications.find(n => n.id === notificationId)
+              if (notification && !notification.read_at) {
+                markAsRead(notificationId)
+              }
+            }
+          }
+        })
+      },
+      { threshold: 0.5 } // Mark as read when 50% visible
+    )
+
+    return () => {
+      observerRef.current?.disconnect()
+    }
+  }, [notifications, markAsRead])
+
+  // Reset observed IDs when notifications change significantly (e.g., filter change)
+  useEffect(() => {
+    observedIds.current.clear()
+  }, [filter])
+
   if (!isOpen) return null
 
   return (
@@ -609,6 +644,12 @@ export function NotificationCenter({
               return (
                 <button
                   key={notification.id}
+                  data-notification-id={notification.id}
+                  ref={(el) => {
+                    if (el && isUnread && observerRef.current) {
+                      observerRef.current.observe(el)
+                    }
+                  }}
                   onClick={() => handleNotificationTap(notification)}
                   className={`w-full flex items-start gap-3 px-5 py-4 text-left transition-colors hover:bg-stone-50 dark:hover:bg-stone-800/50 ${
                     isUnread ? 'bg-indigo-50/50 dark:bg-indigo-950/20' : ''
