@@ -218,23 +218,8 @@ export function GroupAvatarMosaic({
     )
   }
 
-  // 3 members - 2 on top, 1 centered on bottom
-  if (count === 3) {
-    return (
-      <div className={`${config.container} rounded-full overflow-hidden flex-shrink-0 ring-1 ring-stone-200/50 dark:ring-stone-600/50 flex flex-col ${config.gap} bg-white dark:bg-stone-800 ${className}`}>
-        <div className={`flex h-1/2 ${config.gap}`}>
-          {renderTile(displayMembers[0], 'w-1/2 h-full rounded-tl-full')}
-          {renderTile(displayMembers[1], 'w-1/2 h-full rounded-tr-full')}
-        </div>
-        <div className="h-1/2 flex justify-center">
-          {renderTile(displayMembers[2], 'w-1/2 h-full rounded-b-full')}
-        </div>
-      </div>
-    )
-  }
-
-  // 4+ members - fanned overlapping layout (like a hand of cards)
-  // Show first 3 members in a fan arrangement
+  // 3+ members - fanned overlapping layout (like a hand of cards)
+  // This covers groups with 4+ total members (3+ other members shown)
   const fanMembers = displayMembers.slice(0, 3)
 
   return (
