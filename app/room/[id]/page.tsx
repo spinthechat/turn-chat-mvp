@@ -1213,6 +1213,16 @@ function GroupDetailsDrawer({
     setMessageNotifsLoading(false)
   }
 
+  // Body scroll lock when drawer is open
+  useEffect(() => {
+    if (!isOpen) return
+    const originalOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = originalOverflow
+    }
+  }, [isOpen])
+
   if (!isOpen) return null
 
   const handleCopyRoomId = () => {
@@ -1341,16 +1351,20 @@ function GroupDetailsDrawer({
     return (userA?.displayName ?? '').localeCompare(userB?.displayName ?? '')
   })
 
-  return (
+  // Render via portal to escape chat-page stacking context
+  const content = (
     <>
-      {/* Backdrop */}
+      {/* Backdrop - z-[200] to be above header (z-100) */}
       <div
-        className="fixed inset-0 bg-black/40 z-40 transition-opacity"
+        className="fixed inset-0 bg-black/40 dark:bg-black/60 z-[200] transition-opacity"
         onClick={onClose}
       />
 
-      {/* Drawer */}
-      <div className="fixed inset-y-0 right-0 w-full max-w-sm bg-white dark:bg-stone-900 z-50 shadow-xl flex flex-col">
+      {/* Drawer - z-[201] to be above backdrop */}
+      <div
+        className="fixed inset-y-0 right-0 w-full max-w-sm bg-white dark:bg-stone-900 z-[201] shadow-xl flex flex-col"
+        style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-4 h-14 border-b border-stone-200 dark:border-stone-700">
           <h2 className="text-lg font-semibold text-stone-900 dark:text-stone-50">Group Info</h2>
@@ -1873,7 +1887,7 @@ function GroupDetailsDrawer({
         </div>
 
         {/* Footer with Leave button */}
-        <div className="p-4 border-t border-stone-200 dark:border-stone-700">
+        <div className="p-4 border-t border-stone-200 dark:border-stone-700" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px))' }}>
           {showLeaveConfirm ? (
             <div className="space-y-2">
               <p className="text-sm text-stone-600 dark:text-stone-300 text-center">Are you sure you want to leave this group?</p>
@@ -1905,6 +1919,9 @@ function GroupDetailsDrawer({
       </div>
     </>
   )
+
+  // Render via portal at document.body to escape chat-page stacking context
+  return createPortal(content, document.body)
 }
 
 
