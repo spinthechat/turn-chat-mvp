@@ -1059,9 +1059,12 @@ const MessageBubble = memo(function MessageBubble({
       <div className="flex flex-col max-w-[75%] min-w-0">
         {/* Name: visible only on first message in group */}
         {showMeta && !isMe && isFirstInGroup && (
-          <span className={`text-[12px] font-semibold mb-1.5 tracking-tight ${user?.textColor ?? 'text-slate-500'}`}>
+          <button
+            onClick={(e) => { e.stopPropagation(); user && onProfileClick(user.id) }}
+            className={`text-[12px] font-semibold mb-1.5 tracking-tight ${user?.textColor ?? 'text-slate-500'} hover:underline cursor-pointer text-left`}
+          >
             {user?.displayName ?? 'Unknown'}
-          </span>
+          </button>
         )}
         <div ref={bubbleRef} className={`relative transition-all duration-150 ${selectedBubbleClass}`} onClick={handleClick}>
           <div className={`${getBubbleRadius()} px-3.5 py-2.5 cursor-pointer ${
@@ -2730,6 +2733,9 @@ export default function RoomPage() {
       // RENDER NOW - show messages immediately with skeleton avatars
       setIsLoading(false)
 
+      // Fire-and-forget: update last seen on room open
+      supabase.rpc('update_last_seen').then(() => {})
+
       if (process.env.NODE_ENV === 'development') {
         console.log('[room] first render in', Math.round(performance.now() - bootStart), 'ms, msgs:', sortedMsgs.length)
       }
@@ -3228,6 +3234,9 @@ export default function RoomPage() {
           senderId: userId,
         }),
       }).catch(() => {}) // Ignore errors silently
+
+      // Fire-and-forget: update last seen
+      supabase.rpc('update_last_seen').then(() => {})
     }
   }
 
@@ -3455,6 +3464,9 @@ export default function RoomPage() {
             senderId: userId,
           }),
         }).catch(() => {}) // Ignore errors silently
+
+        // Fire-and-forget: update last seen
+        supabase.rpc('update_last_seen').then(() => {})
       }
     } catch (err: any) {
       console.error('Image upload error:', err)
@@ -3603,6 +3615,8 @@ export default function RoomPage() {
       setTurnText('')
       // Notify next user about their turn
       notifyNextTurn()
+      // Fire-and-forget: update last seen
+      supabase.rpc('update_last_seen').then(() => {})
     }
   }
 
@@ -3638,6 +3652,8 @@ export default function RoomPage() {
 
       // Notify next user about their turn
       notifyNextTurn()
+      // Fire-and-forget: update last seen
+      supabase.rpc('update_last_seen').then(() => {})
     } catch (err: unknown) {
       const error = err as Error
       setError(error.message || 'Failed to submit photo')

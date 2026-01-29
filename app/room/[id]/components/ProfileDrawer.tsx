@@ -46,6 +46,25 @@ function hapticTick() {
   }
 }
 
+// Format last active time
+function formatLastActive(lastSeenAt: string | null): string | null {
+  if (!lastSeenAt) return null
+
+  const lastSeen = new Date(lastSeenAt)
+  const now = new Date()
+  const diffMs = now.getTime() - lastSeen.getTime()
+  const diffMins = Math.floor(diffMs / (1000 * 60))
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+
+  if (diffMins < 2) return 'Active now'
+  if (diffMins < 60) return `Active ${diffMins}m ago`
+  if (diffHours < 24) return `Active ${diffHours}h ago`
+  if (diffDays === 1) return 'Active yesterday'
+  if (diffDays < 7) return `Active ${diffDays} days ago`
+  return null // Don't show if older than a week
+}
+
 interface ProfileDrawerProps {
   isOpen: boolean
   onClose: () => void
@@ -108,6 +127,9 @@ export function ProfileDrawer({
   const [listLoading, setListLoading] = useState(false)
   const [followingInProgress, setFollowingInProgress] = useState<Set<string>>(new Set())
 
+  // Last seen / active status
+  const [lastSeenAt, setLastSeenAt] = useState<string | null>(null)
+
   // Derived state
   const isFollowing = followStatus === 'explicit' || followStatus === 'implicit'
   const isImplicit = followStatus === 'implicit'
@@ -125,6 +147,7 @@ export function ProfileDrawer({
       setFlashboxVideoId(null)
       setActiveList(null)
       setListData([])
+      setLastSeenAt(null)
       return
     }
 
@@ -189,9 +212,24 @@ export function ProfileDrawer({
       }
     }
 
+    // Load last seen status
+    const loadLastSeen = async () => {
+      try {
+        const { data, error } = await supabase.rpc('get_last_seen', {
+          p_user_id: user.id
+        })
+        if (!error && data) {
+          setLastSeenAt(data)
+        }
+      } catch (err) {
+        console.error('Failed to load last seen:', err)
+      }
+    }
+
     loadStats()
     loadGallery()
     loadFlashbox()
+    loadLastSeen()
 
     // Only check follow status and poke status for other users
     if (isOwnProfile || !currentUserId) {
@@ -519,6 +557,16 @@ export function ProfileDrawer({
             </button>
             <h2 className="text-xl font-semibold text-stone-900 dark:text-stone-50">{user.displayName}</h2>
             <p className="text-sm text-stone-500 dark:text-stone-400">{user.email}</p>
+            {/* Last active status */}
+            {!isOwnProfile && formatLastActive(lastSeenAt) && (
+              <p className={`text-xs mt-1 ${
+                formatLastActive(lastSeenAt) === 'Active now'
+                  ? 'text-emerald-500 dark:text-emerald-400'
+                  : 'text-stone-400 dark:text-stone-500'
+              }`}>
+                {formatLastActive(lastSeenAt)}
+              </p>
+            )}
             {isOwnProfile && (
               <span className="mt-1 text-xs bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400 px-2 py-0.5 rounded-full">This is you</span>
             )}
