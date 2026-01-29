@@ -56,13 +56,17 @@ export function StoryCreator({ isOpen, onClose, onStoryCreated, userId }: StoryC
     e.target.value = ''
   }, [])
 
-  // Handle editor completion
-  const handleEditorComplete = useCallback((editorOverlays: StoryOverlays) => {
-    setOverlays(editorOverlays)
-    handleUpload(editorOverlays)
-  }, [])
+  // Define handleClose first since handleUpload depends on it
+  const handleClose = useCallback(() => {
+    setStep('select')
+    setSelectedImage(null)
+    setSelectedFile(null)
+    setOverlays(null)
+    setError(null)
+    onClose()
+  }, [onClose])
 
-  const handleUpload = async (storyOverlays?: StoryOverlays) => {
+  const handleUpload = useCallback(async (storyOverlays?: StoryOverlays) => {
     if (!selectedFile || !userId) return
 
     setStep('uploading')
@@ -110,16 +114,13 @@ export function StoryCreator({ isOpen, onClose, onStoryCreated, userId }: StoryC
       setError('Failed to upload story. Please try again.')
       setStep('edit')
     }
-  }
+  }, [selectedFile, userId, overlays, onStoryCreated, handleClose])
 
-  const handleClose = () => {
-    setStep('select')
-    setSelectedImage(null)
-    setSelectedFile(null)
-    setOverlays(null)
-    setError(null)
-    onClose()
-  }
+  // Handle editor completion
+  const handleEditorComplete = useCallback((editorOverlays: StoryOverlays) => {
+    setOverlays(editorOverlays)
+    handleUpload(editorOverlays)
+  }, [handleUpload])
 
   if (!isOpen) return null
 
