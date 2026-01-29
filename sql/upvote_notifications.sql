@@ -19,13 +19,14 @@ CREATE TABLE IF NOT EXISTS upvote_notification_state (
   room_id UUID NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
   milestone INT,  -- NULL for whole_group, else 1,3,5,10,25,100
   whole_group BOOLEAN NOT NULL DEFAULT FALSE,
-  notified_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-
-  -- Unique constraint: one notification per type per message
-  UNIQUE (message_id, COALESCE(milestone, 0), whole_group)
+  notified_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE INDEX IF NOT EXISTS idx_upvote_notif_message ON upvote_notification_state(message_id);
+
+-- Unique index: one notification per type per message (using expression for NULL handling)
+CREATE UNIQUE INDEX IF NOT EXISTS idx_upvote_notif_unique
+  ON upvote_notification_state(message_id, COALESCE(milestone, 0), whole_group);
 
 -- ============================================
 -- Add new notification types to constraint
