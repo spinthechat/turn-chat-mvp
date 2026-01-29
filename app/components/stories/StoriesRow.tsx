@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useImperativeHandle, forwardRef } from 'react'
 import { Story, StoryUser, groupStoriesByUser } from './types'
 import { StoryBubble, AddStoryButton } from './StoryBubble'
 import { StoryViewer } from './StoryViewer'
@@ -13,7 +13,14 @@ interface StoriesRowProps {
   userEmail: string
 }
 
-export function StoriesRow({ currentUserId, userAvatarUrl, userEmail }: StoriesRowProps) {
+export interface StoriesRowRef {
+  refresh: () => Promise<void>
+}
+
+export const StoriesRow = forwardRef<StoriesRowRef, StoriesRowProps>(function StoriesRow(
+  { currentUserId, userAvatarUrl, userEmail },
+  ref
+) {
   const [stories, setStories] = useState<Story[]>([])
   const [storyUsers, setStoryUsers] = useState<StoryUser[]>([])
   const [loading, setLoading] = useState(true)
@@ -38,6 +45,11 @@ export function StoriesRow({ currentUserId, userAvatarUrl, userEmail }: StoriesR
       setLoading(false)
     }
   }, [currentUserId])
+
+  // Expose refresh function to parent
+  useImperativeHandle(ref, () => ({
+    refresh: fetchStories
+  }), [fetchStories])
 
   useEffect(() => {
     fetchStories()
@@ -165,4 +177,4 @@ export function StoriesRow({ currentUserId, userAvatarUrl, userEmail }: StoriesR
       />
     </>
   )
-}
+})

@@ -1,4 +1,4 @@
-export { StoriesRow } from './StoriesRow'
+export { StoriesRow, type StoriesRowRef } from './StoriesRow'
 export { StoryViewer } from './StoryViewer'
 export { StoryCreator } from './StoryCreator'
 export { StoryBubble, AddStoryButton } from './StoryBubble'

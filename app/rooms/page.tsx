@@ -1,12 +1,12 @@
 'use client'
 
-import { useEffect, useMemo, useState, useCallback, memo } from 'react'
+import { useEffect, useMemo, useState, useCallback, memo, useRef } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { GroupAvatarMosaic, type GroupMember } from '@/app/components/GroupAvatarMosaic'
-import { StoriesRow } from '@/app/components/stories'
+import { StoriesRow, type StoriesRowRef } from '@/app/components/stories'
 import { usePushNotifications } from '@/lib/usePushNotifications'
 import { useThemePreference, type ThemePreference } from '@/lib/useThemePreference'
 
@@ -581,6 +581,15 @@ export default function ChatsPage() {
   const [groupPromptMode, setGroupPromptMode] = useState<PromptMode | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
+  // Pull-to-refresh state
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const [pullDistance, setPullDistance] = useState(0)
+  const storiesRef = useRef<StoriesRowRef>(null)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const touchStartY = useRef(0)
+  const isPulling = useRef(false)
+  const PULL_THRESHOLD = 80 // px needed to trigger refresh
+
   const loadChats = useCallback(async (uid: string) => {
     const loadStart = performance.now()
 
@@ -712,6 +721,76 @@ export default function ChatsPage() {
       console.log('[lobby] load complete in', Math.round(performance.now() - loadStart), 'ms')
     }
   }, [])
+
+  // Refresh both stories and chats
+  const refreshLobby = useCallback(async () => {
+    if (!userId || isRefreshing) return
+
+    setIsRefreshing(true)
+
+    // Haptic feedback if supported
+    if ('vibrate' in navigator) {
+      navigator.vibrate(10)
+    }
+
+    try {
+      await Promise.all([
+        loadChats(userId),
+        storiesRef.current?.refresh()
+      ])
+    } catch (err) {
+      console.error('Refresh failed:', err)
+    } finally {
+      setIsRefreshing(false)
+      setPullDistance(0)
+    }
+  }, [userId, isRefreshing, loadChats])
+
+  // Touch handlers for pull-to-refresh
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    const scrollTop = scrollContainerRef.current?.scrollTop ?? 0
+    if (scrollTop <= 0 && !isRefreshing) {
+      touchStartY.current = e.touches[0].clientY
+      isPulling.current = true
+    }
+  }, [isRefreshing])
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!isPulling.current || isRefreshing) return
+
+    const scrollTop = scrollContainerRef.current?.scrollTop ?? 0
+    if (scrollTop > 0) {
+      isPulling.current = false
+      setPullDistance(0)
+      return
+    }
+
+    const currentY = e.touches[0].clientY
+    const diff = currentY - touchStartY.current
+
+    if (diff > 0) {
+      // Apply resistance - the further you pull, the harder it gets
+      const resistance = Math.min(diff * 0.4, PULL_THRESHOLD * 1.5)
+      setPullDistance(resistance)
+
+      // Prevent default scroll behavior when pulling
+      if (resistance > 10) {
+        e.preventDefault()
+      }
+    }
+  }, [isRefreshing])
+
+  const handleTouchEnd = useCallback(() => {
+    if (!isPulling.current) return
+
+    isPulling.current = false
+
+    if (pullDistance >= PULL_THRESHOLD && !isRefreshing) {
+      refreshLobby()
+    } else {
+      setPullDistance(0)
+    }
+  }, [pullDistance, isRefreshing, refreshLobby])
 
   useEffect(() => {
     let channel: any = null
@@ -886,11 +965,39 @@ export default function ChatsPage() {
       )}
 
       {/* Content - scrollable area */}
-      <div className="flex-1 overflow-y-auto overscroll-contain">
+      <div
+        ref={scrollContainerRef}
+        className="flex-1 overflow-y-auto overscroll-contain"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
+        {/* Pull-to-refresh indicator */}
+        <div
+          className="flex items-center justify-center overflow-hidden transition-all duration-200 ease-out"
+          style={{
+            height: isRefreshing ? 56 : pullDistance,
+            opacity: isRefreshing ? 1 : Math.min(pullDistance / PULL_THRESHOLD, 1)
+          }}
+        >
+          <div
+            className={`w-6 h-6 border-2 border-stone-300 dark:border-stone-600 border-t-stone-600 dark:border-t-stone-300 rounded-full ${
+              isRefreshing ? 'animate-spin' : ''
+            }`}
+            style={{
+              transform: isRefreshing
+                ? 'rotate(0deg)'
+                : `rotate(${(pullDistance / PULL_THRESHOLD) * 360}deg)`,
+              transition: isRefreshing ? 'none' : 'transform 0.1s ease-out'
+            }}
+          />
+        </div>
+
         <div className="max-w-2xl mx-auto pb-safe">
           {/* Stories Row */}
           {userId && !loading && (
             <StoriesRow
+              ref={storiesRef}
               currentUserId={userId}
               userAvatarUrl={userProfile?.avatar_url || null}
               userEmail={userEmail || ''}
