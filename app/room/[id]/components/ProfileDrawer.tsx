@@ -7,6 +7,13 @@ import type { UserInfo } from '../types'
 // Follow status: 'explicit' | 'implicit' | 'none' | 'unfollowed'
 type FollowStatus = 'explicit' | 'implicit' | 'none' | 'unfollowed' | null
 
+type ProfileStats = {
+  followers_count: number
+  following_count: number
+  groups_count: number
+  mutual_groups_count: number
+}
+
 interface ProfileDrawerProps {
   isOpen: boolean
   onClose: () => void
@@ -29,13 +36,60 @@ export function ProfileDrawer({
   const [followLoading, setFollowLoading] = useState(false)
   const [followError, setFollowError] = useState<string | null>(null)
 
+  // Profile stats
+  const [stats, setStats] = useState<ProfileStats>({
+    followers_count: 0,
+    following_count: 0,
+    groups_count: 0,
+    mutual_groups_count: 0
+  })
+  const [statsLoaded, setStatsLoaded] = useState(false)
+
   // Derived state
   const isFollowing = followStatus === 'explicit' || followStatus === 'implicit'
   const isImplicit = followStatus === 'implicit'
 
-  // Check follow status when drawer opens
+  // Check follow status and load stats when drawer opens
   useEffect(() => {
-    if (!isOpen || !user || !currentUserId || user.id === currentUserId) {
+    if (!isOpen || !user) {
+      setFollowStatus(null)
+      setStatsLoaded(false)
+      setStats({ followers_count: 0, following_count: 0, groups_count: 0, mutual_groups_count: 0 })
+      return
+    }
+
+    const isOwnProfile = user.id === currentUserId
+
+    // Load stats for any user (including own profile)
+    const loadStats = async () => {
+      try {
+        const { data: statsData, error: statsError } = await supabase.rpc('get_profile_stats', {
+          p_user_id: user.id
+        })
+
+        if (statsError) {
+          console.error('Error loading stats:', statsError)
+        } else if (statsData) {
+          const statsRow = Array.isArray(statsData) ? statsData[0] : statsData
+          if (statsRow) {
+            setStats({
+              followers_count: statsRow.followers_count ?? 0,
+              following_count: statsRow.following_count ?? 0,
+              groups_count: statsRow.groups_count ?? 0,
+              mutual_groups_count: statsRow.mutual_groups_count ?? 0
+            })
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load stats:', err)
+      }
+      setStatsLoaded(true)
+    }
+
+    loadStats()
+
+    // Only check follow status for other users
+    if (isOwnProfile || !currentUserId) {
       setFollowStatus(null)
       return
     }
@@ -163,6 +217,44 @@ export function ProfileDrawer({
               <p className="text-sm text-stone-700 dark:text-stone-300 leading-relaxed">{user.bio}</p>
             </div>
           )}
+
+          {/* Stats */}
+          <div className={`grid ${isOwnProfile ? 'grid-cols-3' : 'grid-cols-4'} gap-1 mb-6 bg-stone-50 dark:bg-stone-800 rounded-xl p-3`}>
+            <div className="flex flex-col items-center py-2">
+              {statsLoaded ? (
+                <span className="text-lg font-bold text-stone-900 dark:text-stone-50">{stats.followers_count}</span>
+              ) : (
+                <div className="h-6 w-6 bg-stone-200 dark:bg-stone-700 rounded animate-pulse" />
+              )}
+              <span className="text-[10px] text-stone-500 dark:text-stone-400">Followers</span>
+            </div>
+            <div className="flex flex-col items-center py-2">
+              {statsLoaded ? (
+                <span className="text-lg font-bold text-stone-900 dark:text-stone-50">{stats.following_count}</span>
+              ) : (
+                <div className="h-6 w-6 bg-stone-200 dark:bg-stone-700 rounded animate-pulse" />
+              )}
+              <span className="text-[10px] text-stone-500 dark:text-stone-400">Following</span>
+            </div>
+            <div className="flex flex-col items-center py-2">
+              {statsLoaded ? (
+                <span className="text-lg font-bold text-stone-900 dark:text-stone-50">{stats.groups_count}</span>
+              ) : (
+                <div className="h-6 w-6 bg-stone-200 dark:bg-stone-700 rounded animate-pulse" />
+              )}
+              <span className="text-[10px] text-stone-500 dark:text-stone-400">Groups</span>
+            </div>
+            {!isOwnProfile && (
+              <div className="flex flex-col items-center py-2">
+                {statsLoaded ? (
+                  <span className="text-lg font-bold text-stone-900 dark:text-stone-50">{stats.mutual_groups_count}</span>
+                ) : (
+                  <div className="h-6 w-6 bg-stone-200 dark:bg-stone-700 rounded animate-pulse" />
+                )}
+                <span className="text-[10px] text-stone-500 dark:text-stone-400">Mutual</span>
+              </div>
+            )}
+          </div>
 
           {/* Follow/Unfollow button */}
           {!isOwnProfile && followStatus !== null && (
