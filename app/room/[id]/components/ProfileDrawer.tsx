@@ -16,6 +16,12 @@ type ProfileStats = {
   mutual_groups_count: number
 }
 
+type ProfilePhoto = {
+  id: string
+  url: string
+  position: number
+}
+
 // Haptic feedback helper
 function hapticTick() {
   if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
@@ -71,6 +77,14 @@ export function ProfileDrawer({
   const [showAvatarMenu, setShowAvatarMenu] = useState(false)
   const [showPhotoViewer, setShowPhotoViewer] = useState(false)
 
+  // Gallery photos
+  const [galleryPhotos, setGalleryPhotos] = useState<ProfilePhoto[]>([])
+  const [galleryLoading, setGalleryLoading] = useState(true)
+  const [galleryViewerIndex, setGalleryViewerIndex] = useState<number | null>(null)
+
+  // Flashbox YouTube
+  const [flashboxVideoId, setFlashboxVideoId] = useState<string | null>(null)
+
   // Derived state
   const isFollowing = followStatus === 'explicit' || followStatus === 'implicit'
   const isImplicit = followStatus === 'implicit'
@@ -82,6 +96,10 @@ export function ProfileDrawer({
       setStatsLoaded(false)
       setStats({ followers_count: 0, following_count: 0, groups_count: 0, mutual_groups_count: 0 })
       setPokeState({ canPoke: false, loading: true, sending: false, success: false })
+      setGalleryPhotos([])
+      setGalleryLoading(true)
+      setGalleryViewerIndex(null)
+      setFlashboxVideoId(null)
       return
     }
 
@@ -113,7 +131,42 @@ export function ProfileDrawer({
       setStatsLoaded(true)
     }
 
+    // Load gallery photos
+    const loadGallery = async () => {
+      try {
+        const { data: photosData, error: photosError } = await supabase.rpc('get_profile_photos', {
+          p_user_id: user.id
+        })
+        if (photosError) {
+          console.error('Error loading gallery:', photosError)
+        } else {
+          setGalleryPhotos(photosData || [])
+        }
+      } catch (err) {
+        console.error('Failed to load gallery:', err)
+      }
+      setGalleryLoading(false)
+    }
+
+    // Load flashbox video ID
+    const loadFlashbox = async () => {
+      try {
+        const { data: profileData, error } = await supabase
+          .from('profiles')
+          .select('flashbox_youtube_id')
+          .eq('id', user.id)
+          .single()
+        if (!error && profileData?.flashbox_youtube_id) {
+          setFlashboxVideoId(profileData.flashbox_youtube_id)
+        }
+      } catch (err) {
+        console.error('Failed to load flashbox:', err)
+      }
+    }
+
     loadStats()
+    loadGallery()
+    loadFlashbox()
 
     // Only check follow status and poke status for other users
     if (isOwnProfile || !currentUserId) {
@@ -296,14 +349,14 @@ export function ProfileDrawer({
       />
 
       {/* Drawer */}
-      <div className="fixed inset-x-0 bottom-0 z-50 bg-white dark:bg-stone-900 rounded-t-2xl shadow-xl max-h-[80vh] overflow-hidden animate-in slide-in-from-bottom duration-200">
+      <div className="fixed inset-x-0 bottom-0 z-50 bg-white dark:bg-stone-900 rounded-t-2xl shadow-xl max-h-[85vh] overflow-hidden animate-in slide-in-from-bottom duration-200 flex flex-col">
         {/* Handle */}
-        <div className="flex justify-center pt-3 pb-2">
+        <div className="flex justify-center pt-3 pb-2 flex-shrink-0">
           <div className="w-10 h-1 bg-stone-300 dark:bg-stone-600 rounded-full" />
         </div>
 
         {/* Content */}
-        <div className="px-6 pb-8 pt-2">
+        <div className="px-6 pb-8 pt-2 overflow-y-auto flex-1">
           {/* Avatar and name */}
           <div className="flex flex-col items-center text-center mb-6">
             {/* Tappable avatar */}
@@ -388,6 +441,62 @@ export function ProfileDrawer({
               </div>
             )}
           </div>
+
+          {/* Photo Gallery */}
+          {(galleryPhotos.length > 0 || galleryLoading) && (
+            <div className="mb-6">
+              <h3 className="text-xs font-medium text-stone-400 dark:text-stone-500 uppercase tracking-wide mb-3">
+                Photos {galleryPhotos.length > 0 && `(${galleryPhotos.length})`}
+              </h3>
+              {galleryLoading ? (
+                <div className="grid grid-cols-3 gap-2">
+                  {[...Array(3)].map((_, i) => (
+                    <div key={i} className="aspect-square bg-stone-100 dark:bg-stone-800 rounded-lg animate-pulse" />
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-3 gap-2">
+                  {galleryPhotos.slice(0, 6).map((photo, index) => (
+                    <button
+                      key={photo.id}
+                      onClick={() => setGalleryViewerIndex(index)}
+                      className="aspect-square rounded-lg overflow-hidden bg-stone-100 dark:bg-stone-800 hover:opacity-90 transition-opacity"
+                    >
+                      <img
+                        src={photo.url}
+                        alt=""
+                        className="w-full h-full object-cover"
+                      />
+                    </button>
+                  ))}
+                  {galleryPhotos.length > 6 && (
+                    <button
+                      onClick={() => setGalleryViewerIndex(6)}
+                      className="aspect-square rounded-lg overflow-hidden bg-stone-100 dark:bg-stone-800 flex items-center justify-center text-stone-500 dark:text-stone-400 font-medium text-sm"
+                    >
+                      +{galleryPhotos.length - 6}
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Flashbox YouTube */}
+          {flashboxVideoId && (
+            <div className="mb-6">
+              <h3 className="text-xs font-medium text-stone-400 dark:text-stone-500 uppercase tracking-wide mb-3">Flashbox</h3>
+              <div className="relative aspect-video rounded-xl overflow-hidden bg-black">
+                <iframe
+                  src={`https://www.youtube.com/embed/${flashboxVideoId}`}
+                  title="Flashbox video"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  className="absolute inset-0 w-full h-full"
+                />
+              </div>
+            </div>
+          )}
 
           {/* Follow/Unfollow button */}
           {!isOwnProfile && followStatus !== null && (
@@ -529,6 +638,15 @@ export function ProfileDrawer({
           imageUrl={user.avatarUrl}
           displayName={user.displayName}
           onClose={() => setShowPhotoViewer(false)}
+        />
+      )}
+
+      {/* Gallery photo viewer */}
+      {galleryViewerIndex !== null && galleryPhotos[galleryViewerIndex] && (
+        <GalleryViewer
+          photos={galleryPhotos}
+          initialIndex={galleryViewerIndex}
+          onClose={() => setGalleryViewerIndex(null)}
         />
       )}
     </>
@@ -797,6 +915,162 @@ function FullScreenPhotoViewer({
           {scale > 1 ? 'Double-tap to reset' : 'Tap to close • Double-tap to zoom'}
         </p>
       </div>
+    </div>
+  )
+
+  return createPortal(content, document.body)
+}
+
+// Gallery viewer component with navigation
+function GalleryViewer({
+  photos,
+  initialIndex,
+  onClose,
+}: {
+  photos: ProfilePhoto[]
+  initialIndex: number
+  onClose: () => void
+}) {
+  const [currentIndex, setCurrentIndex] = useState(initialIndex)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+    const originalOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = originalOverflow
+    }
+  }, [])
+
+  const goNext = useCallback(() => {
+    setCurrentIndex(prev => Math.min(prev + 1, photos.length - 1))
+  }, [photos.length])
+
+  const goPrev = useCallback(() => {
+    setCurrentIndex(prev => Math.max(prev - 1, 0))
+  }, [])
+
+  // Swipe handling
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null)
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartRef.current = {
+      x: e.touches[0].clientX,
+      y: e.touches[0].clientY,
+    }
+  }, [])
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (!touchStartRef.current) return
+
+    const dx = e.changedTouches[0].clientX - touchStartRef.current.x
+    const dy = e.changedTouches[0].clientY - touchStartRef.current.y
+
+    // Horizontal swipe
+    if (Math.abs(dx) > 50 && Math.abs(dy) < 100) {
+      if (dx < 0 && currentIndex < photos.length - 1) {
+        goNext()
+      } else if (dx > 0 && currentIndex > 0) {
+        goPrev()
+      }
+    }
+    // Vertical swipe down to close
+    else if (dy > 100 && Math.abs(dx) < 50) {
+      onClose()
+    }
+
+    touchStartRef.current = null
+  }, [currentIndex, photos.length, goNext, goPrev, onClose])
+
+  if (!mounted) return null
+
+  const currentPhoto = photos[currentIndex]
+  if (!currentPhoto) return null
+
+  const content = (
+    <div className="fixed inset-0 z-[9999] bg-black flex flex-col">
+      {/* Header */}
+      <header className="absolute top-0 left-0 right-0 z-10 bg-gradient-to-b from-black/60 to-transparent">
+        <div className="max-w-lg mx-auto px-4 h-14 flex items-center justify-between">
+          <button
+            onClick={onClose}
+            className="p-2 -ml-2 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors"
+          >
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          <span className="text-white/80 text-sm font-medium">
+            {currentIndex + 1} / {photos.length}
+          </span>
+          <div className="w-10" />
+        </div>
+      </header>
+
+      {/* Image */}
+      <div
+        className="flex-1 flex items-center justify-center p-4"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
+        <img
+          src={currentPhoto.url}
+          alt=""
+          className="max-w-full max-h-full object-contain"
+        />
+      </div>
+
+      {/* Navigation */}
+      {photos.length > 1 && (
+        <>
+          {currentIndex > 0 && (
+            <button
+              onClick={goPrev}
+              className="absolute left-2 top-1/2 -translate-y-1/2 p-3 rounded-full bg-black/40 text-white/80 hover:bg-black/60 hover:text-white transition-colors"
+            >
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+          )}
+          {currentIndex < photos.length - 1 && (
+            <button
+              onClick={goNext}
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-3 rounded-full bg-black/40 text-white/80 hover:bg-black/60 hover:text-white transition-colors"
+            >
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          )}
+        </>
+      )}
+
+      {/* Thumbnails */}
+      {photos.length > 1 && (
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent pb-6 pt-12">
+          <div className="flex justify-center gap-2 px-4 overflow-x-auto">
+            {photos.map((photo, index) => (
+              <button
+                key={photo.id}
+                onClick={() => setCurrentIndex(index)}
+                className={`w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 transition-all ${
+                  index === currentIndex
+                    ? 'ring-2 ring-white scale-110'
+                    : 'opacity-60 hover:opacity-100'
+                }`}
+              >
+                <img
+                  src={photo.url}
+                  alt=""
+                  className="w-full h-full object-cover"
+                />
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 
