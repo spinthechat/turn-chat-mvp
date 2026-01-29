@@ -38,6 +38,12 @@ import type {
 import { EMOJI_OPTIONS, FREQUENCY_OPTIONS, PROMPT_MODES } from './types'
 
 
+// Vote info type
+type VoteInfo = {
+  score: number
+  user_vote: 'up' | 'down' | null
+}
+
 // Message bubble component - compact WhatsApp-style
 // Memoized to prevent re-renders when other messages update
 const MessageBubble = memo(function MessageBubble({
@@ -58,6 +64,8 @@ const MessageBubble = memo(function MessageBubble({
   seenCount = 0,
   isSeenBoundary = false,
   onVisible,
+  voteInfo,
+  onVote,
 }: {
   message: Msg
   isMe: boolean
@@ -76,6 +84,8 @@ const MessageBubble = memo(function MessageBubble({
   seenCount?: number
   isSeenBoundary?: boolean
   onVisible?: () => void
+  voteInfo?: VoteInfo
+  onVote?: (messageId: string, voteType: 'up' | 'down') => void
 }) {
   const [showContextMenu, setShowContextMenu] = useState(false)
   const [showReactorsFor, setShowReactorsFor] = useState<string | null>(null)
@@ -644,6 +654,55 @@ const MessageBubble = memo(function MessageBubble({
     )
   }
 
+  // Vote controls for turn responses (Reddit-style)
+  const VoteControls = () => {
+    if (!isTurnResponse || !onVote || !voteInfo || isMe) return null
+
+    const { score, user_vote } = voteInfo
+
+    const handleVote = (voteType: 'up' | 'down') => (e: React.MouseEvent) => {
+      e.stopPropagation()
+      hapticTick()
+      onVote(message.id, voteType)
+    }
+
+    return (
+      <div className="flex flex-col items-center gap-0.5 mr-1.5 select-none">
+        <button
+          onClick={handleVote('up')}
+          className={`p-1 rounded transition-colors ${
+            user_vote === 'up'
+              ? 'text-indigo-500'
+              : 'text-stone-300 hover:text-stone-500 dark:text-stone-600 dark:hover:text-stone-400'
+          }`}
+          aria-label="Upvote"
+        >
+          <svg className="w-4 h-4" fill={user_vote === 'up' ? 'currentColor' : 'none'} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
+          </svg>
+        </button>
+        <span className={`text-xs font-semibold tabular-nums ${
+          score > 0 ? 'text-indigo-500' : score < 0 ? 'text-red-400' : 'text-stone-400'
+        }`}>
+          {score}
+        </span>
+        <button
+          onClick={handleVote('down')}
+          className={`p-1 rounded transition-colors ${
+            user_vote === 'down'
+              ? 'text-red-400'
+              : 'text-stone-300 hover:text-stone-500 dark:text-stone-600 dark:hover:text-stone-400'
+          }`}
+          aria-label="Downvote"
+        >
+          <svg className="w-4 h-4" fill={user_vote === 'down' ? 'currentColor' : 'none'} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+      </div>
+    )
+  }
+
   // Handle image tap - open lightbox (but not if gesture was triggered)
   const handleImageClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
@@ -881,6 +940,8 @@ const MessageBubble = memo(function MessageBubble({
             </div>
           </div>
         )}
+        {/* Vote controls - only for others' messages */}
+        {!isMe && <VoteControls />}
         {/* Accent bar - refined gradient */}
         <div className={`w-1 rounded-full self-stretch ${isMe ? 'bg-gradient-to-b from-indigo-500 to-violet-500' : 'bg-gradient-to-b from-indigo-400 to-violet-400'} ${isMe ? 'ml-2' : 'mr-2'}`} />
         {/* Avatar: visible only on last message in group */}
@@ -1097,6 +1158,20 @@ function GroupDetailsDrawer({
   const [messageNotifsEnabled, setMessageNotifsEnabled] = useState(true)
   const [messageNotifsLoading, setMessageNotifsLoading] = useState(false)
 
+  // Top answers state
+  const [topAnswers, setTopAnswers] = useState<{
+    message_id: string
+    user_id: string
+    content: string
+    created_at: string
+    score: number
+    user_email: string
+    user_display_name: string | null
+    user_avatar_url: string | null
+  }[]>([])
+  const [topAnswersLoading, setTopAnswersLoading] = useState(false)
+  const [showTopAnswers, setShowTopAnswers] = useState(false)
+
   // Load message notification preference when drawer opens
   useEffect(() => {
     if (isOpen && currentUserId) {
@@ -1108,6 +1183,22 @@ function GroupDetailsDrawer({
         })
     }
   }, [isOpen, currentUserId, roomId])
+
+  // Load top answers when section is expanded
+  useEffect(() => {
+    if (showTopAnswers && topAnswers.length === 0) {
+      setTopAnswersLoading(true)
+      supabase.rpc('get_top_answers', { p_room_id: roomId, p_min_score: 1, p_limit: 10 })
+        .then(({ data, error }) => {
+          if (error) {
+            console.error('Failed to load top answers:', error)
+          } else if (data) {
+            setTopAnswers(data)
+          }
+          setTopAnswersLoading(false)
+        })
+    }
+  }, [showTopAnswers, roomId, topAnswers.length])
 
   const handleToggleMessageNotifs = async () => {
     setMessageNotifsLoading(true)
@@ -1426,6 +1517,120 @@ function GroupDetailsDrawer({
             )}
           </div>
 
+          {/* Top Answers */}
+          <div className="border-b border-stone-100 dark:border-stone-800">
+            <button
+              onClick={() => setShowTopAnswers(!showTopAnswers)}
+              className="w-full p-4 flex items-center justify-between text-left hover:bg-stone-50 dark:hover:bg-stone-800/50 transition-colors"
+            >
+              <div>
+                <h4 className="text-sm font-medium text-stone-700 dark:text-stone-200">Top Answers</h4>
+                <p className="text-xs text-stone-500 dark:text-stone-400">Best turn responses voted by members</p>
+              </div>
+              <svg
+                className={`w-5 h-5 text-stone-400 transition-transform ${showTopAnswers ? 'rotate-180' : ''}`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            {showTopAnswers && (
+              <div className="px-4 pb-4">
+                {topAnswersLoading ? (
+                  <div className="flex items-center justify-center py-6">
+                    <div className="w-5 h-5 border-2 border-stone-300 border-t-stone-600 rounded-full animate-spin" />
+                  </div>
+                ) : topAnswers.length === 0 ? (
+                  <div className="text-center py-6">
+                    <div className="w-10 h-10 mx-auto mb-2 rounded-full bg-stone-100 dark:bg-stone-800 flex items-center justify-center">
+                      <svg className="w-5 h-5 text-stone-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6.633 10.5c.806 0 1.533-.446 2.031-1.08a9.041 9.041 0 012.861-2.4c.723-.384 1.35-.956 1.653-1.715a4.498 4.498 0 00.322-1.672V3a.75.75 0 01.75-.75A2.25 2.25 0 0116.5 4.5c0 1.152-.26 2.243-.723 3.218-.266.558.107 1.282.725 1.282h3.126c1.026 0 1.945.694 2.054 1.715.045.422.068.85.068 1.285a11.95 11.95 0 01-2.649 7.521c-.388.482-.987.729-1.605.729H13.48c-.483 0-.964-.078-1.423-.23l-3.114-1.04a4.501 4.501 0 00-1.423-.23H5.904M14.25 9h2.25M5.904 18.75c.083.205.173.405.27.602.197.4-.078.898-.523.898h-.908c-.889 0-1.713-.518-1.972-1.368a12 12 0 01-.521-3.507c0-1.553.295-3.036.831-4.398C3.387 10.203 4.167 9.75 5 9.75h1.053c.472 0 .745.556.5.96a8.958 8.958 0 00-1.302 4.665c0 1.194.232 2.333.654 3.375z" />
+                      </svg>
+                    </div>
+                    <p className="text-xs text-stone-500 dark:text-stone-400">No top answers yet</p>
+                    <p className="text-xs text-stone-400 dark:text-stone-500 mt-1">Vote on turn responses to see them here</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {topAnswers.map((answer, index) => {
+                      // Parse content to get prompt and response
+                      let prompt = ''
+                      let response = answer.content
+                      let isPhoto = false
+                      let photoUrl = ''
+
+                      try {
+                        const parsed = JSON.parse(answer.content)
+                        if (parsed.kind === 'photo_turn') {
+                          isPhoto = true
+                          prompt = parsed.prompt
+                          photoUrl = parsed.image_url
+                        }
+                      } catch {
+                        if (answer.content.startsWith('Reply to "')) {
+                          const parts = answer.content.split('\n\n')
+                          prompt = parts[0].replace(/^Reply to "/, '').replace(/"$/, '')
+                          response = parts.slice(1).join('\n\n')
+                        }
+                      }
+
+                      const displayName = answer.user_display_name || answer.user_email?.split('@')[0] || 'Unknown'
+
+                      return (
+                        <div
+                          key={answer.message_id}
+                          className="bg-stone-50 dark:bg-stone-800 rounded-xl p-3"
+                        >
+                          <div className="flex items-start gap-2">
+                            {/* Rank badge */}
+                            <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                              index === 0 ? 'bg-amber-100 text-amber-700' :
+                              index === 1 ? 'bg-stone-200 text-stone-600' :
+                              index === 2 ? 'bg-orange-100 text-orange-700' :
+                              'bg-stone-100 text-stone-500'
+                            }`}>
+                              {index + 1}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              {/* Prompt */}
+                              {prompt && (
+                                <p className="text-[11px] text-indigo-500 dark:text-indigo-400 italic mb-1 truncate">
+                                  {prompt}
+                                </p>
+                              )}
+                              {/* Content */}
+                              {isPhoto ? (
+                                <div className="w-16 h-16 rounded-lg overflow-hidden mb-2">
+                                  <img src={photoUrl} alt="" className="w-full h-full object-cover" />
+                                </div>
+                              ) : (
+                                <p className="text-sm text-stone-700 dark:text-stone-200 line-clamp-2">
+                                  {response}
+                                </p>
+                              )}
+                              {/* Author and score */}
+                              <div className="flex items-center justify-between mt-2">
+                                <span className="text-xs text-stone-500 dark:text-stone-400">
+                                  {displayName}
+                                </span>
+                                <span className={`text-xs font-semibold ${answer.score > 0 ? 'text-indigo-500' : 'text-stone-400'}`}>
+                                  +{answer.score}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           {/* Message Notifications */}
           {isSupported && permission !== 'denied' && isSubscribed && (
             <div className="p-4 border-b border-stone-100 dark:border-stone-800">
@@ -1721,6 +1926,9 @@ export default function RoomPage() {
   const [hasNewMessages, setHasNewMessages] = useState(false)
   const INITIAL_MESSAGES = 20
   const PAGE_SIZE = 30
+
+  // Vote state for turn responses
+  const [votes, setVotes] = useState<Map<string, VoteInfo>>(new Map())
 
   const [chatText, setChatText] = useState('')
   const [turnText, setTurnText] = useState('')
@@ -2440,7 +2648,10 @@ export default function RoomPage() {
       const memberIds = members?.map(m => m.user_id) ?? []
       const msgIds = sortedMsgs.map(m => m.id)
 
-      const [profilesResult, reactionsResult, storiesResult, effectiveFollowsResult] = await Promise.all([
+      // Get turn response message IDs for vote fetching
+      const turnResponseIds = sortedMsgs.filter(m => m.type === 'turn_response').map(m => m.id)
+
+      const [profilesResult, reactionsResult, storiesResult, effectiveFollowsResult, votesResult] = await Promise.all([
         memberIds.length > 0
           ? supabase.from('profiles').select('id, email, display_name, avatar_url, bio').in('id', memberIds)
           : Promise.resolve({ data: [] }),
@@ -2454,6 +2665,10 @@ export default function RoomPage() {
         // Get effectively followed users (explicit + implicit, excluding overrides)
         memberIds.length > 0
           ? supabase.rpc('get_effective_following_ids', { p_target_ids: memberIds })
+          : Promise.resolve({ data: [] }),
+        // Fetch votes for turn responses
+        turnResponseIds.length > 0
+          ? supabase.rpc('get_messages_vote_info', { p_message_ids: turnResponseIds })
           : Promise.resolve({ data: [] })
       ])
 
@@ -2544,6 +2759,15 @@ export default function RoomPage() {
       // Update reactions after hydration
       if (reactionsResult.data) {
         setReactions(reactionsResult.data as Reaction[])
+      }
+
+      // Update votes after hydration
+      if (votesResult.data) {
+        const votesMap = new Map<string, VoteInfo>()
+        for (const v of votesResult.data as { message_id: string; score: number; user_vote: 'up' | 'down' | null }[]) {
+          votesMap.set(v.message_id, { score: v.score, user_vote: v.user_vote })
+        }
+        setVotes(votesMap)
       }
 
       // Mark room as read (fire and forget)
@@ -2934,6 +3158,62 @@ export default function RoomPage() {
     })
     if (error) console.error('Reaction error:', error)
   }
+
+  const handleVote = useCallback(async (messageId: string, voteType: 'up' | 'down') => {
+    if (!userId) return
+
+    // Optimistic update
+    setVotes(prev => {
+      const next = new Map(prev)
+      const current = next.get(messageId) || { score: 0, user_vote: null }
+      let newScore = current.score
+      let newVote: 'up' | 'down' | null = voteType
+
+      if (current.user_vote === voteType) {
+        // Toggle off
+        newScore += voteType === 'up' ? -1 : 1
+        newVote = null
+      } else if (current.user_vote === null) {
+        // New vote
+        newScore += voteType === 'up' ? 1 : -1
+      } else {
+        // Switch vote
+        newScore += voteType === 'up' ? 2 : -2
+      }
+
+      next.set(messageId, { score: Math.max(-99, newScore), user_vote: newVote })
+      return next
+    })
+
+    try {
+      const { data, error } = await supabase.rpc('vote_on_message', {
+        p_message_id: messageId,
+        p_vote_type: voteType,
+      })
+
+      if (error) {
+        console.error('Vote error:', error)
+        // Revert optimistic update on error
+        const { data: refreshData } = await supabase.rpc('get_message_vote_info', { p_message_id: messageId })
+        if (refreshData) {
+          setVotes(prev => {
+            const next = new Map(prev)
+            next.set(messageId, refreshData as VoteInfo)
+            return next
+          })
+        }
+      } else if (data) {
+        // Update with server response
+        setVotes(prev => {
+          const next = new Map(prev)
+          next.set(messageId, data as VoteInfo)
+          return next
+        })
+      }
+    } catch (err) {
+      console.error('Vote failed:', err)
+    }
+  }, [userId])
 
   const handleStartDM = async (otherUserId: string) => {
     if (!userId) return
@@ -3625,6 +3905,8 @@ export default function RoomPage() {
                     seenCount={currentSeenCount}
                     isSeenBoundary={isSeenBoundary}
                     onVisible={() => markMessageSeen(m.id)}
+                    voteInfo={m.type === 'turn_response' ? votes.get(m.id) : undefined}
+                    onVote={m.type === 'turn_response' ? handleVote : undefined}
                   />
                 </div>
               )
