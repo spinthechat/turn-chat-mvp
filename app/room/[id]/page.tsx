@@ -10,7 +10,6 @@ import { getThemeForMode, isDarkTheme, getThemeCSSVars, type ChatTheme } from '@
 import { useParams, useRouter } from 'next/navigation'
 import { GroupAvatarMosaic, type GroupMember } from '@/app/components/GroupAvatarMosaic'
 import { StoryRing } from '@/app/components/StoryRing'
-import { ProfilePhotoActionSheet } from '@/app/components/ProfilePhotoActionSheet'
 
 // Local imports from extracted modules
 import { useMobileViewport } from './hooks'
@@ -61,7 +60,6 @@ const MessageBubble = memo(function MessageBubble({
   onReact,
   onScrollToMessage,
   onProfileClick,
-  onAvatarClick,
   groupPosition = 'single',
   seenCount = 0,
   isSeenBoundary = false,
@@ -82,7 +80,6 @@ const MessageBubble = memo(function MessageBubble({
   onReact: (messageId: string, emoji: string) => void
   onScrollToMessage: (messageId: string) => void
   onProfileClick: (userId: string) => void
-  onAvatarClick: (userId: string) => void
   groupPosition?: MessageGroupPosition
   seenCount?: number
   isSeenBoundary?: boolean
@@ -748,7 +745,7 @@ const MessageBubble = memo(function MessageBubble({
         {/* Avatar: visible only on last message in group */}
         <div className={`flex-shrink-0 ${isMe ? 'ml-2' : 'mr-2'}`}>
           {isLastInGroup ? (
-            <Avatar user={user} size="xs" className="mt-0.5" onClick={user ? () => onAvatarClick(user.id) : undefined} />
+            <Avatar user={user} size="xs" className="mt-0.5" onClick={user ? () => onProfileClick(user.id) : undefined} />
           ) : (
             <div className="w-5 h-5" />
           )}
@@ -838,7 +835,7 @@ const MessageBubble = memo(function MessageBubble({
         {/* Avatar: visible only on last message in group */}
         <div className={`flex-shrink-0 ${isMe ? 'ml-2' : 'mr-2'}`}>
           {isLastInGroup ? (
-            <Avatar user={user} size="xs" className="mt-0.5" onClick={user ? () => onAvatarClick(user.id) : undefined} />
+            <Avatar user={user} size="xs" className="mt-0.5" onClick={user ? () => onProfileClick(user.id) : undefined} />
           ) : (
             <div className="w-5 h-5" />
           )}
@@ -950,7 +947,7 @@ const MessageBubble = memo(function MessageBubble({
         {/* Avatar: visible only on last message in group */}
         <div className={`flex-shrink-0 ${isMe ? 'ml-2' : 'mr-2'}`}>
           {isLastInGroup ? (
-            <Avatar user={user} size="xs" className="mt-0.5" onClick={user ? () => onAvatarClick(user.id) : undefined} />
+            <Avatar user={user} size="xs" className="mt-0.5" onClick={user ? () => onProfileClick(user.id) : undefined} />
           ) : (
             <div className="w-5 h-5" />
           )}
@@ -1052,7 +1049,7 @@ const MessageBubble = memo(function MessageBubble({
       {/* Avatar: visible only on last message in group */}
       <div className={`flex-shrink-0 ${isMe ? 'ml-2' : 'mr-2'}`}>
         {isLastInGroup ? (
-          <Avatar user={user} size="xs" className="mt-0.5" onClick={user ? () => onAvatarClick(user.id) : undefined} />
+          <Avatar user={user} size="xs" className="mt-0.5" onClick={user ? () => onProfileClick(user.id) : undefined} />
         ) : (
           <div className="w-5 h-5" />
         )}
@@ -1945,7 +1942,6 @@ export default function RoomPage() {
   const [copied, setCopied] = useState(false)
   const [showGroupDetails, setShowGroupDetails] = useState(false)
   const [selectedProfileUserId, setSelectedProfileUserId] = useState<string | null>(null)
-  const [actionSheetUserId, setActionSheetUserId] = useState<string | null>(null)
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set())
   const [activeStoryUserIds, setActiveStoryUserIds] = useState<Set<string>>(new Set())
 
@@ -3237,11 +3233,6 @@ export default function RoomPage() {
     setSelectedProfileUserId(userId)
   }
 
-  const handleAvatarClick = (userId: string) => {
-    // Open action sheet for profile photo options
-    setActionSheetUserId(userId)
-  }
-
   const scrollToMessage = (messageId: string) => {
     const el = messageRefs.current.get(messageId)
     if (el) {
@@ -3582,25 +3573,8 @@ export default function RoomPage() {
             return next
           })
         }}
+        hasActiveStory={selectedProfileUserId ? activeStoryUserIds.has(selectedProfileUserId) : false}
       />
-
-      {/* Profile Photo Action Sheet */}
-      {actionSheetUserId && users.get(actionSheetUserId) && (
-        <ProfilePhotoActionSheet
-          isOpen={actionSheetUserId !== null}
-          onClose={() => setActionSheetUserId(null)}
-          user={{
-            id: actionSheetUserId,
-            email: users.get(actionSheetUserId)!.email,
-            displayName: users.get(actionSheetUserId)!.displayName,
-            avatarUrl: users.get(actionSheetUserId)!.avatarUrl,
-            initials: users.get(actionSheetUserId)!.initials,
-            color: users.get(actionSheetUserId)!.color,
-          }}
-          currentUserId={userId}
-          hasActiveStory={activeStoryUserIds.has(actionSheetUserId)}
-        />
-      )}
 
       {/* Turn Pulse - Background dim overlay (only during pulse animation) */}
       <div
@@ -3928,7 +3902,6 @@ export default function RoomPage() {
                     onReact={handleReact}
                     onScrollToMessage={scrollToMessage}
                     onProfileClick={handleProfileClick}
-                    onAvatarClick={handleAvatarClick}
                     groupPosition={groupPosition}
                     seenCount={currentSeenCount}
                     isSeenBoundary={isSeenBoundary}
