@@ -11,12 +11,12 @@ CREATE TABLE IF NOT EXISTS profile_photos (
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   url TEXT NOT NULL,
   storage_path TEXT NOT NULL,
-  position INTEGER NOT NULL DEFAULT 0,
+  "position" INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- Index for efficient queries
-CREATE INDEX IF NOT EXISTS profile_photos_user_idx ON profile_photos (user_id, position);
+CREATE INDEX IF NOT EXISTS profile_photos_user_idx ON profile_photos (user_id, "position");
 
 -- ============================================
 -- PART 2: RLS for profile_photos
@@ -65,15 +65,15 @@ RETURNS TABLE (
   id UUID,
   url TEXT,
   storage_path TEXT,
-  position INTEGER,
+  "position" INTEGER,
   created_at TIMESTAMPTZ
 ) AS $$
 BEGIN
   RETURN QUERY
-  SELECT pp.id, pp.url, pp.storage_path, pp.position, pp.created_at
+  SELECT pp.id, pp.url, pp.storage_path, pp."position", pp.created_at
   FROM profile_photos pp
   WHERE pp.user_id = p_user_id
-  ORDER BY pp.position ASC, pp.created_at ASC
+  ORDER BY pp."position" ASC, pp.created_at ASC
   LIMIT 16;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -104,12 +104,12 @@ BEGIN
   END IF;
 
   -- Get next position
-  SELECT COALESCE(MAX(position), -1) + 1 INTO v_next_position
+  SELECT COALESCE(MAX("position"), -1) + 1 INTO v_next_position
   FROM profile_photos
   WHERE user_id = v_user_id;
 
   -- Insert the photo
-  INSERT INTO profile_photos (user_id, url, storage_path, position)
+  INSERT INTO profile_photos (user_id, url, storage_path, "position")
   VALUES (v_user_id, p_url, p_storage_path, v_next_position)
   RETURNING id INTO v_new_id;
 
