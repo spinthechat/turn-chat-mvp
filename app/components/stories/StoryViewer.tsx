@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import Image from 'next/image'
 import {
   Story,
@@ -12,7 +13,6 @@ import {
   stringToColor,
 } from './types'
 import { supabase } from '@/lib/supabaseClient'
-import { useMobileViewport } from './useMobileViewport'
 
 interface StoryViewerProps {
   users: StoryUser[]
@@ -49,9 +49,82 @@ export function StoryViewer({
 
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const touchStartRef = useRef<{ x: number; y: number } | null>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
 
-  // Mobile viewport hook for keyboard handling
-  const { keyboardHeight, viewportHeight } = useMobileViewport()
+  // Track keyboard height for reply input positioning
+  const [keyboardHeight, setKeyboardHeight] = useState(0)
+  const [mounted, setMounted] = useState(false)
+  const initialHeightRef = useRef<number>(0)
+
+  // Mount state for portal
+  useEffect(() => {
+    setMounted(true)
+    // Capture initial viewport height before any keyboard opens
+    initialHeightRef.current = window.innerHeight
+  }, [])
+
+  // Lock body scroll and handle keyboard
+  useEffect(() => {
+    if (!mounted) return
+
+    // Lock body scroll completely
+    const originalStyles = {
+      overflow: document.body.style.overflow,
+      position: document.body.style.position,
+      width: document.body.style.width,
+      height: document.body.style.height,
+      top: document.body.style.top,
+    }
+    const scrollY = window.scrollY
+
+    document.body.style.overflow = 'hidden'
+    document.body.style.position = 'fixed'
+    document.body.style.width = '100%'
+    document.body.style.height = '100%'
+    document.body.style.top = `-${scrollY}px`
+
+    // Also lock html element
+    const htmlOverflow = document.documentElement.style.overflow
+    document.documentElement.style.overflow = 'hidden'
+
+    // Keyboard handling via visualViewport
+    const layoutHeight = initialHeightRef.current || window.innerHeight
+
+    const handleViewportChange = () => {
+      const vv = window.visualViewport
+      if (!vv) {
+        setKeyboardHeight(0)
+        return
+      }
+      // Calculate keyboard height
+      const kbHeight = Math.max(0, layoutHeight - vv.height - vv.offsetTop)
+      setKeyboardHeight(kbHeight)
+    }
+
+    const vv = window.visualViewport
+    if (vv) {
+      vv.addEventListener('resize', handleViewportChange)
+      vv.addEventListener('scroll', handleViewportChange)
+    }
+
+    return () => {
+      // Restore body styles
+      document.body.style.overflow = originalStyles.overflow
+      document.body.style.position = originalStyles.position
+      document.body.style.width = originalStyles.width
+      document.body.style.height = originalStyles.height
+      document.body.style.top = originalStyles.top
+      document.documentElement.style.overflow = htmlOverflow
+
+      // Restore scroll position
+      window.scrollTo(0, scrollY)
+
+      if (vv) {
+        vv.removeEventListener('resize', handleViewportChange)
+        vv.removeEventListener('scroll', handleViewportChange)
+      }
+    }
+  }, [mounted])
 
   const currentUser = users[currentUserIndex]
   const currentStory = currentUser?.stories[currentStoryIndex]
@@ -273,11 +346,20 @@ export function StoryViewer({
   // Calculate bottom offset for reply composer when keyboard is open
   const composerBottomOffset = keyboardHeight > 0 ? keyboardHeight : 0
 
-  return (
+  // Don't render until mounted (for portal)
+  if (!mounted) return null
+
+  const content = (
     <div
-      className="fixed inset-0 z-[100] bg-black flex flex-col overflow-hidden"
+      ref={containerRef}
+      className="fixed inset-0 z-[9999] bg-black flex flex-col"
       style={{
-        height: viewportHeight > 0 ? viewportHeight : '100dvh',
+        // Use fixed height based on initial viewport, NOT dynamic
+        height: '100dvh',
+        // Prevent any scroll behavior
+        overflow: 'hidden',
+        // Ensure touch events don't propagate
+        touchAction: 'none',
       }}
     >
       {/* Header - Fixed at top */}
@@ -360,11 +442,13 @@ export function StoryViewer({
         ))}
       </div>
 
-      {/* Footer - Fixed at bottom, moves with keyboard */}
+      {/* Footer - Fixed at bottom, moves up with keyboard via transform */}
       <div
-        className="flex-shrink-0 z-20 bg-gradient-to-t from-black/60 to-transparent transition-transform duration-200"
+        className="flex-shrink-0 z-20 bg-gradient-to-t from-black/60 to-transparent pb-safe"
         style={{
-          paddingBottom: composerBottomOffset > 0 ? composerBottomOffset : 'env(safe-area-inset-bottom)',
+          // Use transform to move footer up when keyboard opens - no layout reflow
+          transform: composerBottomOffset > 0 ? `translateY(-${composerBottomOffset}px)` : 'none',
+          transition: 'transform 0.2s ease-out',
         }}
       >
         {isOwnStory ? (
@@ -392,7 +476,11 @@ export function StoryViewer({
                   type="text"
                   value={replyText}
                   onChange={(e) => setReplyText(e.target.value)}
-                  onFocus={handleReplyFocus}
+                  onFocus={(e) => {
+                    // Prevent iOS scroll-into-view behavior
+                    e.target.scrollIntoView = () => {}
+                    handleReplyFocus()
+                  }}
                   onBlur={handleReplyBlur}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
@@ -484,6 +572,9 @@ export function StoryViewer({
       )}
     </div>
   )
+
+  // Render via portal at document.body to escape any scroll containers
+  return createPortal(content, document.body)
 }
 
 function getTimeAgo(dateString: string): string {
