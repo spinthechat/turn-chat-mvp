@@ -863,6 +863,9 @@ export default function ChatsPage() {
       await loadChats(user.id)
       setLoading(false)
 
+      // Update last seen when user opens the app
+      supabase.rpc('update_last_seen').then(() => {})
+
       channel = supabase
         .channel('inbox-updates')
         .on(

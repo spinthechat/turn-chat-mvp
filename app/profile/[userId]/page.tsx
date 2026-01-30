@@ -495,15 +495,19 @@ export default function UserProfilePage() {
           <h2 className="text-2xl font-semibold text-stone-900 dark:text-stone-50">{displayName}</h2>
           <p className="text-sm text-stone-500 dark:text-stone-400">{profile.email}</p>
           {/* Last active status */}
-          {formatLastActive(lastSeenAt) && (
-            <p className={`text-xs mt-1 ${
-              formatLastActive(lastSeenAt) === 'Active now'
-                ? 'text-emerald-500 dark:text-emerald-400'
-                : 'text-stone-400 dark:text-stone-500'
-            }`}>
-              {formatLastActive(lastSeenAt)}
-            </p>
-          )}
+          {(() => {
+            const lastActiveText = formatLastActive(lastSeenAt)
+            if (!lastActiveText) return null
+            return (
+              <p className={`text-xs mt-1 ${
+                lastActiveText === 'Active now'
+                  ? 'text-emerald-500 dark:text-emerald-400'
+                  : 'text-stone-400 dark:text-stone-500'
+              }`}>
+                {lastActiveText}
+              </p>
+            )
+          })()}
         </div>
 
         {/* Bio */}
